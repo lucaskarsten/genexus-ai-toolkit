@@ -1,0 +1,263 @@
+<Definition auto="false">
+    <Property Name="ucid"        Type="string" Default="" />
+    <Property Name="Placeholder" Type="string" Default="Search..." />
+    <Property Name="Items"       Type="string" Default="[]" />
+    <Property Name="ItemSelected" Type="string" Default="" />
+
+    <Event Name="OnSelect" />
+
+    <Script Name="AfterShow" When="AfterShow">
+        (function () {
+            var self = this;
+            var ucid = this.ucid;
+
+            var el = document.querySelector('[data-ucid="' + ucid + '"]');
+            if (!el) return;
+            if (el.getAttribute('data-navsearch-init') === '1') return;
+            el.setAttribute('data-navsearch-init', '1');
+
+            function esc(s) {
+                return String(s == null ? '' : s)
+                    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+            }
+
+            /* ── normalize accents for search ── */
+            function norm(s) {
+                var base = String(s || '').normalize('NFD');
+                return base.replace(
+                    new RegExp('[' + String.fromCharCode(768) + '-' + String.fromCharCode(879) + ']', 'g'), ''
+                ).toLowerCase().trim();
+            }
+
+            /* ── decode HTML entities from GeneXus ── */
+            function decode(s) {
+                return (s || '[]')
+                    .replace(/&quot;/g, '"').replace(/&amp;/g, '&')
+                    .replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+            }
+
+            /* ── parse items ── */
+            var allItems = [];
+            try {
+                var raw = (self.Items || '').trim();
+                if (raw) allItems = JSON.parse(decode(raw));
+            } catch (e) { allItems = []; }
+
+            var input    = el.querySelector('[data-part="input"]');
+            var dropdown = el.querySelector('[data-part="dropdown"]');
+            if (!input || !dropdown) return;
+
+            /* ── set placeholder ── */
+            input.setAttribute('placeholder', self.Placeholder || 'Search...');
+
+            function renderItems(filtered) {
+                if (!filtered.length) {
+                    dropdown.innerHTML = '<div class="navsearch__empty">No results</div>';
+                    return;
+                }
+                var html = '';
+                for (var i = 0; i < filtered.length; i++) {
+                    var item = filtered[i];
+                    html += '<button type="button" class="navsearch__item" data-item-id="'
+                          + esc(item.id || '') + '" data-item-url="'
+                          + esc(item.url || '') + '">'
+                          + esc(item.label || '')
+                          + '</button>';
+                }
+                dropdown.innerHTML = html;
+            }
+
+            function openDropdown() {
+                dropdown.classList.add('navsearch__dropdown--open');
+                input.setAttribute('aria-expanded', 'true');
+            }
+            function closeDropdown() {
+                dropdown.classList.remove('navsearch__dropdown--open');
+                input.setAttribute('aria-expanded', 'false');
+            }
+
+            /* ── input: filter and show ── */
+            input.addEventListener('input', function() {
+                var q = norm(input.value);
+                if (!q) {
+                    closeDropdown();
+                    return;
+                }
+                var filtered = [];
+                for (var i = 0; i < allItems.length; i++) {
+                    if (norm(allItems[i].label || '').indexOf(q) > -1) {
+                        filtered.push(allItems[i]);
+                    }
+                }
+                renderItems(filtered);
+                openDropdown();
+            });
+
+            input.addEventListener('focus', function() {
+                if (input.value.trim()) openDropdown();
+            });
+
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeDropdown();
+                    input.value = '';
+                }
+                if (e.key === 'ArrowDown') {
+                    var firstItem = dropdown.querySelector('.navsearch__item');
+                    if (firstItem) { e.preventDefault(); firstItem.focus(); }
+                }
+            });
+
+            /* ── item selection ── */
+            dropdown.addEventListener('click', function(e) {
+                var btn = e.target && e.target.closest ? e.target.closest('[data-item-id]') : null;
+                if (!btn) return;
+                var itemId  = btn.getAttribute('data-item-id');
+                var itemUrl = btn.getAttribute('data-item-url');
+                closeDropdown();
+                input.value = btn.textContent;
+                self.ItemSelected = itemId;
+                if (typeof self.OnSelect === 'function') self.OnSelect();
+                /* navigate if url provided */
+                if (itemUrl) window.location.href = itemUrl;
+            });
+
+            /* ── keyboard nav inside dropdown ── */
+            dropdown.addEventListener('keydown', function(e) {
+                var items = dropdown.querySelectorAll('.navsearch__item');
+                if (!items.length) return;
+                var focused = document.activeElement;
+                var idx = -1;
+                for (var i = 0; i < items.length; i++) {
+                    if (items[i] === focused) { idx = i; break; }
+                }
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    var next = items[idx + 1] || items[0];
+                    next.focus();
+                }
+                if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    var prev = items[idx - 1] || items[items.length - 1];
+                    prev.focus();
+                }
+                if (e.key === 'Escape') {
+                    closeDropdown();
+                    input.focus();
+                }
+            });
+
+            /* ── close on outside click ── */
+            document.addEventListener('click', function(e) {
+                if (!el.contains(e.target)) closeDropdown();
+            });
+
+            /* ── MutationObserver for Refresh (items update) ── */
+            var dataEl = document.getElementById('navsearch-data-' + ucid);
+            if (dataEl) {
+                new MutationObserver(function() {
+                    el.removeAttribute('data-navsearch-init');
+                }).observe(dataEl, { attributes: true, childList: true, characterData: true });
+            }
+
+        }).call(this);
+    </Script>
+</Definition>
+
+<style>
+.navsearch { position: relative; display: block; font-family: 'Noto Sans', sans-serif; }
+.navsearch * { box-sizing: border-box; font-family: inherit; }
+
+.navsearch__input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+    background: #f8f8f8;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    height: 36px;
+    transition: border-color 0.15s ease;
+}
+.navsearch__input-wrap:focus-within {
+    border-color: #0066ff;
+    background: #ffffff;
+}
+
+.navsearch__icon {
+    width: 16px;
+    height: 16px;
+    color: #666666;
+    flex-shrink: 0;
+}
+
+.navsearch__input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    outline: none;
+    font-size: 14px;
+    color: #1a1a1a;
+}
+.navsearch__input::placeholder { color: #999999; }
+
+/* ── dropdown ── */
+.navsearch__dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    z-index: 1000;
+    max-height: 280px;
+    overflow-y: auto;
+    padding: 4px 0;
+}
+.navsearch__dropdown--open { display: block; }
+
+.navsearch__item {
+    display: block;
+    width: 100%;
+    padding: 8px 16px;
+    background: none;
+    border: none;
+    text-align: left;
+    font-size: 14px;
+    color: #1a1a1a;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.navsearch__item:hover,
+.navsearch__item:focus { background: #f0eeff; color: #5500ee; outline: none; }
+
+.navsearch__empty {
+    padding: 12px 16px;
+    font-size: 14px;
+    color: #999999;
+    text-align: center;
+}
+</style>
+
+<div class="navsearch" data-ucid="{{ucid}}" role="search">
+    <div class="navsearch__input-wrap">
+        <svg class="navsearch__icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M10.5 10.5L13.5 13.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <input type="text" class="navsearch__input" data-part="input"
+               autocomplete="off" autocorrect="off" spellcheck="false"
+               aria-autocomplete="list" aria-expanded="false"
+               placeholder="{{Placeholder}}" />
+    </div>
+    <div class="navsearch__dropdown" data-part="dropdown" role="listbox"></div>
+</div>
+
+<!-- data div for MutationObserver tracking -->
+<div id="navsearch-data-{{ucid}}" data-items="{{Items}}" style="display:none"></div>

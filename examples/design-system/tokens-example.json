@@ -1,0 +1,71 @@
+{
+  "_comment": "Generic design token example for GeneXus DSO projects. Replace values with your actual design tokens. See tokens-example.README.md for the mapping to GeneXus DSO token syntax.",
+  "colors": {
+    "action": {
+      "primary": {
+        "default": { "value": "#0066FF", "comment": "Primary action color — buttons, links" },
+        "hover":   { "value": "#0052CC", "comment": "Primary hover state" }
+      },
+      "selected": {
+        "default": { "value": "#5500EE", "comment": "Selected/active item color" },
+        "subtle":  { "value": "#F0EEFF", "comment": "Selected item background" }
+      },
+      "focus": { "value": "#33CCFF", "comment": "Focus ring color" }
+    },
+    "text": {
+      "primary":   { "value": "#1A1A1A", "comment": "Main body text" },
+      "secondary": { "value": "#666666", "comment": "Subdued text, labels" },
+      "disabled":  { "value": "#999999", "comment": "Disabled state text" },
+      "on-dark":   { "value": "#FFFFFF", "comment": "Text on dark backgrounds" }
+    },
+    "bg": {
+      "container": {
+        "base":   { "value": "#FFFFFF", "comment": "Default container background" },
+        "subtle": { "value": "#F8F8F8", "comment": "Slightly tinted background" },
+        "muted":  { "value": "#FAFAFA", "comment": "Minimal tint for panels" }
+      }
+    },
+    "border": {
+      "primary": { "value": "#E0E0E0", "comment": "General borders" },
+      "input":   { "value": "#CCCCCC", "comment": "Input field borders" }
+    },
+    "icon": {
+      "primary":  { "value": "#4D4D4D", "comment": "Default icon color" },
+      "disabled": { "value": "#CCCCCC", "comment": "Disabled icon color" }
+    },
+    "scrollbar": {
+      "track": { "value": "#E6E6E6", "comment": "Scrollbar track background" },
+      "thumb": { "value": "#B3B3B3", "comment": "Scrollbar thumb color" }
+    }
+  },
+  "spacing": {
+    "xs":  { "value": "4px",  "comment": "Minimum spacing" },
+    "s":   { "value": "8px",  "comment": "Small" },
+    "m":   { "value": "16px", "comment": "Default/medium" },
+    "l":   { "value": "24px", "comment": "Large" },
+    "xl":  { "value": "40px", "comment": "Extra large" },
+    "xxl": { "value": "48px", "comment": "Extra extra large" }
+  },
+  "fontSizes": {
+    "caption":    { "value": "12px", "comment": "Captions, fine print" },
+    "body":       { "value": "14px", "comment": "Default body text" },
+    "body-large": { "value": "16px", "comment": "Large body text" },
+    "title":      { "value": "20px", "comment": "Page/section titles" }
+  },
+  "fonts": {
+    "Label-Regular": { "value": "YourFont-Regular",  "comment": "Primary font, regular weight" },
+    "Label-Bold":    { "value": "YourFont-Bold",     "comment": "Primary font, bold weight" },
+    "Display":       { "value": "YourDisplayFont",   "comment": "Display/heading font" }
+  },
+  "radius": {
+    "s":    { "value": "8px",    "comment": "Small radius — cards, inputs" },
+    "m":    { "value": "12px",   "comment": "Medium radius" },
+    "l":    { "value": "16px",   "comment": "Large radius" },
+    "pill": { "value": "9999px", "comment": "Pill/full-round" }
+  },
+  "custom": {
+    "icon-size-small":  { "value": "16px", "comment": "Small icon size" },
+    "icon-size-medium": { "value": "24px", "comment": "Default icon size" },
+    "icon-size-large":  { "value": "40px", "comment": "Large icon size" }
+  }
+}

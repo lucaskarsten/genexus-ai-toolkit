@@ -1,0 +1,193 @@
+styles DsoGenexus
+{
+    /* ── Base DSO import ──────────────────────────────────────────────────────
+       Replace with your base DSO name.
+       Example: @import DsoBase;
+       ───────────────────────────────────────────────────────────────────── */
+    /* @import YourDsoBase; */
+
+    /* ── Loading DSO import (optional) ───────────────────────────────────────
+       If you have a loading/skeleton DSO, import it here.
+       Example: @import DsoLoading;
+       ───────────────────────────────────────────────────────────────────── */
+    /* @import YourDsoLoading; */
+
+
+    /* ══════════════════════════════════════════════════════════════════════════
+       SECTION: App Shell Layout
+       GeneXus renders layout as tables. This section overrides gx-column-targets
+       to enable full-height flex/block layouts for modern app shells.
+
+       Usage: set your top-level container class (e.g., .app-shell)
+       and replace "app-shell" below with your actual class name.
+       ══════════════════════════════════════════════════════════════════════════ */
+
+    #gx-column-targets:has(.app-shell) { display: block; height: 100vh; }
+    #gx-column-targets:has(.app-shell) > .gx-center-target { display: block; height: 100vh; }
+
+
+    /* ══════════════════════════════════════════════════════════════════════════
+       SECTION: GeneXus Table/Tab Fixes
+       GeneXus generates tables for tab controls and layout containers.
+       These classes collapse default table borders and spacing so your
+       design system CSS can take full control.
+       ══════════════════════════════════════════════════════════════════════════ */
+
+    .gx-tab-spacing-fix-2 { border-spacing: 0; border-collapse: collapse; }
+    .gx-tab-spacing-fix-0 { border-spacing: 0; border-collapse: collapse; }
+    .gx-tab-padding-fix-1 { padding: 0; }
+    .gx-tab-padding-fix-0 { padding: 0; }
+
+
+    /* ══════════════════════════════════════════════════════════════════════════
+       SECTION: Sidebar Table Cell Fix
+       GeneXus often injects fixed height on <td> elements inside sidebar
+       components. This override prevents those inline styles from overriding
+       your sidebar layout.
+       Adjust the selector to match your sidebar class name.
+       ══════════════════════════════════════════════════════════════════════════ */
+
+    .app-sidebar td[style*="height"] { height: auto !important; }
+
+
+    /* ══════════════════════════════════════════════════════════════════════════
+       SECTION: Content Placeholder
+       GeneXus renders placeholder elements with box-sizing: content-box by
+       default. Force border-box for consistent sizing.
+       ══════════════════════════════════════════════════════════════════════════ */
+
+    .gx-content-placeholder { box-sizing: border-box; }
+
+
+    /* ══════════════════════════════════════════════════════════════════════════
+       SECTION: Grid / Tab Body Padding
+       The .gx-ct-body class wraps grid/tab content. Default padding is too
+       large for most modern UIs. Adjust values to match your design tokens.
+
+       Token example: padding-left: $spacing.xl; padding-right: $spacing.m;
+       Fallback (replace with your actual spacing values):
+       ══════════════════════════════════════════════════════════════════════════ */
+
+    /* .gx-ct-body { padding-left: $spacing.xl; padding-right: $spacing.m; margin-bottom: 15px; } */
+    .gx-ct-body { padding-left: 40px; padding-right: 16px; margin-bottom: 15px; }
+
+
+    /* ══════════════════════════════════════════════════════════════════════════
+       SECTION: Loading Mask (gx-mask)
+       GeneXus shows a full-screen overlay mask during AJAX operations.
+       This section ensures it renders correctly over the entire viewport.
+       ══════════════════════════════════════════════════════════════════════════ */
+
+    .gx-mask {
+        background-color: #00000080;
+        animation: trocarFrame 1.5s steps(1) infinite;
+        background-position: center;
+        background-repeat: no-repeat;
+        left: 0;
+        position: fixed;
+        top: 0;
+        height: 100% !important;
+        width: 100% !important;
+        z-index: 1000 !important;
+    }
+
+
+    /* ══════════════════════════════════════════════════════════════════════════
+       SECTION: Popup Overrides
+       GeneXus popup resize handles are hidden (most apps don't use them).
+       The default popup border is removed so your design system can control it.
+       ══════════════════════════════════════════════════════════════════════════ */
+
+    .gx-popup-resize { display: none; }
+    .gx-popup.gx-popup-default { border-style: none; border-width: 0; }
+
+
+    /* ══════════════════════════════════════════════════════════════════════════
+       SECTION: Form Item Padding
+       GeneXus wraps each form item in .gx-form-item with default padding.
+       Remove it so your layout components control the spacing.
+       ══════════════════════════════════════════════════════════════════════════ */
+
+    .gx-form-item { padding: 0 !important; }
+
+
+    /* ══════════════════════════════════════════════════════════════════════════
+       SECTION: Root Form
+       The .Form class is the root element GeneXus renders for each Web Panel.
+       Replace the background-color value with your surface token.
+       Token example: background-color: $colors.surface-default;
+       ══════════════════════════════════════════════════════════════════════════ */
+
+    .Form {
+        /* background-color: $colors.surface-default; */
+        background-color: #ffffff;  /* replace with your surface token */
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100vh;
+        overflow: hidden;
+    }
+
+
+    /* ══════════════════════════════════════════════════════════════════════════
+       SECTION: GeneXus Default Control Classes
+       These classes are applied automatically by GeneXus to fields and labels.
+       Override them here to match your design system baseline.
+       ══════════════════════════════════════════════════════════════════════════ */
+
+    /* TextBlock: read-only text labels */
+    /* Replace font tokens with your project's token names */
+    .TextBlock {
+        /* @include text-block; */  /* if you have a mixin in the same DSO */
+    }
+
+    /* Attribute: editable fields */
+    .Attribute { }
+
+    /* Focus placeholder for hidden/invisible focus elements */
+    .AttributeFoco { width: 1px; height: 1px; outline: none; opacity: 0; }
+
+    /* Button: all GeneXus buttons */
+    .Button { opacity: 1; font-weight: 700; }
+
+
+    /* ══════════════════════════════════════════════════════════════════════════
+       SECTION: App Content Link Override
+       Remove default link underline and color inside the main content area.
+       Adjust the selector to match your content class name.
+       Replace the color value with your action-primary token.
+       Token example: color: $colors.action-primary-default;
+       ══════════════════════════════════════════════════════════════════════════ */
+
+    /* .app-content a:not(.nav-item):not(.search-item) {
+        color: $colors.action-primary-default;
+        text-decoration: none;
+    } */
+
+
+    /* ══════════════════════════════════════════════════════════════════════════
+       SECTION: Typography Utility Classes
+       Add your typography utility classes here.
+       Replace font tokens with your project's token names.
+       ══════════════════════════════════════════════════════════════════════════ */
+
+    /* .text-block { font-family: $fonts.Label-Regular; font-weight: 400; } */
+    /* .text-block--bold { font-family: $fonts.Label-Bold; font-weight: 700; } */
+
+
+    /* ══════════════════════════════════════════════════════════════════════════
+       SECTION: Custom Scrollbar
+       Replace token values with your project's scrollbar tokens:
+         background: $colors.scrollbar-track  (track)
+         background: $colors.scrollbar-thumb  (thumb)
+         border-radius: $radius.pill
+       ══════════════════════════════════════════════════════════════════════════ */
+
+    *::-webkit-scrollbar         { width: 6px; height: 6px; }
+    /* *::-webkit-scrollbar-track  { background: $colors.scrollbar-track; border-radius: $radius.pill; margin-top: 16px; margin-bottom: 16px; } */
+    *::-webkit-scrollbar-track   { background: #e6e6e6; border-radius: 16px; margin-top: 16px; margin-bottom: 16px; }
+    *::-webkit-scrollbar-button  { display: none; }
+    /* *::-webkit-scrollbar-thumb  { background: $colors.scrollbar-thumb; border-radius: $radius.pill; } */
+    *::-webkit-scrollbar-thumb   { background: #b3b3b3; border-radius: 16px; }
+
+}

@@ -1,0 +1,170 @@
+<Definition auto="false">
+    <Property Name="ucid"     Type="string" Default="" />
+    <Property Name="Message"  Type="string" Default="" />
+    <Property Name="Type"     Type="string" Default="info" />
+    <Property Name="Duration" Type="string" Default="4000" />
+
+    <Event Name="OnDismiss" />
+
+    <Script Name="Show" When="">
+        var ucid = this.ControlName;
+        var el   = document.querySelector('[data-ucid="' + this.ucid + '"]');
+        if (el) {
+            el.classList.add('toast--visible');
+            el.removeAttribute('hidden');
+        }
+    </Script>
+
+    <Script Name="Hide" When="">
+        var ucid = this.ControlName;
+        var el   = document.querySelector('[data-ucid="' + this.ucid + '"]');
+        if (el) {
+            el.classList.remove('toast--visible');
+            el.setAttribute('hidden', '');
+        }
+    </Script>
+
+    <Script Name="AfterShow" When="AfterShow">
+        (function () {
+            var self = this;
+            var ucid = this.ucid;
+
+            var el = document.querySelector('[data-ucid="' + ucid + '"]');
+            if (!el) return;
+            if (el.getAttribute('data-toast-init') === '1') return;
+            el.setAttribute('data-toast-init', '1');
+
+            function esc(s) {
+                return String(s == null ? '' : s)
+                    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+            }
+
+            var msgEl = el.querySelector('[data-part="message"]');
+            if (msgEl) msgEl.textContent = self.Message || '';
+
+            /* ── apply type modifier ── */
+            var type = self.Type || 'info';
+            var validTypes = ['success', 'error', 'warning', 'info'];
+            if (validTypes.indexOf(type) === -1) type = 'info';
+            el.className = el.className.replace(/toast--type-\S+/g, '').trim();
+            el.classList.add('toast--type-' + type);
+
+            /* ── dismiss button ── */
+            var dismissBtn = el.querySelector('[data-part="dismiss"]');
+            if (dismissBtn) {
+                dismissBtn.addEventListener('click', function() {
+                    el.classList.remove('toast--visible');
+                    el.setAttribute('hidden', '');
+                    if (typeof self.OnDismiss === 'function') self.OnDismiss();
+                });
+            }
+
+            /* ── auto-dismiss after Duration ms ── */
+            var duration = parseInt(self.Duration, 10);
+            if (!isNaN(duration) && duration > 0) {
+                setTimeout(function() {
+                    if (el.classList.contains('toast--visible')) {
+                        el.classList.remove('toast--visible');
+                        el.setAttribute('hidden', '');
+                        if (typeof self.OnDismiss === 'function') self.OnDismiss();
+                    }
+                }, duration);
+            }
+
+            /* ── show on first load ── */
+            if (self.Message) {
+                el.classList.add('toast--visible');
+                el.removeAttribute('hidden');
+            }
+
+            /* ── MutationObserver for re-render after Refresh ── */
+            var dataEl = document.getElementById('toast-data-' + ucid);
+            if (dataEl) {
+                new MutationObserver(function() {
+                    el.removeAttribute('data-toast-init');
+                    /* re-init will run on next AfterShow */
+                }).observe(dataEl, { attributes: true, childList: true, characterData: true });
+            }
+
+        }).call(this);
+    </Script>
+</Definition>
+
+<style>
+.toast {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    border-left: 4px solid transparent;
+    background: #ffffff;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    font-family: 'Noto Sans', sans-serif;
+    font-size: 14px;
+    max-width: 400px;
+    opacity: 0;
+    transform: translateY(-8px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+}
+.toast * { box-sizing: border-box; font-family: inherit; }
+.toast[hidden] { display: none; }
+
+.toast--visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+/* ── type variants ── */
+.toast--type-success { border-left-color: #00aa44; background: #f0fff5; }
+.toast--type-error   { border-left-color: #cc0000; background: #fff5f5; }
+.toast--type-warning { border-left-color: #ff9900; background: #fffdf0; }
+.toast--type-info    { border-left-color: #0066ff; background: #f0f5ff; }
+
+.toast__icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+.toast--type-success .toast__icon { color: #00aa44; }
+.toast--type-error   .toast__icon { color: #cc0000; }
+.toast--type-warning .toast__icon { color: #ff9900; }
+.toast--type-info    .toast__icon { color: #0066ff; }
+
+.toast__body { flex: 1; }
+.toast__message { color: #1a1a1a; line-height: 1.5; }
+
+.toast__dismiss {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: #666666;
+    font-size: 18px;
+    line-height: 1;
+    flex-shrink: 0;
+    margin-top: -2px;
+    opacity: 0.7;
+}
+.toast__dismiss:hover { opacity: 1; }
+</style>
+
+<div class="toast" data-ucid="{{ucid}}" role="alert" aria-live="assertive" hidden>
+    <!-- Icon placeholder — replace with your icon system or inline SVG -->
+    <span class="toast__icon" aria-hidden="true">&#9432;</span>
+
+    <div class="toast__body">
+        <div class="toast__message" data-part="message">{{Message}}</div>
+    </div>
+
+    <button type="button" class="toast__dismiss" data-part="dismiss" aria-label="Dismiss">
+        &#215;
+    </button>
+</div>
+
+<!-- data tracking for MutationObserver -->
+<div id="toast-data-{{ucid}}" data-message="{{Message}}" data-type="{{Type}}" style="display:none"></div>

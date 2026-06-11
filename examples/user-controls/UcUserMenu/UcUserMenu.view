@@ -1,0 +1,239 @@
+<Definition auto="false">
+    <Property Name="ucid"      Type="string" Default="" />
+    <Property Name="UserName"  Type="string" Default="" />
+    <Property Name="UserEmail" Type="string" Default="" />
+    <Property Name="AvatarUrl" Type="string" Default="" />
+
+    <Event Name="OnLogout" />
+    <Event Name="OnSettings" />
+
+    <Script Name="AfterShow" When="AfterShow">
+        (function () {
+            var self = this;
+            var ucid = this.ucid;
+
+            var el = document.querySelector('[data-ucid="' + ucid + '"]');
+            if (!el) return;
+            if (el.getAttribute('data-usermenu-init') === '1') return;
+            el.setAttribute('data-usermenu-init', '1');
+
+            function esc(s) {
+                return String(s == null ? '' : s)
+                    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+            }
+
+            /* ── populate user info ── */
+            var nameEl   = el.querySelector('[data-part="name"]');
+            var emailEl  = el.querySelector('[data-part="email"]');
+            var avatarEl = el.querySelector('[data-part="avatar"]');
+
+            if (nameEl)   nameEl.textContent  = self.UserName  || '';
+            if (emailEl)  emailEl.textContent = self.UserEmail || '';
+            if (avatarEl) {
+                if (self.AvatarUrl) {
+                    avatarEl.style.backgroundImage = 'url(' + esc(self.AvatarUrl) + ')';
+                    avatarEl.textContent = '';
+                } else {
+                    /* fallback: first letter of name */
+                    var initials = (self.UserName || '?').charAt(0).toUpperCase();
+                    avatarEl.textContent = initials;
+                    avatarEl.style.backgroundImage = '';
+                }
+            }
+
+            var trigger = el.querySelector('[data-part="trigger"]');
+            var panel   = el.querySelector('[data-part="panel"]');
+            if (!trigger || !panel) return;
+
+            function open() {
+                trigger.classList.add('usermenu__trigger--open');
+                panel.classList.add('usermenu__panel--open');
+                trigger.setAttribute('aria-expanded', 'true');
+            }
+            function close() {
+                trigger.classList.remove('usermenu__trigger--open');
+                panel.classList.remove('usermenu__panel--open');
+                trigger.setAttribute('aria-expanded', 'false');
+            }
+            function toggle() {
+                if (panel.classList.contains('usermenu__panel--open')) close(); else open();
+            }
+
+            trigger.addEventListener('click', function(e) {
+                e.stopPropagation();
+                toggle();
+            });
+            trigger.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+                if (e.key === 'Escape') close();
+            });
+
+            /* ── action buttons ── */
+            var settingsBtn = panel.querySelector('[data-action="settings"]');
+            var logoutBtn   = panel.querySelector('[data-action="logout"]');
+
+            if (settingsBtn) {
+                settingsBtn.addEventListener('click', function() {
+                    close();
+                    if (typeof self.OnSettings === 'function') self.OnSettings();
+                });
+            }
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function() {
+                    close();
+                    if (typeof self.OnLogout === 'function') self.OnLogout();
+                });
+            }
+
+            /* ── close on outside click ── */
+            document.addEventListener('click', function(e) {
+                if (!el.contains(e.target)) close();
+            });
+
+            /* ── close on scroll ── */
+            window.addEventListener('scroll', close, true);
+
+            /* ── MutationObserver for Refresh ── */
+            new MutationObserver(function() {
+                el.removeAttribute('data-usermenu-init');
+            }).observe(el, { attributes: true, attributeFilter: ['data-username'] });
+
+        }).call(this);
+    </Script>
+</Definition>
+
+<style>
+.usermenu { position: relative; display: inline-block; font-family: 'Noto Sans', sans-serif; }
+.usermenu * { box-sizing: border-box; font-family: inherit; }
+
+.usermenu__trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px 4px 4px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 24px;
+    cursor: pointer;
+    outline: none;
+}
+.usermenu__trigger:hover { background: rgba(0,0,0,0.06); }
+.usermenu__trigger:focus-visible { outline: 2px solid #33ccff; }
+
+.usermenu__avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: #0066ff;
+    background-size: cover;
+    background-position: center;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.usermenu__name {
+    font-size: 14px;
+    color: #1a1a1a;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.usermenu__chevron {
+    width: 16px;
+    height: 16px;
+    color: #666666;
+    transition: transform 0.15s ease;
+    flex-shrink: 0;
+}
+.usermenu__trigger--open .usermenu__chevron { transform: rotate(180deg); }
+
+/* ── dropdown panel ── */
+.usermenu__panel {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 220px;
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    z-index: 1000;
+    overflow: hidden;
+}
+.usermenu__panel--open { display: block; }
+
+.usermenu__user-info {
+    padding: 16px;
+    border-bottom: 1px solid #e0e0e0;
+}
+.usermenu__full-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1a1a1a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.usermenu__email {
+    font-size: 12px;
+    color: #666666;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+}
+
+.usermenu__actions { padding: 4px 0; }
+
+.usermenu__action-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 16px;
+    background: none;
+    border: none;
+    text-align: left;
+    font-size: 14px;
+    color: #1a1a1a;
+    cursor: pointer;
+}
+.usermenu__action-btn:hover { background: #f8f8f8; }
+.usermenu__action-btn--danger { color: #cc0000; }
+.usermenu__action-btn--danger:hover { background: #fff5f5; }
+</style>
+
+<div class="usermenu" data-ucid="{{ucid}}">
+    <button type="button" class="usermenu__trigger" data-part="trigger"
+            aria-haspopup="true" aria-expanded="false">
+        <div class="usermenu__avatar" data-part="avatar"></div>
+        <span class="usermenu__name" data-part="name">{{UserName}}</span>
+        <svg class="usermenu__chevron" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M4 6L8 10L12 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+    </button>
+
+    <div class="usermenu__panel" data-part="panel" role="menu">
+        <div class="usermenu__user-info">
+            <div class="usermenu__full-name" data-part="name"></div>
+            <div class="usermenu__email" data-part="email"></div>
+        </div>
+        <div class="usermenu__actions">
+            <button type="button" class="usermenu__action-btn" data-action="settings">
+                Settings
+            </button>
+            <button type="button" class="usermenu__action-btn usermenu__action-btn--danger" data-action="logout">
+                Sign Out
+            </button>
+        </div>
+    </div>
+</div>
