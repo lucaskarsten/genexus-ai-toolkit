@@ -9,6 +9,14 @@ description: GeneXus Knowledge Base SQL specialist — direct KB access, EntityT
 
 Invoke when you want to: read source code of a GeneXus object directly from the database, modify a WebPanel/Wbc/Procedure/SDT source without opening the IDE, investigate version history, or build automations over the KB.
 
+## Workflow
+
+Before running queries:
+1. Check `output/SQL/` — existing queries for this object
+2. Run discovery queries first — never assume object IDs or structure
+
+After generating queries or PowerShell scripts, save to `output/SQL/<ObjectName>_<description>.sql` (or `.ps1`).
+
 ---
 
 ## Connection
@@ -54,6 +62,7 @@ Invoke-Sqlcmd -ServerInstance $env:GX_KB_SERVER -Database $env:GX_KB_DATABASE
 | 82 | Layout | Layout of Procedure/Report |
 | 100 | Module | Modules |
 | 147 | UserControl | User Controls |
+| 161 | DSO | Design System Objects |
 
 ---
 
@@ -241,8 +250,10 @@ Update-GxSource `
 | 4 | Close parenthesis | `)` |
 | 5 | Plus operator | `+` |
 | 7 | Comma | `,` |
+| 8 | `not` | `not`, `Not` |
 | 9 | Logical operators | `Or`, `AND`, `OR` |
 | 10 | Assignment/operators | `=`, `<>`, `+=` |
+| 18 | Semicolon | `;` |
 | 23 | Variable (`&...`) | `&MyVar`, `&pParam` |
 | 25 | Whitespace/newline/comment | `\n`, `   `, `// text`, `/* block */` |
 | 27 | Object call marker | *(no Word — precedes object reference)* |
@@ -252,6 +263,7 @@ Update-GxSource `
 | 40 | Boolean True | `True`, `true` |
 | 41 | Boolean False | `False`, `false` |
 | 44 | Domain/enumerated constant | domain names |
+| 46 | `new` / `New` | `new`, `New` |
 | 53 | String literal `!'...'` | `!'MyValue'`, `!'GET'` |
 | 109 | `If` | `If` |
 | 110 | `Else` | `Else` |
@@ -260,6 +272,7 @@ Update-GxSource `
 | 128 | `EndFor` | `EndFor` |
 | 130 | `When None` | `When None` |
 | 132 | `Commit` | `Commit` |
+| 141 | `msg` built-in | `msg` |
 | 143 | `Sub` | `Sub` |
 | 144 | `EndSub` | `EndSub` |
 | 145 | `Do` (call sub) | `Do` |
@@ -284,7 +297,21 @@ Update-GxSource `
 <TokenData><Token>10</Token><Word>=</Word><Id>0</Id></TokenData>
 <TokenData><Token>25</Token><Word> </Word><Id>0</Id></TokenData>
 <TokenData><Token>3</Token><Word>'value'</Word><Id>0</Id></TokenData>
+
+<!-- msg call: msg('Hello user') -->
+<TokenData><Token>141</Token><Word>msg</Word><Id>0</Id></TokenData>
+<TokenData><Token>0</Token><Word>(</Word><Id>0</Id></TokenData>
+<TokenData><Token>3</Token><Word>'Hello user'</Word><Id>0</Id></TokenData>
+<TokenData><Token>4</Token><Word>)</Word><Id>0</Id></TokenData>
 ```
+
+---
+
+## Cross-references
+
+- Object type context and naming conventions: `skills/genexus-expert.md`
+- UC-specific source format: `skills/genexus-uc.md`
+- Token types for event source XML: Token Type Map section above
 
 ---
 

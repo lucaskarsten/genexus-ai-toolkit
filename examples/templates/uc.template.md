@@ -62,13 +62,23 @@ For the full guide: [docs/user-controls-guide.md](../../docs/user-controls-guide
       });
 
       /* ── MutationObserver for AJAX Refresh ── */
+      /* Call render() (or whichever function re-draws from current data)
+         when GeneXus updates the data div after a Refresh. */
       var dataEl = document.getElementById('uc-data-' + ucid);
       if (dataEl) {
         new MutationObserver(function() {
-          el.removeAttribute('data-uc-init');
-          window['ucReinit_' + ucid] && window['ucReinit_' + ucid]();
+          render();
         }).observe(dataEl, { attributes: true, childList: true, characterData: true });
       }
+
+      /* ── define render ── */
+      function render() {
+        var labelEl = el.querySelector('[data-part="label"]');
+        if (labelEl) labelEl.textContent = self.Label;
+        /* add more re-render logic here */
+      }
+
+      render();
 
     }).call(this);
   </Script>
@@ -90,7 +100,8 @@ For the full guide: [docs/user-controls-guide.md](../../docs/user-controls-guide
 </div>
 
 <!-- Long/variable content goes in a content div, never in an attribute -->
-<div id="uc-data-{{ControlName}}" style="display:none">{{LongContent}}</div>
+<!-- Use {{ucid}} (not {{ControlName}}) to match the JS querySelector -->
+<div id="uc-data-{{ucid}}" style="display:none">{{LongContent}}</div>
 ```
 
 ---

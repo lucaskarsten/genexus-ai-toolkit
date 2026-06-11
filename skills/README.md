@@ -18,7 +18,7 @@ These skill files load expert GeneXus knowledge into your AI assistant. Each fil
 
 ### Claude Code
 
-Copy the skill files to your Claude skills directory:
+**Skills** (global — available in any project):
 
 ```bash
 # macOS / Linux
@@ -32,7 +32,26 @@ Copy-Item skills\genexus-expert.md  $env:USERPROFILE\.claude\skills\
 Copy-Item skills\genexus-kb-sql.md  $env:USERPROFILE\.claude\skills\
 ```
 
-Then invoke in a Claude Code session:
+**Agents** (project-level — already in `.claude/agents/`):
+
+The project ships five specialized subagents that Claude Code can auto-delegate to:
+
+| Agent | Description |
+|---|---|
+| `gx-uc-builder` | UC creation and modification |
+| `gx-wbp-builder` | Web Panel and Web Component event wiring, pub/sub, grid binding |
+| `gx-kb-explorer` | KB SQL read/write via PowerShell |
+| `gx-dso-designer` | DSO CSS and token design |
+| `gx-reviewer` | Code quality review (CRITICAL/MAJOR/MINOR/SUGGESTION) |
+
+These are activated automatically when working in this project. To invoke manually:
+
+```
+use the gx-reviewer agent to check this UC
+use gx-kb-explorer to find the Events source of WbcNavHeader
+```
+
+**Invoke skills manually:**
 
 ```
 /genexus-uc Create a dropdown UC called UcNavDropdown
@@ -40,7 +59,7 @@ Then invoke in a Claude Code session:
 /genexus-kb-sql Read the Events source of WbcMyComponent
 ```
 
-Skills auto-load when you type the trigger keywords (e.g., "user control", "dso", "aftershow").
+Skills auto-load when you type trigger keywords (e.g., "user control", "dso", "aftershow").
 
 ### ChatGPT / Custom Instructions
 

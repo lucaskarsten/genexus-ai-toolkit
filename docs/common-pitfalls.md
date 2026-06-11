@@ -146,27 +146,23 @@ EndIf
 
 ---
 
-## 7. `Iif` condition is inverted
+## 7. `Iif` branches are swapped
 
-A classic GeneXus mistake: confusing which branch is "true" and which is "false" in `Iif`.
+A classic GeneXus mistake: swapping the "true" and "false" branches in `Iif`.
 
 ```genexus
 // Signature: Iif(condition, valueIfTrue, valueIfFalse)
 
-// ❌ WRONG — inverted: returns "" when IsEmpty (should return a value)
-UCMyControl.Ativo = Iif(IsEmpty(&Flag), !'false', !'true')
-
-// Wait — that's actually correct for the specific case.
-// The common mistake is:
+// ❌ WRONG — &Nome is empty, so IsEmpty is true, but we're returning &Nome (empty)
 UCMyControl.Label = Iif(IsEmpty(&Nome), &Nome, !'Default')
-//                                       ↑ this returns &Nome when empty!
+//                                       ↑ true branch runs when &Nome IS empty → returns ""
 
-// ✅ CORRECT
+// ✅ CORRECT — when &Nome is empty, return the fallback; otherwise return &Nome
 UCMyControl.Label = Iif(IsEmpty(&Nome), !'Default', &Nome)
-//                                        ↑ true branch = empty case → use default
+//                                        ↑ true branch = "it IS empty" → use default
 ```
 
-**Mnemonic**: `Iif(condition, THEN, ELSE)`. Read it as: "IF condition is true, use THEN; otherwise use ELSE."
+**Mnemonic**: `Iif(condition, THEN, ELSE)` — read it as: "IF this is true, THEN use A, ELSE use B."
 
 ---
 

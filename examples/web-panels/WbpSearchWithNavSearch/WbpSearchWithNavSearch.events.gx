@@ -1,0 +1,35 @@
+// WbpSearchWithNavSearch — filters a grid using UcNavSearch pub/sub
+// Reference: skills/genexus-expert.md (WEB PANEL / WEB COMPONENT section)
+
+Event Start
+    Do 'BuildSearch'
+    Do 'BuildGrid'
+EndEvent
+
+Event Refresh
+    Do 'BuildSearch'
+    Do 'BuildGrid'
+EndEvent
+
+Sub 'BuildSearch'
+    UCSearch1.ucid        = !'search-nav'
+    UCSearch1.Placeholder = !'Search items...'
+    &SearchItems          = &AllItems          // pre-loaded SDT
+    UCSearch1.Items       = &SearchItems.ToJson()
+EndSub
+
+Sub 'BuildGrid'
+    &GridItems.Clear()
+    For Each Item
+        Where Item.IsActive = 1
+        Where (Trim(&FilterTerm) = '' Or Item.Name Like '%' + &FilterTerm + '%')
+        &GridItem.Id    = Item.Id
+        &GridItem.Name  = Item.Name
+        &GridItems.Add(&GridItem)
+    EndFor
+EndSub
+
+Event UCSearch1.OnSelect
+    &FilterTerm = &EventParam
+    Refresh
+EndEvent

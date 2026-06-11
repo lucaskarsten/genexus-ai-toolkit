@@ -12,6 +12,18 @@ When invoked, apply this knowledge to analyze, create, refactor, or debug the UC
 
 ---
 
+## Workflow
+
+Before generating any UC code:
+1. Check `output/UC/` — existing suggestions for this UC
+2. Review `examples/user-controls/` — four working UCs to reuse patterns from
+3. Consult `docs/common-pitfalls.md` — avoid the top pitfalls
+4. For KB structure questions, cross-reference `genexus-kb-sql.md`
+
+After generating, save to `output/UC/<UcName>_<description>.view`.
+
+---
+
 ## 1. The New User Control Object
 
 The new UC object (GeneXus 16+) differs from the old model (`.control` + `.js`):
@@ -56,9 +68,17 @@ The new UC object (GeneXus 16+) differs from the old model (`.control` + `.js`):
 
 - `auto="false"` — always; prevents GeneXus from inferring properties automatically
 - Numeric properties with decimals: use `Type="string"` + `Str(&Value, 20, 2)` in GeneXus — `Type="numeric"` truncates decimals
-- Never use `ucid` as a property name when using `this.ControlName` — they serve the same purpose
 - Limit: ~20 properties/scripts per UC — plan economically
 - `ControlName` is a GeneXus internal property — never create a property with that name
+
+### Identification: ucid property vs ControlName (pick one pattern)
+
+| Pattern | Property declared? | JS reads | HTML uses | Set in WBP |
+|---|---|---|---|---|
+| **A — custom `ucid`** (recommended) | `<Property Name="ucid" .../>` | `this.ucid` | `{{ucid}}` | `UCCtrl.ucid = !'my-id'` |
+| **B — ControlName** | not needed | `this.ControlName` | `{{ControlName}}` | automatic |
+
+Pattern A is used by all four project example UCs. Use it unless there is a reason to prefer the GeneXus-assigned name.
 
 ---
 
@@ -80,7 +100,7 @@ The new UC object (GeneXus 16+) differs from the old model (`.control` + `.js`):
 .my-uc * { box-sizing: border-box; }
 </style>
 
-<div id="my-uc-{{ControlName}}" class="my-uc" data-ucid="{{ucid}}">
+<div id="my-uc-{{ucid}}" class="my-uc" data-ucid="{{ucid}}">
   <!-- control HTML -->
 </div>
 ```
@@ -93,7 +113,34 @@ GeneXus re-injects UC HTML into the DOM after AJAX Refresh, but the browser **do
 
 ## 4. Scripts — AfterShow and Methods
 
-### AfterShow — Mandatory Pattern
+### AfterShow — Pattern A vs Pattern B
+
+All 4 project example UCs use **Pattern A** (data-init-guard IIFE). Use **Pattern B** only when properties may load late (e.g. `CollectionData` not yet injected). Pick one per UC — never mix them.
+
+#### Pattern A (recommended) — IIFE + data-uc-init guard
+
+Used by all 4 project examples. The guard prevents listener accumulation across postbacks without needing a global function.
+
+```javascript
+<Script Name="AfterShow" When="AfterShow">
+  var control = this;
+  var ucid    = control.ucid || control.ControlName;
+
+  (function init() {
+    var el = document.getElementById("my-uc-" + ucid);
+    if (!el) return;
+    if (el.getAttribute('data-uc-init') === '1') return;
+    el.setAttribute('data-uc-init', '1');
+
+    // all logic here
+    // use control.PropName to read properties
+  })();
+</Script>
+```
+
+#### Pattern B — `window["ucInit_"+ucid]` + setTimeout(100)
+
+Use when properties like `CollectionData` may not yet be injected at `AfterShow` execution time.
 
 ```javascript
 <Script Name="AfterShow" When="AfterShow">
@@ -112,13 +159,7 @@ GeneXus re-injects UC HTML into the DOM after AJAX Refresh, but the browser **do
 </Script>
 ```
 
-#### Why `window["ucInit_" + ucid]`
-
-When multiple instances of the UC exist on the same page, GeneXus generates containers with the same class ID. Without named-function isolation, JS scopes overlap and event handlers accumulate.
-
-#### Why setTimeout 100ms
-
-`AfterShow` may execute before GeneXus finishes populating properties like `CollectionData`. The delay ensures properties have been injected into the DOM.
+> **Note:** Pick one pattern per UC and be consistent throughout. Mixing patterns within a UC leads to subtle race conditions.
 
 ### Methods Callable from WebPanel
 
@@ -240,16 +281,29 @@ if (parent && parent.parentNode) {
 
 ---
 
-## 7. jQuery in GeneXus Context
+## 7. Event Binding in GeneXus UCs
 
-GeneXus 18 includes jQuery globally. Use `$` directly in Scripts.
+All 4 project examples use `addEventListener` with the init-guard pattern. The guard prevents accumulation — listeners are added once per instance lifetime.
 
-### Preventing Event Accumulation
-
-Always use `.off()` before `.on()`:
+### Standard pattern (addEventListener)
 
 ```javascript
-$("#my-el-" + ucid).off("click").on("click", function(e) {
+var btn = document.getElementById("my-btn-" + ucid);
+btn.addEventListener("click", function(e) {
+    // handler
+});
+
+document.addEventListener("click", function(e) {
+    if (!el.contains(e.target)) closeDrop();
+});
+```
+
+### jQuery cleanup (if the UC already uses jQuery)
+
+GeneXus 18 includes jQuery globally. If the UC already depends on jQuery, use namespaced `.off()/.on()` to prevent handler accumulation:
+
+```javascript
+$("#my-el-" + ucid).off("click.ns_" + ucid).on("click.ns_" + ucid, function(e) {
     // handler
 });
 
@@ -257,6 +311,8 @@ $(document).off("click.namespace_" + ucid).on("click.namespace_" + ucid, functio
     // handler with namespace for safe cleanup
 });
 ```
+
+> Do not mix `addEventListener` and jQuery event binding within the same UC.
 
 ---
 
@@ -413,6 +469,20 @@ var tfoot     = table    ? table.querySelector("tfoot")     : null;
 if (tfoot) tfoot.innerHTML = "...";
 ```
 
+### `getContainerControl()` — Optional Runtime Helper
+
+GeneXus 18 injects a `getContainerControl()` method onto the UC JavaScript context in some builds. It returns the root container element of the UC.
+
+```javascript
+/* ✅ Always feature-detect before calling */
+var el = (typeof this.getContainerControl === 'function')
+    ? this.getContainerControl()
+    : document.querySelector('[data-ucid="' + ucid + '"]');
+if (!el) return;
+```
+
+This is an undocumented internal API — its availability varies across GeneXus 18 minor versions. **Always provide the `querySelector` fallback.** See `UcDropdownMenu.view:12` for the canonical usage.
+
 ---
 
 ## 12. UC Creation Checklist
@@ -420,12 +490,12 @@ if (tfoot) tfoot.innerHTML = "...";
 Before delivering a new UC, verify:
 
 - [ ] `auto="false"` in `<Definition>`
-- [ ] No property named `ucid` when using `this.ControlName` 
+- [ ] Identification pattern is consistent: either `ucid` property + `this.ucid` + `{{ucid}}` (Pattern A), or `this.ControlName` + `{{ControlName}}` (Pattern B) — never mixed
 - [ ] Numeric properties with decimals use `Type="string"`
-- [ ] `AfterShow` wrapped in `window["ucInit_" + ucid]` with `setTimeout`
+- [ ] `AfterShow` uses Pattern A (data-init-guard IIFE) or Pattern B (`window["ucInit_"+ucid]` + setTimeout) — one pattern per UC, consistently applied
 - [ ] CSS in `<style>` in Screen Template, not inline in JS
 - [ ] `{{ControlName}}` used only in HTML attributes, not in `<script>`
-- [ ] Events use `.off()` before `.on()` to prevent accumulation
+- [ ] Event binding uses init-guard or namespace cleanup consistently (`addEventListener` standard; jQuery `.off()/.on()` as fallback if the UC already uses jQuery)
 - [ ] `decode()` function implemented for JSON received from GeneXus
 - [ ] MutationObserver configured for re-render after Refresh
 - [ ] Tested with multiple instances on the same page
@@ -447,9 +517,13 @@ Before delivering a new UC, verify:
 
   <Script Name="AfterShow" When="AfterShow">
     var control = this;
-    var ucid    = control.ControlName;
+    var ucid    = control.ucid;    /* Pattern A (recommended): reads the ucid property */
 
-    window["ucInit_" + ucid] = function() {
+    (function init() {
+      var el = document.getElementById("my-uc-" + ucid);
+      if (!el) return;
+      if (el.getAttribute('data-uc-init') === '1') return;
+      el.setAttribute('data-uc-init', '1');
 
       function decode(s) {
         return (s || "")
@@ -465,39 +539,20 @@ Before delivering a new UC, verify:
 
       // main logic here
 
-      // close on scroll
-      $(window).off("scroll.uc_" + ucid).on("scroll.uc_" + ucid, function() {
-        // close dropdown, etc.
+      // event binding: addEventListener + guard (never accumulates)
+      el.addEventListener('click', function(e) {
+        // handle click
       });
 
-      // close when GeneXus popup opens
-      var popupObserver = new MutationObserver(function(mutations) {
-        mutations.forEach(function(m) {
-          m.addedNodes.forEach(function(node) {
-            if (node.nodeType === 1) {
-              var id  = (node.id  || "");
-              var cls = (node.className || "").toString();
-              if (id.indexOf("gxp") > -1 || cls.indexOf("gx-popup") > -1) {
-                // close dropdown, etc.
-              }
-            }
-          });
-        });
-      });
-      popupObserver.observe(document.body, { childList: true, subtree: false });
-
-      // MutationObserver for re-render after Refresh
+      // MutationObserver for re-render after AJAX Refresh
       var dataEl = document.getElementById("uc-data-" + ucid);
       if (dataEl) {
         new MutationObserver(function() {
-          window["ucInit_" + ucid]();
+          el.removeAttribute('data-uc-init');
+          init();
         }).observe(dataEl, { attributes: true, childList: true, characterData: true });
       }
-    };
-
-    setTimeout(function() {
-      window["ucInit_" + ucid]();
-    }, 100);
+    })();
   </Script>
 </Definition>
 ```
@@ -510,31 +565,97 @@ Before delivering a new UC, verify:
 .uc-wrapper * { font-family:'Noto Sans',sans-serif; font-size:14px; line-height:140%; }
 </style>
 
-<div id="uc-data-{{ControlName}}"
+<!-- Pattern A: use {{ucid}} for all IDs and data-ucid -->
+<div id="uc-data-{{ucid}}"
      data-label="{{Label}}"
      style="display:none"></div>
 
-<div id="uc-wrapper-{{ControlName}}" class="uc-wrapper" data-ucid="{{ucid}}">
+<div id="uc-wrapper-{{ucid}}" class="uc-wrapper" data-ucid="{{ucid}}">
   <!-- control HTML here -->
 </div>
 ```
 
 ---
 
-## 14. Your Project's UC Inventory
+## 14. Project UC Inventory
 
-*Add your project's UC catalog here. For each UC, document:*
-- *Properties: Name, Type, Default, Description*
-- *Events: Name, when fired*
-- *Methods: Name, parameters*
-- *Usage context*
+Source files: `examples/user-controls/`
 
-*Example entry:*
+---
 
-```
-### UcMyDropdown — Custom dropdown
-Properties: ucid, Label, Items (JSON [{id, label}])
-Events: OnSelect
-Scripts: ClearItems, SetValue(pValue)
-Usage: replaces native GeneXus Combo Box with design system styling
-```
+### UcDropdownMenu — Button with collapsible item list
+
+**Properties**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `ucid` | string | | Unique instance identifier |
+| `Label` | string | | Button label text |
+| `Items` | string | `[]` | JSON array `[{"id":"...","label":"..."}]` |
+| `ItemSelected` | string | | ID of the selected item (written by UC) |
+
+**Events**: `OnItemClick` — fired when an item is clicked; read `&EventParam` for the item ID
+
+**Usage**: Replaces native GeneXus Combo Box with design system styling and animated chevron. Closes on outside click, scroll, and Escape key.
+
+---
+
+### UcUserMenu — Avatar + name with user panel
+
+**Properties**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `ucid` | string | | Unique instance identifier |
+| `UserName` | string | | Display name |
+| `UserEmail` | string | | Email shown in panel |
+| `AvatarUrl` | string | | Image URL (fallback: first letter on blue bg) |
+
+**Events**: `OnLogout`, `OnSettings`
+
+**Usage**: Top-right user menu. Avatar falls back to first letter of UserName if image fails.
+
+---
+
+### UcToastNotification — Inline toast with auto-dismiss
+
+**Properties**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `ucid` | string | | Unique instance identifier |
+| `Message` | string | | Toast text |
+| `Type` | string | `info` | `success` / `error` / `warning` / `info` |
+| `Duration` | string | `4000` | Auto-dismiss delay in ms (0 = no auto-dismiss) |
+
+**Events**: `OnDismiss` — fired when toast is manually dismissed
+
+**Methods**: `Show()`, `Hide()` — callable from WebPanel
+
+**Usage**: Positioned by parent CSS. Hidden by default; show via `Show()` method or set properties and refresh.
+
+---
+
+### UcNavSearch — Live-filter search with keyboard navigation
+
+**Properties**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `ucid` | string | | Unique instance identifier |
+| `Placeholder` | string | | Input placeholder text |
+| `Items` | string | `[]` | JSON array `[{"id":"...","label":"...","url":"..."}]` |
+| `ItemSelected` | string | | ID of selected item (written by UC) |
+
+**Events**: `OnSelect` — fired on item selection; read `&EventParam` for the item ID
+
+**Usage**: Navigation search bar. Filters accent-insensitively in real-time. Keyboard: ArrowDown focuses first item, ArrowUp/Down navigate, Escape closes. If `url` is present, navigates automatically after selection.
+
+---
+
+## Cross-references
+
+- **Full runtime API reference**: `docs/runtime-api-reference.md`
+- **Common pitfalls**: `docs/common-pitfalls.md`
+- **KB SQL for source exploration**: `skills/genexus-kb-sql.md`
+- **General expert (DSO, WBP, JS)**: `skills/genexus-expert.md`

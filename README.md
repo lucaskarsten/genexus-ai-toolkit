@@ -26,7 +26,7 @@ AI-assisted development toolkit for GeneXus 18 — works with any LLM (Claude Co
 **1. Clone the repo**
 
 ```bash
-git clone https://github.com/your-username/genexus-ai-toolkit.git
+git clone https://github.com/lucaskarsten/genexus-ai-toolkit.git
 cd genexus-ai-toolkit
 cp .env.example .env
 # Edit .env with your GX_COMPILER_OUTPUT path
@@ -110,6 +110,12 @@ Technical reference guides to read before implementing:
 
 - `DsoGenexusOverrides.css` — Template for overriding GeneXus auto-generated classes
 - `tokens-example.json` — Design token structure with generic placeholder values
+
+### Web Panels (`examples/web-panels/`)
+
+| Example | Description |
+|---------|-------------|
+| `WbpSearchWithNavSearch/` | Web Panel that wires a `UcNavSearch` UC to filter a grid via pub/sub (`&EventParam`, `Refresh`) |
 
 ### Templates (`examples/templates/`)
 

@@ -7,8 +7,8 @@
     <Event Name="OnDismiss" />
 
     <Script Name="Show" When="">
-        var ucid = this.ControlName;
-        var el   = document.querySelector('[data-ucid="' + this.ucid + '"]');
+        var ucid = this.ucid;
+        var el   = document.querySelector('[data-ucid="' + ucid + '"]');
         if (el) {
             el.classList.add('toast--visible');
             el.removeAttribute('hidden');
@@ -16,8 +16,8 @@
     </Script>
 
     <Script Name="Hide" When="">
-        var ucid = this.ControlName;
-        var el   = document.querySelector('[data-ucid="' + this.ucid + '"]');
+        var ucid = this.ucid;
+        var el   = document.querySelector('[data-ucid="' + ucid + '"]');
         if (el) {
             el.classList.remove('toast--visible');
             el.setAttribute('hidden', '');
