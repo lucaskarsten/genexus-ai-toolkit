@@ -7,6 +7,12 @@
 
 AI-assisted development toolkit for GeneXus 18 — works with any LLM (Claude Code, ChatGPT, Copilot) and any GeneXus compiler (Tomcat, .NET, etc.)
 
+With this toolkit, your AI assistant can:
+
+- **Read and write GeneXus IDE source** — `.view`, `.events.gx`, `.prc`, `.trn`, DSO files and more, ready to paste directly into the IDE
+- **Read and interpret compiled output** — understand the HTML, JS, and CSS that GeneXus generates at build time, not just the source
+- **Create and fix any GeneXus object** — User Controls, Web Panels, Web Components, Procedures, Transactions, DSOs — with correct syntax, naming conventions, and runtime behavior
+
 ---
 
 ## What's Included
