@@ -1,6 +1,9 @@
 # genexus-ai-toolkit
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![GitHub Discussions](https://img.shields.io/github/discussions/lucaskarsten/genexus-ai-toolkit)](https://github.com/lucaskarsten/genexus-ai-toolkit/discussions)
+[![GitHub stars](https://img.shields.io/github/stars/lucaskarsten/genexus-ai-toolkit?style=social)](https://github.com/lucaskarsten/genexus-ai-toolkit/stargazers)
 
 AI-assisted development toolkit for GeneXus 18 — works with any LLM (Claude Code, ChatGPT, Copilot) and any GeneXus compiler (Tomcat, .NET, etc.)
 
