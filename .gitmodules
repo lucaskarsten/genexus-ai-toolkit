@@ -1,0 +1,3 @@
+[submodule "skills/nexa"]
+	path = skills/nexa
+	url = https://github.com/genexuslabs/genexus-skills.git
