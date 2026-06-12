@@ -318,6 +318,23 @@ Scans source files for `@import`, `src=`, and `href=` references and reports mis
 
 ---
 
+## Official GeneXus resources
+
+This toolkit builds on top of official GeneXus technology and documentation. Full credit to **[GeneXus](https://www.genexus.com)** and **[GeneXus Labs](https://github.com/genexuslabs)**.
+
+| Resource | What it is |
+|---|---|
+| [GeneXus for Agents](https://wiki.genexus.com/commwiki/wiki?61619) | Official MCP integration docs (GeneXus Next) |
+| [GeneXus MCP Server](https://wiki.genexus.com/commwiki/wiki?61623) | MCP Server reference and configuration |
+| [GeneXus Next — Windows install](https://wiki.genexus.com/commwiki/wiki?61624) | Native install guide |
+| [genexuslabs/genexus-skills](https://github.com/genexuslabs/genexus-skills) | Official skill repo — `skills/nexa/` is this submodule |
+| [GeneXus Wiki](https://wiki.genexus.com) | Full platform documentation |
+| [GeneXus Community](https://community.genexus.com) | Forums and Q&A |
+
+The `skills/nexa/` directory is a git submodule from [genexuslabs/genexus-skills](https://github.com/genexuslabs/genexus-skills) — the authoritative GeneXus knowledge maintained by GeneXus Labs. It is **not** part of this toolkit and is governed by its own license.
+
+---
+
 ## Contributing
 
 PRs are welcome — especially new UC examples, skill improvements, and GeneXus Next patterns. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
