@@ -1,0 +1,10 @@
+# OpenAI Codex CLI — project configuration
+# https://github.com/openai/codex
+#
+# This file is picked up automatically when you run `codex` from this directory.
+# Requires: GeneXus Next running (Docker or native). See docs/genexus-for-agents.md.
+
+[mcp_servers.gxnext]
+type = "http"
+url  = "http://localhost:8001/mcp"
+# Native GeneXus Next uses port 1989 — change url above if not using Docker.

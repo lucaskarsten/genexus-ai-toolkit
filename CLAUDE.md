@@ -1,15 +1,38 @@
 # GeneXus AI Toolkit — Workflow Instructions
 
+## Authority hierarchy
+
+**nexa is the primary authority** for all GeneXus platform knowledge: object syntax, rules, events, properties, build workflow, and canonical patterns. When nexa and any other source in this toolkit conflict, **nexa prevails**.
+
+**Confidence gate:** if something is not documented in nexa, in `docs/`, or in `examples/`, do not use it — flag the uncertainty and let the developer verify. False negative (missing feature) is better than false positive (code that silently breaks in production).
+
+The toolkit docs and skills are **tactical supplements** — they cover GeneXus 18 project-specific patterns, runtime APIs, CSS conventions, and pitfalls that nexa intentionally excludes (nexa targets GeneXus Next 2026+).
+
+### Division of responsibilities
+
+| Concern | Use |
+|---|---|
+| Object syntax, rules, events, properties | **nexa** |
+| Build, gxnext/MCP workflow, KB models | **nexa** |
+| AfterShow patterns A/B, init-guard, MutationObserver | `docs/` + `skills/genexus-uc.md` |
+| Runtime API (gx.dom, gx.fx.obs pub/sub, gx.grid) | `docs/runtime-api-reference.md` |
+| BEM CSS / DSO conventions for this project | `docs/bem-css-naming.md` |
+| Real-world GX18 pitfalls | `docs/common-pitfalls.md` |
+| Direct KB SQL + PowerShell access (no IDE) | `skills/genexus-kb-sql.md` |
+| Conflict between nexa and toolkit | **nexa prevails** |
+| Writing/modifying any skill or doc | `docs/llm-engineering.md` — checklist first |
+
 ## Before generating any code
 
 Consult sources in this order:
 
-1. **`output/`** — check for similar suggestions already generated
-2. **`examples/`** — find reusable templates and working UC examples
-3. **`docs/`** — consult the relevant technical guide before implementing
-4. **`$env:GX_KB_PATH`** — GeneXus KB root (original object sources)
-5. **`$env:GX_COMPILER_OUTPUT`** — compiled/deployed files (read-only reference)
-6. **SQL on `$env:GX_KB_DATABASE`** — real object and attribute structure
+1. **nexa** — platform rules, object syntax, canonical GeneXus patterns (load first, always)
+2. **`output/`** — check for similar suggestions already generated
+3. **`examples/`** — find reusable templates and working UC examples
+4. **`docs/`** — project-specific tactical knowledge (pitfalls, runtime API, BEM, UC guide)
+5. **`$env:GX_KB_PATH`** — GeneXus KB root (original object sources)
+6. **`$env:GX_COMPILER_OUTPUT`** — compiled/deployed files (read-only reference)
+7. **SQL on `$env:GX_KB_DATABASE`** — real object and attribute structure
 
 ## Output — save suggestions to `output/`
 
@@ -37,6 +60,20 @@ output/<CATEGORY>/<ObjectName>_<description>.<ext>
 - `output/UC/UcDropdownMenu_adds-animated-chevron.view`
 - `output/SQL/WbcNavHeader_find-events-source.sql`
 - `output/WBP/WbpReport_fixed-header.view`
+
+## GeneXus for Agents (MCP)
+
+This project includes `.mcp.json` with the `gxnext` server pre-configured (`http://localhost:8001/mcp`). Requires GeneXus Next 2026.01+ running.
+
+**Check connection:** `/mcp` → should show `gxnext ✅ connected`
+
+**When to use gxnext vs. file output:**
+- Use `gxnext` tools to create/modify objects directly in the KB (Transaction, WebPanel, Procedure, build) — nexa's hierarchical `src/` paths apply here
+- Use the `output/` file approach when the user wants to review before applying — flat `output/<CATEGORY>/` paths are local staging (gitignored)
+
+**nexa skill:** located at `skills/nexa/nexa/` (submodule from the official [genexuslabs/genexus-skills](https://github.com/genexuslabs/genexus-skills) repo). Register with `claude --add-dir skills/nexa/nexa`. The skill activates automatically when GeneXus objects or KB operations are mentioned.
+
+See `docs/genexus-for-agents.md` for the full setup guide.
 
 ## Learnings
 

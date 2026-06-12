@@ -1,7 +1,9 @@
 ---
 name: genexus-kb-sql
-description: GeneXus Knowledge Base SQL specialist — direct KB access, EntityType mapping, blob format (GZip), PowerShell scripts for reading/writing GX source code.
+description: GeneXus Knowledge Base SQL specialist — direct KB access via SQL and PowerShell, bypassing the IDE. Covers EntityType mapping, GZip blob format, read/write scripts. Use nexa (gxnext/MCP) when the GeneXus IDE is available.
 ---
+
+> **Supplement to nexa:** Este skill é o caminho alternativo para acesso ao KB quando o IDE não está disponível. Para criar ou modificar objetos GeneXus via agente, prefira o skill **nexa** com gxnext/MCP — é mais seguro e oficial.
 
 # GeneXus KB SQL — Direct KB Read/Write Specialist
 
