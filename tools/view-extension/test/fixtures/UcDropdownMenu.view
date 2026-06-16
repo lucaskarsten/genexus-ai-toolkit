@@ -1,0 +1,193 @@
+<Definition auto="false">
+    <Property Name="ucid"          Type="string" Default="" />
+    <Property Name="Label"         Type="string" Default="Options" />
+    <Property Name="Items"         Type="string" Default="[]" />
+    <Property Name="ItemSelected"  Type="string" Default="" />
+
+    <Event Name="OnItemClick" />
+
+    <Script Name="AfterShow" When="AfterShow">
+        (function () {
+            var self = this;
+            var el   = this.getContainerControl ? this.getContainerControl() : document.querySelector('[data-ucid="' + this.ucid + '"]');
+            if (!el) return;
+            if (el.getAttribute('data-dropdown-init') === '1') return;
+            el.setAttribute('data-dropdown-init', '1');
+
+            /* ── utility: escape for innerHTML ── */
+            var encode = (window.gx && gx.dom && gx.dom.encode)
+                ? function(s) { return gx.dom.encode(s == null ? '' : String(s)); }
+                : function(s) {
+                    return String(s == null ? '' : s)
+                        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+                  };
+
+            /* ── parse items JSON ── */
+            var items = [];
+            try {
+                var raw = (self.Items || '').trim();
+                if (raw) items = JSON.parse(raw);
+            } catch (e) { items = []; }
+
+            var trigger = el.querySelector('[data-part="trigger"]');
+            var panel   = el.querySelector('[data-part="panel"]');
+            if (!trigger || !panel) return;
+
+            /* ── hide chevron if no items ── */
+            var chevron = trigger.querySelector('.dropdown__chevron');
+            if (!items.length) {
+                if (chevron) chevron.style.display = 'none';
+                return;
+            }
+
+            /* ── render items ── */
+            var html = '';
+            for (var i = 0; i < items.length; i++) {
+                var item = items[i];
+                html += '<button type="button" class="dropdown__item" data-item-id="'
+                      + encode(item.id || '') + '">'
+                      + encode(item.label || '')
+                      + '</button>';
+            }
+
+            if (window.gx && gx.dom && gx.dom.setInnerHtml) {
+                gx.dom.setInnerHtml(panel, html);
+            } else {
+                panel.innerHTML = html;
+            }
+
+            /* ── open / close helpers ── */
+            function open() {
+                trigger.classList.add('dropdown__trigger--open');
+                panel.classList.add('dropdown__panel--open');
+                trigger.setAttribute('aria-expanded', 'true');
+            }
+            function close() {
+                trigger.classList.remove('dropdown__trigger--open');
+                panel.classList.remove('dropdown__panel--open');
+                trigger.setAttribute('aria-expanded', 'false');
+            }
+            function toggle() {
+                if (panel.classList.contains('dropdown__panel--open')) close(); else open();
+            }
+
+            /* ── trigger click ── */
+            var attachFn = (window.gx && gx.evt && gx.evt.attach) ? gx.evt.attach : function(el, ev, fn) { el.addEventListener(ev, fn); };
+            var stopFn   = (window.gx && gx.evt && gx.evt.stopPropagation) ? gx.evt.stopPropagation : function(e) { e.stopPropagation(); };
+            var sourceFn = (window.gx && gx.evt && gx.evt.source) ? gx.evt.source : function(e) { return e.target; };
+
+            attachFn(trigger, 'click', function(e) {
+                stopFn(e);
+                toggle();
+            });
+
+            trigger.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+                if (e.key === 'Escape') close();
+            });
+
+            /* ── item click → fire OnItemClick ── */
+            attachFn(panel, 'click', function(e) {
+                var src = sourceFn(e);
+                var btn = src && src.closest ? src.closest('[data-item-id]') : null;
+                if (!btn) return;
+                close();
+                self.ItemSelected = btn.getAttribute('data-item-id');
+                if (typeof self.OnItemClick === 'function') self.OnItemClick();
+            });
+
+            /* ── close on outside click ── */
+            attachFn(document, 'click', function(e) {
+                if (!el.contains(sourceFn(e))) close();
+            });
+
+            /* ── close on scroll ── */
+            window.addEventListener('scroll', close, true);
+
+            /* ── close when GeneXus popup opens ── */
+            new MutationObserver(function(mutations) {
+                mutations.forEach(function(m) {
+                    m.addedNodes.forEach(function(node) {
+                        if (node.nodeType === 1) {
+                            var id  = (node.id  || '');
+                            var cls = (node.className || '').toString();
+                            if (id.indexOf('gxp') > -1 || cls.indexOf('gx-popup') > -1) close();
+                        }
+                    });
+                });
+            }).observe(document.body, { childList: true, subtree: false });
+
+        }).call(this);
+    </Script>
+</Definition>
+
+<style>
+.dropdown { position: relative; display: inline-block; font-family: 'Noto Sans', sans-serif; }
+.dropdown * { box-sizing: border-box; font-family: inherit; }
+
+.dropdown__trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: #0066ff;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    outline: none;
+}
+.dropdown__trigger:hover { background: #0052cc; }
+.dropdown__trigger:focus-visible { outline: 2px solid #33ccff; outline-offset: 2px; }
+
+.dropdown__chevron {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.15s ease;
+}
+.dropdown__trigger--open .dropdown__chevron { transform: rotate(180deg); }
+
+.dropdown__panel {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    min-width: 100%;
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    z-index: 1000;
+    padding: 4px 0;
+}
+.dropdown__panel--open { display: block; }
+
+.dropdown__item {
+    display: block;
+    width: 100%;
+    padding: 8px 16px;
+    background: none;
+    border: none;
+    text-align: left;
+    font-size: 14px;
+    color: #1a1a1a;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.dropdown__item:hover { background: #f0eeff; color: #5500ee; }
+.dropdown__item:focus-visible { outline: 2px solid #33ccff; outline-offset: -2px; }
+</style>
+
+<div class="dropdown" data-ucid="{{ucid}}">
+    <button type="button" class="dropdown__trigger" data-part="trigger"
+            aria-haspopup="true" aria-expanded="false">
+        <span class="dropdown__label">{{Label}}</span>
+        <svg class="dropdown__chevron" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M4 6L8 10L12 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+    </button>
+    <div class="dropdown__panel" data-part="panel" role="menu"></div>
+</div>

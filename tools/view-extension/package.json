@@ -1,0 +1,41 @@
+{
+  "name": "genexus-view-tools",
+  "displayName": "GeneXus .view Tools",
+  "description": "Syntax highlighting, linting, and autocomplete for GeneXus .view files (UC, WBC, WBP)",
+  "publisher": "genexus-ai-toolkit",
+  "version": "0.1.0",
+  "repository": { "type": "git", "url": "https://github.com/lucaskarsten/genexus-ai-toolkit" },
+  "license": "MIT",
+  "icon": "icon.png",
+  "engines": { "vscode": "^1.85.0" },
+  "main": "./dist/extension.js",
+  "activationEvents": ["onLanguage:genexus-view"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "genexus-view",
+        "aliases": ["GeneXus View", "genexus-view"],
+        "extensions": [".view"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "genexus-view",
+        "scopeName": "source.genexus-view",
+        "path": "./syntaxes/genexus-view.tmLanguage.json",
+        "embeddedLanguages": {
+          "source.js": "javascript",
+          "source.css": "css",
+          "text.html.basic": "html"
+        }
+      }
+    ]
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^2.24.0",
+    "esbuild": "^0.20.0",
+    "typescript": "^5.0.0"
+  }
+}

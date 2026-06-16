@@ -1,0 +1,137 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "GeneXus View",
+  "scopeName": "source.genexus-view",
+  "fileTypes": ["view"],
+  "patterns": [
+    { "include": "#definition-block" },
+    { "include": "#style-block" },
+    { "include": "#mustache" },
+    { "include": "#html-element" }
+  ],
+  "repository": {
+    "definition-block": {
+      "name": "meta.definition.genexus-view",
+      "begin": "(<)(Definition)\\b",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.xml" },
+        "2": { "name": "entity.name.tag.localname.xml" }
+      },
+      "end": "(</)(Definition)(>)",
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.xml" },
+        "2": { "name": "entity.name.tag.localname.xml" },
+        "3": { "name": "punctuation.definition.tag.end.xml" }
+      },
+      "patterns": [
+        { "include": "#xml-close-tag" },
+        { "include": "#property-tag" },
+        { "include": "#event-tag" },
+        { "include": "#script-block" },
+        { "include": "#xml-attrs" },
+        { "include": "#xml-punctuation" }
+      ]
+    },
+    "property-tag": {
+      "name": "meta.tag.property.genexus-view",
+      "match": "(</?)(Property)(\\b[^>]*?)(/?>)",
+      "captures": {
+        "1": { "name": "punctuation.definition.tag.begin.xml" },
+        "2": { "name": "entity.name.tag.property.genexus-view support.type.genexus-view" },
+        "3": { "patterns": [{ "include": "#xml-attrs" }] },
+        "4": { "name": "punctuation.definition.tag.end.xml" }
+      }
+    },
+    "event-tag": {
+      "name": "meta.tag.event.genexus-view",
+      "match": "(</?)(Event)(\\b[^>]*?)(/?>)",
+      "captures": {
+        "1": { "name": "punctuation.definition.tag.begin.xml" },
+        "2": { "name": "entity.name.tag.event.genexus-view keyword.other.genexus-view" },
+        "3": { "patterns": [{ "include": "#xml-attrs" }] },
+        "4": { "name": "punctuation.definition.tag.end.xml" }
+      }
+    },
+    "script-block": {
+      "name": "meta.embedded.block.javascript.genexus-view",
+      "begin": "(<)(Script)(\\b[^>]*)(>)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.xml" },
+        "2": { "name": "entity.name.tag.script.genexus-view support.function.genexus-view" },
+        "3": { "patterns": [{ "include": "#xml-attrs" }] },
+        "4": { "name": "punctuation.definition.tag.end.xml" }
+      },
+      "end": "(</)(Script)(>)",
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.xml" },
+        "2": { "name": "entity.name.tag.script.genexus-view support.function.genexus-view" },
+        "3": { "name": "punctuation.definition.tag.end.xml" }
+      },
+      "contentName": "meta.embedded.block.javascript",
+      "patterns": [{ "include": "source.js" }]
+    },
+    "style-block": {
+      "name": "meta.embedded.block.css.genexus-view",
+      "begin": "(<)(style)(\\b[^>]*)(>)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.xml" },
+        "2": { "name": "entity.name.tag.style.genexus-view" },
+        "3": { "patterns": [{ "include": "#xml-attrs" }] },
+        "4": { "name": "punctuation.definition.tag.end.xml" }
+      },
+      "end": "(</)(style)(>)",
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.xml" },
+        "2": { "name": "entity.name.tag.style.genexus-view" },
+        "3": { "name": "punctuation.definition.tag.end.xml" }
+      },
+      "contentName": "meta.embedded.block.css",
+      "patterns": [{ "include": "source.css" }]
+    },
+    "mustache": {
+      "name": "meta.template.expression.genexus-view",
+      "match": "(\\{\\{)([^}]*)(\\}\\})",
+      "captures": {
+        "1": { "name": "punctuation.definition.template-expression.begin.genexus-view" },
+        "2": { "name": "variable.other.property.genexus-view" },
+        "3": { "name": "punctuation.definition.template-expression.end.genexus-view" }
+      }
+    },
+    "html-element": {
+      "patterns": [
+        { "include": "#mustache" },
+        { "include": "text.html.basic" }
+      ]
+    },
+    "xml-attrs": {
+      "patterns": [
+        {
+          "name": "meta.attribute.key-value.genexus-view",
+          "match": "\\b(Name|Type|Default|When|auto)\\s*(=)\\s*(\"[^\"]*\")",
+          "captures": {
+            "1": { "name": "entity.other.attribute-name.genexus-view" },
+            "2": { "name": "punctuation.separator.key-value.xml" },
+            "3": { "name": "string.quoted.double.xml" }
+          }
+        },
+        {
+          "match": "\"[^\"]*\"",
+          "name": "string.quoted.double.xml"
+        }
+      ]
+    },
+    "xml-close-tag": {
+      "match": "(</)[a-zA-Z][^>]*(>)",
+      "captures": {
+        "1": { "name": "punctuation.definition.tag.begin.xml" },
+        "2": { "name": "punctuation.definition.tag.end.xml" }
+      }
+    },
+    "xml-punctuation": {
+      "patterns": [
+        { "match": "/>", "name": "punctuation.definition.tag.end.xml" },
+        { "match": ">", "name": "punctuation.definition.tag.end.xml" }
+      ]
+    }
+  }
+}

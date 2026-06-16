@@ -1,0 +1,334 @@
+Event Start
+    &SDT_IPN_USUARIOS.FromJson(&WebSession.Get(Sessao.DadosUsuario))
+    Do 'MontaSeletorLoja'
+    Do 'MontaMenuUsuario'
+    Do 'MontaBotaoNovo'
+    UCNotificacoes.TooltipLabel = !"Notificações"
+    &QtdNotificacoesPendentes = 0
+    For Each TrnNucNotificacao
+        Where TrnNucNotificacaoUsuID = &pIPN_USU_ID
+        Where TrnNucNotificacaoVisualizada = SimNao.Nao
+        &QtdNotificacoesPendentes += 1
+    EndFor
+    UCNotificacoes.Count = &QtdNotificacoesPendentes.ToString()
+    UCFaleConosco.TooltipLabel  = !"Fale conosco"
+    WebCompVendaAvulsa.Visible = False
+EndEvent
+
+Event UCFaleConosco.Click
+    WbpNucPortalAtendimento.Popup()
+EndEvent
+
+Event UCNotificacoes.Click
+    WbpNucUsuarioNotificacoes.Popup(&pIPN_USU_ID)
+EndEvent
+
+Event &ImgPgmInternos.Click
+    WbpNucProgramasInternos.Popup()
+EndEvent
+
+Event UCBotaoDropDown.acao
+    Do Case
+        Case UCBotaoDropDown.ItemSelecionado = !'cliente'
+            Do 'Acao_Cliente'
+        Case UCBotaoDropDown.ItemSelecionado = !'projeto'
+            Do 'Acao_Projeto'
+        Case UCBotaoDropDown.ItemSelecionado = !'consultaitens'
+            Do 'Acao_ConsultaItens'
+        Case UCBotaoDropDown.ItemSelecionado = !'vendasrapida'
+            Do 'Acao_VendaRapida'
+        Case UCBotaoDropDown.ItemSelecionado = !'vendaavulsa'
+            &TrnVenVendaTempId = PrcVenRetVendaTempUsuario(&pIPN_UND_ID, &pIPN_USU_ID)
+            If Not &TrnVenVendaTempId.IsEmpty()
+                UCYesNoCancel.Confirm()
+            Else
+                WebCompVendaAvulsa.Object = WbcVenProjetoVendaAvulsa.Create(&Pgmname, 0, 0, CenarioTipoVenda.Convert(!''))
+            EndIf
+        Case UCBotaoDropDown.ItemSelecionado = !'continuarvenda'
+            &TrnVenVendaTempId = PrcVenRetVendaTempUsuario(&pIPN_UND_ID, &pIPN_USU_ID)
+            WebCompVendaAvulsa.Object = WbcVenProjetoVendaAvulsa.Create(&Pgmname, 0, &TrnVenVendaTempId, CenarioTipoVenda.Convert(!''))
+    EndCase
+EndEvent
+
+// ── SUBS — MONTAGEM DO HEADER ────────────────────────────────────────────────
+
+Sub 'MontaBotaoNovo'
+    &Consolidada = PipnVerUnidadeConsolidada.Udp(&pIPN_UND_ID)
+
+    If &Consolidada = SimNao.Sim
+        UCBotaoDropDown.Visible = False
+    Else
+        &JsonItens.SetEmpty()
+        &Separador.SetEmpty()
+
+        PrcVenVerVendaAvulsa.Call(&pIPN_UND_ID, &TrnNucVAConfUtiVendaAvulsa, &ConfiguracaoVendaCompleta)
+
+        If PipnVerPermissaoUsuario.Udp(0, &pIPN_USU_ID, 0, !'TiljClientes', TrnMode.Insert) = RetornoAcesso.Liberado
+            &JsonItens += &Separador + !'{"id":"cliente","label":"' + &LblCliente + !'"}'
+            &Separador  = !','
+        EndIf
+
+        For Each // ILJ_COLABORADORES
+            Count 1
+            Where ILJ_COL_USU_ID = &pIPN_USU_ID
+            Where ILJ_COL_UND_ID = &pIPN_UND_ID
+            &ILJ_COL_ID = ILJ_COL_ID
+        EndFor
+
+        &HasPermissaoProjeto = False
+        &ModeloNegocio = ModeloNegocio.Convert(&WebSession.Get(Sessao.ModeloNegocio))
+
+        If Not &ILJ_COL_ID.IsEmpty()
+            If PipnVerPermissaoUsuario.Udp(0, &pIPN_USU_ID, 0, !'hvenprojetosprincipal', TrnMode.Insert) = RetornoAcesso.Liberado
+                If Not (&ModeloNegocio = ModeloNegocio.MoveisAvulsos And &TrnNucVAConfUtiVendaAvulsa = SimNao.Sim)
+                    &JsonItens += &Separador + !'{"id":"projeto","label":"' + &LblProjeto + !'"}'
+                    &Separador  = !','
+                EndIf
+                &HasPermissaoProjeto = True
+            EndIf
+        EndIf
+
+        &HasAcessoVendaAvulsa = (&HasPermissaoProjeto And &TrnNucVAConfUtiVendaAvulsa = SimNao.Sim)
+
+        If &HasAcessoVendaAvulsa And &ConfiguracaoVendaCompleta = SimNao.Sim
+            &VendaRapidaRetornoAcesso = PipnVerPermissaoUsuario.Udp(0, &pIPN_USU_ID, 0, !'hvenprojetosprincipal', CodigoEvento.VendaRapida)
+
+            &JsonItens += &Separador + !'{"id":"vendaavulsa","label":"'   + &LblOrcamento     + !'"}'
+            &JsonItens += !',' + !'{"id":"consultaitens","label":"' + &LblConsultaItens + !'"}'
+
+            If &VendaRapidaRetornoAcesso = RetornoAcesso.Liberado
+                &JsonItens += !',' + !'{"id":"vendasrapida","label":"' + &LblVendaRapida + !'"}'
+            EndIf
+
+            &TrnVenVendaTempId = PrcVenRetVendaTempUsuario(&pIPN_UND_ID, &pIPN_USU_ID)
+            If Not &TrnVenVendaTempId.IsEmpty()
+                &JsonItens += !',' + !'{"id":"continuarvenda","label":"' + &LblContinuarOrcamento + !'"}'
+            EndIf
+        EndIf
+
+        UCBotaoDropDown.ucid       = !'UCBotaoDropDown'
+        UCBotaoDropDown.LabelBotao = &LblNovo
+        UCBotaoDropDown.Itens      = Iif(&JsonItens.IsEmpty(), !'[]', !'[' + &JsonItens + !']')
+    EndIf
+EndSub
+
+Sub 'MontaMenuUsuario'
+    &AcessaPgmInterno = PrcNucValidaUsuarioAcessaProgramaInterno.Udp(&pIPN_USU_ID)
+
+    UcMenuUsuario.ucid             = !'MenuUsuarioHeader'
+    UcMenuUsuario.AcessaPgmInterno = &AcessaPgmInterno
+    UcMenuUsuario.UrlMeuPerfil     = WbpNucPerfilUsuario.Link(&pIPN_USU_ID)
+    UcMenuUsuario.UrlAjuda         = PincRetLinkAjudaPopup(&Pgmname)
+    UcMenuUsuario.UrlSair          = HipnExcluiSessaoESai.Link()
+
+    For Each TrnNucUsuario // IPN_USUARIOS
+        Where IPN_USU_ID = &pIPN_USU_ID
+        UcMenuUsuario.NomeUsuario  = IPN_USU_NOME
+        UcMenuUsuario.EmailUsuario = IPN_USU_EMAIL
+        UcMenuUsuario.AvatarUrl    = IPN_USU_FOTO.ImageURI
+        &Idioma = TrnNucUsuarioIdioma
+        Do 'MontaLabelsIdioma'
+    When None
+        Do 'MontaLabelsIdioma'
+    EndFor
+EndSub
+
+Sub 'MontaLabelsIdioma'
+    Do Case
+        Case &Idioma = Idioma.Ingles
+            UcMenuUsuario.LabelMeuPerfil         = !'My Profile'
+            UcMenuUsuario.LabelProgramasInternos = !'Internal Programs'
+            UcMenuUsuario.LabelAjuda             = !'Help'
+            UcMenuUsuario.LabelSair              = !'Logout'
+            &LblNovo               = !'New'
+            &LblCliente            = !'Customer'
+            &LblProjeto            = !'Project'
+            &LblConsultaItens      = !'Item Query'
+            &LblVendaRapida        = !'Quick Sale'
+            &LblOrcamento          = !'Quote'
+            &LblContinuarOrcamento = !'Continue Quote'
+        Case &Idioma = Idioma.Espanhol
+            UcMenuUsuario.LabelMeuPerfil         = !'Mi Perfil'
+            UcMenuUsuario.LabelProgramasInternos = !'Programas Internos'
+            UcMenuUsuario.LabelAjuda             = !'Ayuda'
+            UcMenuUsuario.LabelSair              = !'Cerrar sesión'
+            &LblNovo               = !'Nuevo'
+            &LblCliente            = !'Cliente'
+            &LblProjeto            = !'Proyecto'
+            &LblConsultaItens      = !'Consulta de Artículos'
+            &LblVendaRapida        = !'Venta Rápida'
+            &LblOrcamento          = !'Presupuesto'
+            &LblContinuarOrcamento = !'Continuar Presupuesto'
+        Otherwise
+            UcMenuUsuario.LabelMeuPerfil         = !'Meu Perfil'
+            UcMenuUsuario.LabelProgramasInternos = !'Programas Internos'
+            UcMenuUsuario.LabelAjuda             = !'Ajuda'
+            UcMenuUsuario.LabelSair              = !'Sair'
+            &LblNovo               = !'Novo'
+            &LblCliente            = !'Cliente'
+            &LblProjeto            = !'Projeto'
+            &LblConsultaItens      = !'Consulta de Itens'
+            &LblVendaRapida        = !'Venda Rápida'
+            &LblOrcamento          = !'Orçamento'
+            &LblContinuarOrcamento = !'Continuar Orçamento'
+    EndCase
+EndSub
+
+Sub 'MontaSeletorLoja'
+    For Each // IPN_UNIDADES_NEGOCIO
+        Where IPN_UND_ID = &pIPN_UND_ID
+        &IPN_UND_UNIDADE = IPN_UND_UNIDADE
+    EndFor
+    For Each // TRNNUCCARTEIRACS
+        Where TrnNucCarteiraCsUndId = &pIPN_UND_ID
+        &TrnNucCarteiraCsPlano = TrnNucCarteiraCsPlano
+    EndFor
+    Do 'ClasseBadge'
+
+    UcSeletorLoja.ucid           = !'SeletorLojaHeader'
+    UcSeletorLoja.NomeLoja       = &IPN_UND_UNIDADE
+    UcSeletorLoja.ClasseBadge    = Iif(&ClasseBadge.IsEmpty(), !'', !'app-header__store-badge--' + &ClasseBadge)
+    UcSeletorLoja.DescricaoBadge = &DescricaoBadge
+
+    &SdtNucSeletorLojas = new()
+    &SDT_IPN_UNIDADES_NEGOCIO = PrcNucRetUnidadesUsuario.Udp(&pIPN_USU_ID, 0, True, !'')
+    &SDT_IPN_UNIDADES_NEGOCIO.Sort(!'IPN_UND_ESTRUTURA')
+
+    &IndiceLojas = new()
+
+    For &SDT_IPN_UNIDADES_NEGOCIOItem in &SDT_IPN_UNIDADES_NEGOCIO
+        &UndId = &SDT_IPN_UNIDADES_NEGOCIOItem.IPN_UND_ID
+        &PaiId = &SDT_IPN_UNIDADES_NEGOCIOItem.IPN_UND_PAI_ID
+
+        &NomeLojaSeletor = &SDT_IPN_UNIDADES_NEGOCIOItem.IPN_UND_UNIDADE.Trim()
+        If Not &SDT_IPN_UNIDADES_NEGOCIOItem.IPN_UND_COD_FINANCEIRO.IsEmpty()
+            &NomeLojaSeletor += !' - ' + &SDT_IPN_UNIDADES_NEGOCIOItem.IPN_UND_COD_FINANCEIRO.ToString().Trim()
+        EndIf
+
+        For Each // TRNNUCCARTEIRACS
+            Where TrnNucCarteiraCsUndId = &UndId
+            &TrnNucCarteiraCsPlano = TrnNucCarteiraCsPlano
+        EndFor
+        Do 'ClasseBadge'
+
+        &SdtNucSeletorLoja            = new()
+        &SdtNucSeletorLoja.IPN_UND_ID = &UndId
+        &SdtNucSeletorLoja.nome       = &NomeLojaSeletor
+        &SdtNucSeletorLoja.link       = HipnRedirecionamentoPortal.Link(&pIPN_USU_ID, &UndId)
+        &SdtNucSeletorLoja.badgeClass = Iif(&ClasseBadge.IsEmpty(), !'', !'app-header__store-badge--' + &ClasseBadge)
+        &SdtNucSeletorLoja.badgeDesc  = &DescricaoBadge
+        &SdtNucSeletorLoja.ativo      = Iif(&UndId = &pIPN_UND_ID, SimNao.Sim, SimNao.Nao)
+
+        &IsPaiEncontrado = False
+        If &PaiId <> 0
+            &j = 1
+            Do While &j <= &IndiceLojas.Count And &IsPaiEncontrado = False
+                If &IndiceLojas.Item(&j).IPN_UND_ID = &PaiId
+                    &IndiceLojas.Item(&j).filhos.Add(&SdtNucSeletorLoja)
+                    &IsPaiEncontrado = True
+                EndIf
+                &j += 1
+            EndDo
+        EndIf
+
+        If &IsPaiEncontrado = False And &PaiId <> 0
+            &AncestralId        = &PaiId
+            &IteracoesAncestral = 0
+            Do While &AncestralId <> 0 And &IsPaiEncontrado = False And &IteracoesAncestral < 50
+                &IteracoesAncestral += 1
+                &ProximoAncestralId = 0
+                For Each // IPN_UNIDADES_NEGOCIO
+                    Where IPN_UND_ID = &AncestralId
+                    &ProximoAncestralId = IPN_UND_PAI_ID
+                EndFor
+                If &ProximoAncestralId = &AncestralId
+                    &AncestralId = 0
+                Else
+                    &AncestralId = &ProximoAncestralId
+                EndIf
+                If &AncestralId <> 0
+                    &j = 1
+                    Do While &j <= &IndiceLojas.Count And &IsPaiEncontrado = False
+                        If &IndiceLojas.Item(&j).IPN_UND_ID = &AncestralId
+                            &IndiceLojas.Item(&j).filhos.Add(&SdtNucSeletorLoja)
+                            &IsPaiEncontrado = True
+                        EndIf
+                        &j += 1
+                    EndDo
+                EndIf
+            EndDo
+        EndIf
+
+        If &IsPaiEncontrado = False
+            &SdtNucSeletorLojas.Add(&SdtNucSeletorLoja)
+        EndIf
+
+        &IndiceLojas.Add(&SdtNucSeletorLoja)
+    EndFor
+
+    UcSeletorLoja.JsonLojas = &SdtNucSeletorLojas.ToJson()
+EndSub
+
+Sub 'ClasseBadge'
+    Do Case
+        Case &TrnNucCarteiraCsPlano = CarteiraPlano.Enterprise
+            &ClasseBadge    = !'enterprise'
+            &DescricaoBadge = !'Enterprise'
+        Case &TrnNucCarteiraCsPlano = CarteiraPlano.Select
+            &ClasseBadge    = !'select'
+            &DescricaoBadge = !'Select'
+        Case &TrnNucCarteiraCsPlano = CarteiraPlano.Essential
+            &ClasseBadge    = !'essential'
+            &DescricaoBadge = !'Essential'
+        Case &TrnNucCarteiraCsPlano = CarteiraPlano.Pro
+            &ClasseBadge    = !'professional'
+            &DescricaoBadge = !'Professional'
+        Otherwise
+            &ClasseBadge    = !'generic'
+            &DescricaoBadge = &TrnNucCarteiraCsPlano.EnumerationDescription()
+    EndCase
+EndSub
+
+// ── SUBS — AÇÕES DO BOTÃO NOVO ───────────────────────────────────────────────
+
+Sub 'Acao_Cliente'
+    WbpVenCadastroClienteSimplificado.Popup(0, !'', TipoProjeto.Normal, 0, 0, 0)
+EndSub
+
+Sub 'Acao_Projeto'
+    PrcNucRetIntPromobHabilitada.Call(&pIPN_UND_ID, &TrnNucLojaIntPromobHabilitada, !'')
+    &TrnNucLojaSincPesPromobLog = PrcNucLojaRetSincPesPromobLog.Udp(&pIPN_UND_ID)
+
+    If &TrnNucLojaIntPromobHabilitada = SimNao.Sim
+        If &TrnNucLojaSincPesPromobLog.IsEmpty()
+            &Message = new()
+            &Message.Type        = MessageTypes.Error
+            &Message.Description = !'Sincronismo de pessoas necessário antes de criar projeto.'
+            &Messages.Add(&Message)
+            &WebSession.Set(!'WbpNucMensagens', &Messages.ToJson())
+            WbpNucMensagens.Popup()
+            Return
+        EndIf
+    EndIf
+
+    WbpVenNovoProjeto.Call(&Pgmname, TipoProjeto.Normal, 0)
+EndSub
+
+Sub 'Acao_ConsultaItens'
+    &ICB_FOR_ID = PiljProjetoFornecedorPadrao(&pIPN_UND_ID)
+    &SdtComRetConfiguradorItemPrompt = new()
+    WbpComConfiguradorItemPrompt.Popup(
+        TrnMode.Insert, &pIPN_UND_ID, 0, &ICB_FOR_ID, 0, 0, 0,
+        &SdtComRetConfiguradorItemPrompt.TrnComCatalogoId,
+        &SdtComRetConfiguradorItemPrompt.ILJ_ITE_NOSSO_CODIGO,
+        &SdtComRetConfiguradorItemPrompt.ILJ_ITE_ITEM,
+        &SdtComRetConfiguradorItemPrompt.ILJ_ITE_ID,
+        &SdtComRetConfiguradorItemPrompt.ILJ_MAS_ID,
+        &SdtComRetConfiguradorItemPrompt.ILJ_MAS_MASCARA,
+        &SdtComRetConfiguradorItemPrompt.ILJ_AMI_QUANTIDADE,
+        &SdtComRetConfiguradorItemPrompt.TrnComItemObservacao)
+EndSub
+
+Sub 'Acao_VendaRapida'
+    WbpVenVendaRapidaItens.Popup(0, 0)
+EndSub

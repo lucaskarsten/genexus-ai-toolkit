@@ -1,0 +1,307 @@
+<style>
+/* Reset <a> — vence a:link/visited do FoccoLojas */
+.store-dropdown a,
+.store-dropdown a:link,
+.store-dropdown a:visited { text-decoration: none; color: var(--colors_text-primary, #1a1a1a); }
+.store-dropdown a:hover   { text-decoration: none; color: var(--colors_action-primary-default, #1a6cff); }
+.store-dropdown a:active  { text-decoration: none; color: var(--colors_text-primary, #1a1a1a); }
+
+/* Botão chevron */
+.store-dropdown__tree-chevron-btn {
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; padding: 0; border: 0; background: transparent; cursor: pointer;
+}
+
+/* Badge de plano oculto — feature futura */
+.slj-root .app-header__store-badge { display: none; }
+</style>
+
+<div id="slj-root-{{ControlName}}" class="slj-root" data-badge-class="{{ClasseBadge}}" data-select-id="{{SelectId}}">
+  <div id="slj-trigger-{{ControlName}}" class="app-header__store-selector" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false">
+    <span id="slj-name-{{ControlName}}" class="app-header__store-name">{{NomeLoja}}</span>
+    <i class="icon-s icon-chevrons-simple-down-sm-mono slj-chevron" aria-hidden="true"></i>
+  </div>
+  <div id="slj-dropdown-{{ControlName}}" class="store-dropdown" style="display:none">
+    <div class="store-dropdown__search">
+      <div class="store-dropdown__search-field">
+        <input type="text" id="slj-search-{{ControlName}}" class="store-dropdown__search-input" placeholder="Buscar" autocomplete="off" />
+        <i class="icon-s icon-controls-search-filter-search-sm-mono store-dropdown__search-icon" aria-hidden="true"></i>
+      </div>
+    </div>
+    <div id="slj-list-{{ControlName}}" class="store-dropdown__list"></div>
+  </div>
+  <div id="slj-data-{{ControlName}}" style="display:none">{{JsonLojas}}</div>
+</div>
+
+
+<Definition auto="false">
+  <Property Name="ucid"           Type="string" Default="" />
+  <Property Name="NomeLoja"       Type="string" Default="" />
+  <Property Name="ClasseBadge"    Type="string" Default="" />
+  <Property Name="DescricaoBadge" Type="string" Default="" />
+  <Property Name="JsonLojas"      Type="string" Default="[]" />
+  <Property Name="SelectId"       Type="string" Default="" />
+
+  <Script Name="SljShow" When="AfterShow">
+    (function() {
+      /* Busca o root dentro do container do UC (robusto a variações de case no ControlName).
+         $container é a variável de closure do render JS, sempre disponível aqui. */
+      var root = ($container && $container.length)
+        ? $container.find('.slj-root')[0]
+        : document.querySelector('.slj-root');
+      if (!root) return;
+      if (root.getAttribute('data-slj-init') === '1') return;
+      root.setAttribute('data-slj-init', '1');
+
+      var trigger  = root.querySelector('.app-header__store-selector');
+      var dropdown = root.querySelector('.store-dropdown');
+      var search   = root.querySelector('.store-dropdown__search-input');
+      var list     = root.querySelector('.store-dropdown__list');
+      var dataDiv  = root.querySelector('[id^="slj-data-"]');
+      var badge    = root.querySelector('.app-header__store-badge');
+
+      if (!trigger || !dropdown || !list || !dataDiv) return;
+
+      var MAX_DEPTH = 10;
+      var INDENT    = 24;
+
+      var badgeClass = root.getAttribute('data-badge-class');
+      if (badge && badgeClass) badge.className = 'app-header__store-badge ' + badgeClass;
+
+      function esc(s) {
+        return String(s == null ? '' : s)
+          .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+          .replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+          .replace(/'/g,'&#39;');
+      }
+
+      if (!Element.prototype.closest) {
+        Element.prototype.closest = function(sel) {
+          var el = this;
+          while (el && el.nodeType === 1) {
+            if (el.matches ? el.matches(sel) : el.msMatchesSelector(sel)) return el;
+            el = el.parentElement || el.parentNode;
+          }
+          return null;
+        };
+      }
+
+      /* Normaliza chaves: lowercase + trim; valores string: trim.
+         Compatível com PascalCase (GeneXus) e camelCase (JSON manual). */
+      function normalizar(arr, depth) {
+        if (!Array.isArray(arr)) return [];
+        if ((depth || 0) > MAX_DEPTH) return [];
+        return arr.map(function(obj) {
+          var n = {};
+          for (var k in obj) {
+            if (Object.prototype.hasOwnProperty.call(obj, k)) {
+              var val = obj[k];
+              var kn  = k.toLowerCase().trim();
+              if (kn === 'filhos' && Array.isArray(val)) val = normalizar(val, (depth || 0) + 1);
+              if (typeof val === 'string') val = val.trim();
+              n[kn] = val;
+            }
+          }
+          return n;
+        });
+      }
+
+      /* Detecta loja ativa: boolean true, número 1, strings "S"/"SIM"/"TRUE"/"1" */
+      function isAtivo(v) {
+        if (v === true || v === 1) return true;
+        if (typeof v === 'string') {
+          var s = v.toUpperCase();
+          return s === 'S' || s === 'SIM' || s === 'TRUE' || s === '1';
+        }
+        return false;
+      }
+
+      function temFilhos(node) {
+        return node && Array.isArray(node.filhos) && node.filhos.length > 0;
+      }
+
+      var arvore = [];
+      var raw    = dataDiv.textContent || '[]';
+      var decoded = raw
+        .replace(/&quot;/g,'"').replace(/&amp;/g,'&')
+        .replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+      try {
+        var parsed = JSON.parse(decoded);
+        arvore = normalizar(Array.isArray(parsed) ? parsed : []);
+      } catch(e) { arvore = []; }
+
+      var selectId = root.getAttribute('data-select-id');
+      if (selectId) {
+        var sel = document.getElementById(selectId);
+        if (sel) {
+          var mapaLojas = {};
+          var opts = sel.options;
+          for (var oi = 0; oi < opts.length; oi++) {
+            if (opts[oi].value) mapaLojas[opts[oi].value] = opts[oi].text;
+          }
+          for (var li = 0; li < arvore.length; li++) {
+            if (!arvore[li].nome && arvore[li].link) {
+              arvore[li].nome = mapaLojas[arvore[li].link] || '';
+            }
+          }
+        }
+      }
+
+      var BADGE_LABELS = {
+        'app-header__store-badge--enterprise':   'Enterprise',
+        'app-header__store-badge--select':       'Select',
+        'app-header__store-badge--essential':    'Essential',
+        'app-header__store-badge--professional': 'Professional',
+        'app-header__store-badge--deco':         'Deco'
+      };
+
+      function derivarLabel(badgedesc, badgeclass) {
+        if (badgedesc && badgedesc.indexOf('=') === -1 && badgedesc.indexOf('"') === -1) {
+          return badgedesc;
+        }
+        return BADGE_LABELS[badgeclass] || '';
+      }
+
+      function badgeHtml(node) {
+        if (!node.badgeclass) return '';
+        var label = derivarLabel(node.badgedesc || '', node.badgeclass);
+        if (!label) return '';
+        return '<span class="app-header__store-badge ' + esc(node.badgeclass) + '">' +
+               esc(label) + '</span>';
+      }
+
+      function renderTree(nodes, level) {
+        if (level > MAX_DEPTH) return '';
+        var out = '';
+        for (var i = 0; i < nodes.length; i++) {
+          var node = nodes[i];
+          var pad  = level * INDENT;
+          if (temFilhos(node)) {
+            var temLink = node.link && node.link.trim() !== '';
+            out += '<div class="store-dropdown__tree-item">';
+            out +=   '<div class="store-dropdown__tree-toggle" style="padding-left:' + pad + 'px">';
+            out +=     '<button class="store-dropdown__tree-chevron-btn" aria-label="Expandir ' + esc(node.nome) + '" aria-expanded="false" type="button">';
+            out +=       '<i class="icon-s icon-chevrons-simple-right-sm-mono store-dropdown__tree-chevron" aria-hidden="true"></i>';
+            out +=     '</button>';
+            if (temLink) {
+              var clsGrupo = 'store-dropdown__item store-dropdown__item--group';
+              if (isAtivo(node.ativo)) clsGrupo += ' store-dropdown__item--active';
+              out +=   '<a class="' + clsGrupo + '" href="' + esc(node.link) + '" data-nome="' + esc(node.nome) + '">';
+              out +=     '<span class="store-dropdown__item-label">' + esc(node.nome) + '</span>';
+              out +=     badgeHtml(node);
+              out +=   '</a>';
+            } else {
+              out +=   '<span class="store-dropdown__tree-label" data-nome="' + esc(node.nome) + '">' + esc(node.nome) + badgeHtml(node) + '</span>';
+            }
+            out +=   '</div>';
+            out +=   '<div class="store-dropdown__tree-children">';
+            out +=     renderTree(node.filhos, level + 1);
+            out +=   '</div>';
+            out += '</div>';
+          } else {
+            var cls = 'store-dropdown__item';
+            if (isAtivo(node.ativo)) cls += ' store-dropdown__item--active';
+            out += '<a class="' + cls + '" href="' + esc(node.link) + '"' +
+                     ' data-nome="' + esc(node.nome) + '"' +
+                     ' style="padding-left:' + pad + 'px">';
+            out +=   '<span class="store-dropdown__item-label">' + esc(node.nome) + '</span>';
+            out +=   badgeHtml(node);
+            out += '</a>';
+          }
+        }
+        return out;
+      }
+
+      function filterTree(nodes, q) {
+        var res = [];
+        for (var i = 0; i < nodes.length; i++) {
+          var node      = nodes[i];
+          var selfMatch = (node.nome || '').toLowerCase().indexOf(q) > -1;
+          var children  = temFilhos(node) ? filterTree(node.filhos, q) : [];
+          if (selfMatch || children.length > 0) {
+            var clone = {};
+            for (var k in node) {
+              if (Object.prototype.hasOwnProperty.call(node, k)) clone[k] = node[k];
+            }
+            clone.filhos = children;
+            res.push(clone);
+          }
+        }
+        return res;
+      }
+
+      function expandirTodos() {
+        var groups = list.querySelectorAll('.store-dropdown__tree-item');
+        for (var i = 0; i < groups.length; i++) {
+          groups[i].classList.add('store-dropdown__tree-item--expanded');
+        }
+      }
+
+      function renderColapsado() {
+        list.innerHTML = renderTree(arvore, 0);
+      }
+      renderColapsado();
+
+      function fecharDropdown() {
+        dropdown.style.display = 'none';
+        trigger.setAttribute('aria-expanded', 'false');
+      }
+      function abrirDropdown() {
+        dropdown.style.display = 'block';
+        trigger.setAttribute('aria-expanded', 'true');
+        if (search) search.value = '';
+        renderColapsado();
+        expandirTodos();
+        if (search) search.focus();
+      }
+      function toggleDropdown() {
+        var aberto = dropdown.style.display === 'block';
+        if (aberto) fecharDropdown(); else abrirDropdown();
+      }
+
+      function toggleGrupo(chevronBtn) {
+        var item = chevronBtn.closest('.store-dropdown__tree-item');
+        if (!item) return;
+        var expanded = item.classList.toggle('store-dropdown__tree-item--expanded');
+        chevronBtn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      }
+
+      list.addEventListener('click', function(e) {
+        var chevronBtn = e.target.closest('.store-dropdown__tree-chevron-btn');
+        if (chevronBtn) { toggleGrupo(chevronBtn); return; }
+        var a = e.target.closest('a');
+        if (a && list.contains(a)) fecharDropdown();
+      });
+
+      list.addEventListener('keydown', function(e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        var chevronBtn = e.target.closest('.store-dropdown__tree-chevron-btn');
+        if (chevronBtn) { e.preventDefault(); toggleGrupo(chevronBtn); }
+      });
+
+      trigger.addEventListener('click', function(e) {
+        e.stopPropagation();
+        toggleDropdown();
+      });
+      trigger.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleDropdown(); }
+      });
+
+      document.addEventListener('click', function onDocClick(e) {
+        if (!document.contains(root)) { document.removeEventListener('click', onDocClick); return; }
+        if (!root.contains(e.target)) fecharDropdown();
+      });
+      dropdown.addEventListener('click', function(e) { e.stopPropagation(); });
+
+      if (search) {
+        search.addEventListener('input', function() {
+          var q = this.value.toLowerCase().trim();
+          if (!q) { renderColapsado(); return; }
+          list.innerHTML = renderTree(filterTree(arvore, q), 0);
+          expandirTodos();
+        });
+      }
+
+    }).call(this);
+  </Script>
+</Definition>
