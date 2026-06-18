@@ -1,0 +1,39 @@
+Event Start
+    Do 'BuildControls'
+EndEvent
+
+Event Refresh
+    Do 'BuildControls'
+EndEvent
+
+Sub 'BuildControls'
+    UcUserMenu.ucid             = !'AppHeaderUserMenu'
+    UcUserMenu.NomeUsuario      = &CurrentUser.Name
+    UcUserMenu.EmailUsuario     = &CurrentUser.Email
+    UcUserMenu.AvatarUrl        = &CurrentUser.AvatarUrl
+    UcUserMenu.LabelMeuPerfil   = !'My Profile'
+    UcUserMenu.LabelAjuda       = !'Help'
+    UcUserMenu.LabelSair        = !'Logout'
+    UcUserMenu.UrlMeuPerfil     = WbpUserProfile.Link(&CurrentUser.Id)
+    UcUserMenu.UrlSair          = HLogout.Link()
+
+    UCNotificacoes.ucid          = !'AppHeaderNotifications'
+    UCNotificacoes.TooltipLabel  = !'Notifications'
+    UCNotificacoes.Count         = PrcRetPendingNotificationsCount.Udp(&CurrentUser.Id).ToString()
+
+    UcSearch.ucid        = !'AppHeaderSearch'
+    UcSearch.Placeholder = !'Search...'
+EndSub
+
+Event UcUserMenu.OnLogout
+    HLogout.Call()
+EndEvent
+
+Event UCNotificacoes.Click
+    WbpNotifications.Popup(&CurrentUser.Id)
+EndEvent
+
+Event UcSearch.OnSelect
+    &SearchTerm = UcSearch.ItemSelected
+    WbpSearchResults.Call(&SearchTerm)
+EndEvent
