@@ -1,7 +1,7 @@
 # LLM Engineering — Boas Práticas para GeneXus Generation
 
 > Guia de referência para escrever e revisar skills, docs, e system prompts deste toolkit.
-> Padrões derivados de experiência de produção em `focco-senior` (revisor GeneXus com Anthropic).
+> Padrões derivados de experiência de produção com projetos GeneXus 18 reais.
 
 ---
 
@@ -283,4 +283,4 @@ Antes de criar ou modificar qualquer DSO:
 - `docs/user-controls-guide.md` — 5 leis imutáveis do UC
 - `docs/runtime-api-reference.md` — APIs gx.* documentadas (não invente além destas)
 - `examples/user-controls/` — 4 UCs funcionais como ground truth de few-shot
-- `c:\Repos\focco-senior\docs\prompt-engineering-boas-praticas.md` — origem destes padrões
+- `docs/llm-engineering.md` — este guia é a fonte canônica para contribuições ao toolkit
