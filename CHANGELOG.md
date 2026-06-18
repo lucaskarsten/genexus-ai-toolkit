@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.0](https://github.com/lucaskarsten/genexus-ai-toolkit/compare/v1.1.0...v1.2.0) (2026-06-18)
+
+
+### Features
+
+* add VS Code extension for GeneXus .view files ([525f421](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/525f421b778e776ee08f60ab158201954a2d0a6c))
+* update agents, skills, examples and view-extension v0.1.0 ([d5a1edc](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/d5a1edcdc64915d2d12d4108ee3be5ad1086b89e))
+
 ## [1.1.0](https://github.com/lucaskarsten/genexus-ai-toolkit/compare/v1.0.0...v1.1.0) (2026-06-12)
 
 
