@@ -1,35 +1,64 @@
 // WbpSearchWithNavSearch — filters a grid using UcNavSearch pub/sub
-// Reference: skills/genexus-expert.md (WEB PANEL / WEB COMPONENT section)
+// Reference: skills/genexus-expert.md — WEB PANEL / WEB COMPONENT section
+// UC reference: examples/user-controls/UcNavSearch/README.md
+
+// Variables used in this panel:
+//   &FilterTerm  : Character — current search filter, read by the Load event
+//   &SearchItems : SdtNavSearchItem Collection — items loaded into UcNavSearch1
+//   &SdtItem     : SdtNavSearchItem — working item for building &SearchItems
 
 Event Start
-    Do 'BuildSearch'
-    Do 'BuildGrid'
+    // Start fires once per full page load — initialize defaults here
+    &FilterTerm = ''
+    Do 'BuildControls'
 EndEvent
 
 Event Refresh
-    Do 'BuildSearch'
-    Do 'BuildGrid'
+    // Refresh fires on every postback — re-apply UC properties
+    Do 'BuildControls'
 EndEvent
 
-Sub 'BuildSearch'
-    UCSearch1.ucid        = !'search-nav'
-    UCSearch1.Placeholder = !'Search items...'
-    &SearchItems          = &AllItems          // pre-loaded SDT
-    UCSearch1.Items       = &SearchItems.ToJson()
+Sub 'BuildControls'
+    // ucid ALWAYS first
+    UcNavSearch1.ucid        = !'wbp-search-nav'
+    UcNavSearch1.Placeholder = 'Search items...'
+
+    // Build items list from database
+    &SearchItems.Clear()
+    For Each Item
+        Where Item.IsActive = 1
+        &SdtItem.Id    = Item.Id.ToString()
+        &SdtItem.Label = Item.Name
+        &SearchItems.Add(&SdtItem)
+    EndFor
+    UcNavSearch1.Items = &SearchItems.ToJson()
 EndSub
 
-Sub 'BuildGrid'
-    &GridItems.Clear()
+Event Load
+    // Load fires on grid load and on every Refresh
+    // WHERE clause uses &FilterTerm — set by UcNavSearch1.OnSelect or the Search button
     For Each Item
         Where Item.IsActive = 1
         Where (Trim(&FilterTerm) = '' Or Item.Name Like '%' + &FilterTerm + '%')
-        &GridItem.Id    = Item.Id
-        &GridItem.Name  = Item.Name
-        &GridItems.Add(&GridItem)
+        SearchGrid.Load()
     EndFor
-EndSub
+EndEvent
 
-Event UCSearch1.OnSelect
-    &FilterTerm = &EventParam
-    Refresh
+Event 'UcNavSearch1.OnSelect'
+    // UcNavSearch publishes OnSelect when the user picks a result
+    // Read ItemSelected (the "id" field from the Items JSON) or use &EventParam
+    &FilterTerm = UcNavSearch1.ItemSelected
+    SearchGrid.CurrentPage = 1
+    SearchGrid.Load()
+EndEvent
+
+Event 'Search'
+    // Alternative: manual Search button as trigger (same effect as UcNavSearch1.OnSelect)
+    If SearchTermInput.IsEmpty()
+        msg("Informe um termo de busca.")
+        Return
+    EndIf
+    &FilterTerm = SearchTermInput
+    SearchGrid.CurrentPage = 1
+    SearchGrid.Load()
 EndEvent

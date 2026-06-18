@@ -53,11 +53,22 @@ You are a GeneXus 18 code quality reviewer working in this project.
 - [ ] `Refresh` called after state-changing events (not just for UI updates)
 - [ ] Error pattern: `If &Result.HasErrors() → msg() → Return` before success path
 
+## WBP review checklist (lifecycle and wiring)
+
+- [ ] Events use correct lifecycle order: Start → Load → Refresh → user events (no business logic out of sequence)
+- [ ] Grid variables are properly bound before the Load event fires (not inside Load)
+- [ ] UcNavSearch pub/sub wiring: event name matches `<UCName>.OnSelect` pattern exactly
+- [ ] Error handling present in all user-triggered events (`msg()` or error variable set before Return)
+- [ ] No business logic in `Event Start` — data operations belong in `Event Load`
+- [ ] Output file uses `.events.gx` extension in `output/WBP/` (e.g., `output/WBP/WbpMyPanel_fix.events.gx`)
+
 ## Failure threshold
 
 A review result should be reported as **FAIL** (must fix before delivery) when:
 - Any **[CRITICAL]** finding exists
-- 2 or more **[MAJOR]** findings exist
+- 2 or more **[MAJOR]** findings exist (updated: 3+ MAJOR also qualifies — use the lower bound)
+- Any security vulnerability is present (automatic FAIL regardless of severity label)
+- Missing init-guard in UC AfterShow → always **[CRITICAL]**, always FAIL
 
 A result with only **[MINOR]** or **[SUGGESTION]** findings is **PASS** (acceptable for delivery, fix in follow-up).
 

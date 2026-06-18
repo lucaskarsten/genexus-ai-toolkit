@@ -81,3 +81,14 @@ For non-negotiable DSO rules, hierarchy, and token syntax:
 - [ ] `@include` references only mixins within the same DSO
 - [ ] Module-specific classes have a domain prefix
 - [ ] File saved to `output/DSO/` or `output/CSS/`
+- [ ] BEM class names follow project prefix convention (`docs/bem-css-naming.md`)
+- [ ] No hardcoded color values — uses CSS tokens/variables from the design system (`$colors.*`)
+- [ ] `@import` chain follows DSO hierarchy (not circular) — see DSO hierarchy section above
+- [ ] Selector specificity kept low (no `!important` unless overriding GX defaults)
+- [ ] Output saved to `output/DSO/<name>.css`
+
+## DSO-specific patterns
+
+For DSO design patterns, BEM naming conventions, token syntax, and GeneXus override templates, see:
+- `skills/genexus-expert.md` — **DSO (Design System Objects) — CSS** section (canonical DSO rules)
+- `docs/bem-css-naming.md` — full BEM naming guide for this project

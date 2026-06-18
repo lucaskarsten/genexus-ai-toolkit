@@ -1,14 +1,29 @@
 {
   "name": "genexus-view-tools",
   "displayName": "GeneXus .view Tools",
-  "description": "Syntax highlighting, linting, and autocomplete for GeneXus .view files (UC, WBC, WBP)",
+  "description": "Syntax highlighting, linting (GXV001–GXV010), and autocomplete for GeneXus 18 .view files (User Controls, WBC, WBP).",
   "publisher": "genexus-ai-toolkit",
   "version": "0.1.0",
-  "repository": { "type": "git", "url": "https://github.com/lucaskarsten/genexus-ai-toolkit" },
   "license": "MIT",
   "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lucaskarsten/genexus-ai-toolkit",
+    "directory": "tools/view-extension"
+  },
+  "homepage": "https://github.com/lucaskarsten/genexus-ai-toolkit/tree/master/tools/view-extension",
+  "bugs": { "url": "https://github.com/lucaskarsten/genexus-ai-toolkit/issues" },
+  "keywords": ["genexus", "gx18", "user-control", "view", "uc", "wbc", "wbp"],
+  "categories": ["Programming Languages", "Linters", "Snippets"],
+  "galleryBanner": { "color": "#1e1e2e", "theme": "dark" },
   "engines": { "vscode": "^1.85.0" },
   "main": "./dist/extension.js",
+  "scripts": {
+    "compile": "node esbuild.config.js",
+    "watch": "node esbuild.config.js --watch",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
   "activationEvents": ["onLanguage:genexus-view"],
   "contributes": {
     "languages": [

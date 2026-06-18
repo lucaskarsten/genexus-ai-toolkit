@@ -75,6 +75,24 @@ This project includes `.mcp.json` with the `gxnext` server pre-configured (`http
 
 See `docs/genexus-for-agents.md` for the full setup guide.
 
+## Ferramentas gxnext: regras de segurança
+
+**Nunca chame as ferramentas abaixo sem confirmação explícita do usuário na mensagem atual.** Cada chamada cria revisões na KB para todos os objetos processados — mesmo que o conteúdo não mude. Isso polui o histórico do Team Development e é irreversível sem revert manual.
+
+| Ferramenta | Risco |
+|---|---|
+| `import_text_to_kb` | Cria revisões na KB para todos os objetos importados |
+| `import_knowledge_manager` | Importação em massa na KB |
+| `reorganize` | Reescreve estrutura interna da KB |
+| `create_or_impact_database` | Altera banco de dados de deploy |
+| `set_kb_property` / `reset_kb_property` | Altera configurações da KB |
+| `install_module` / `update_module` / `restore_module` / `add_modules_server` | Instala/atualiza módulos na KB |
+| `build_all` / `build_one` / `compile_object` | Compila objetos (salva implicitamente na KB) |
+
+**Ferramentas seguras (somente leitura):** `export_kb_to_text`, `export_knowledge_manager`, `validate_kb_text_files`, `get_kb_property`, `search_modules`, `open_knowledge_base`, `close_knowledge_base`.
+
+**Regra:** se o usuário não pediu explicitamente uma operação de escrita nesta mensagem, não a execute. Use `output/` como staging e deixe o usuário aplicar manualmente via IDE.
+
 ## Learnings
 
 If you discover something new about the project environment during a session (a new path, an undocumented API, unexpected SQL structure), record it using the project memory system.

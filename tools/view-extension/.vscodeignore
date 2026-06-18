@@ -1,7 +1,10 @@
 src/
 node_modules/
+test/
 tsconfig.json
 esbuild.config.js
-test/
+package-lock.json
 .vscodeignore
+*.vsix
+gen-icon.js
 **/*.map

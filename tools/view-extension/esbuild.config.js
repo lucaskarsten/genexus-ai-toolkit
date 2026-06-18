@@ -1,6 +1,8 @@
 const esbuild = require('esbuild');
 
-esbuild.build({
+const watch = process.argv.includes('--watch');
+
+const ctx = {
   entryPoints: ['src/extension.ts'],
   bundle: true,
   outfile: 'dist/extension.js',
@@ -9,5 +11,14 @@ esbuild.build({
   platform: 'node',
   target: 'node16',
   sourcemap: true,
-  minify: false,
-}).catch(() => process.exit(1));
+  minify: !watch,
+};
+
+if (watch) {
+  esbuild.context(ctx).then(c => {
+    c.watch();
+    console.log('[genexus-view] watching for changes…');
+  }).catch(() => process.exit(1));
+} else {
+  esbuild.build(ctx).catch(() => process.exit(1));
+}
