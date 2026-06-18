@@ -1,5 +1,5 @@
 <style>
-/* Reset <a> — vence a:link/visited do FoccoLojas */
+/* Reset anchor default styles */
 .store-dropdown a,
 .store-dropdown a:link,
 .store-dropdown a:visited { text-decoration: none; color: var(--colors_text-primary, #1a1a1a); }
