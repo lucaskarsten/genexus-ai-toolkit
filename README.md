@@ -78,23 +78,24 @@ The AI generates the `.view` file → saved to `output/UC/UcProductPicker_*.view
 
 ---
 
-## ⚠️ Warning — gxnext + GeneXus 18 KB
+## ⚠️ Using gxnext MCP with a GeneXus 18 KB — proceed with care
 
-**Do not use gxnext MCP tools on a GeneXus 18 Knowledge Base.**
+You **can** use the gxnext MCP server against a GeneXus 18 KB, but there are important caveats you should understand before doing so.
 
-When GeneXus Next opens a GX18 KB — even just to list objects — it registers a new revision for every object it processes, using an internal user ID instead of your Windows session user. This causes:
+When GeneXus Next opens a GX18 KB it registers a new revision for every object it processes, using an internal user ID instead of your Windows session user. This causes Team Development to show those objects as "modified" under the wrong username — even if their actual content didn't change.
 
-- Team Development shows **thousands of false "modified" objects** under the wrong username
-- The KB version history is polluted in a way that is **hard to reverse without direct SQL intervention**
-- Other developers see spurious changes they did not make
+**Recommended approach:**
 
-This was confirmed in production on 17/06/2026 and required ~6 hours of SQL recovery work.
+| Goal | How |
+|---|---|
+| Analyse objects, search the KB | Use `export_kb_to_text` or direct SQL — these don't open a KB session |
+| Generate code with AI and review it | Use this toolkit's `output/` workflow — AI proposes, you apply via IDE |
+| Apply AI-generated objects to the KB | Export to XPZ via **GeneXus 18 IDE** (Knowledge Manager → Export), apply on a **secondary KB clone**, validate, then import into production |
+| Use write/build tools directly | Take a **full SQL backup first** and accept that Team Development will show modified objects under the gxnext user until you revert or check in |
 
-**Safe operations on GX18 KB:** read-only SQL queries via `GX_KB_SERVER` + `GX_KB_DATABASE`, and `export_kb_to_text`.
+**The one thing to never do:** use write tools on your production KB without a backup. The revision pollution is reversible (see recovery procedure below) but costs hours of SQL work.
 
-**Forbidden operations on GX18 KB:** `open_knowledge_base`, `import_text_to_kb`, `build_all`, `build_one`, `reorganize`, and any other tool that writes to the KB.
-
-> Full technical explanation and recovery procedure: [docs/genexus-for-agents.md → section 7](docs/genexus-for-agents.md) and [docs/kb-sql-reference.md → Recovery section](docs/kb-sql-reference.md).
+> Full details on safe vs. write-capable tools, and the SQL recovery procedure if things go wrong: [docs/genexus-for-agents.md → section 7](docs/genexus-for-agents.md) and [docs/kb-sql-reference.md → Recovery section](docs/kb-sql-reference.md).
 
 ---
 
