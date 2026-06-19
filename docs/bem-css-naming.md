@@ -274,6 +274,40 @@ Always verify available tokens in `DsoBase` before writing CSS. Do not guess tok
 /* In GeneXus IDE, control Class property: "text-block my-element" */
 ```
 
+### Seletores escopados cross-DSO são removidos silenciosamente
+
+O compilador GeneXus DSO descarta sem aviso qualquer regra CSS que combine classes de DSOs diferentes no mesmo seletor:
+
+```css
+/* ❌ REMOVIDO SILENCIOSAMENTE pelo compilador */
+/* .dashboard__card-body pertence a DsoDashboard */
+/* .desktop__heading--2 pertence a DsoTipografia */
+/* Escrever isso dentro de QUALQUER DSO = regra ignorada */
+.dashboard__card-body .desktop__heading--2 {
+    font-size: 36px;  /* nunca aplicado — regra não existe no CSS gerado */
+}
+```
+
+O compilador aplica isolamento por camada — cada DSO só pode controlar seus próprios seletores. A regra não aparece no DevTools após compilar; o browser aplica o valor original como se a regra não existisse. **Não há erro, não há aviso.**
+
+**Alternativas corretas:**
+
+```css
+/* ✅ Opção 1: usar classe diferente que já tenha o tamanho desejado */
+/* Trocar a classe no layout XML do WBC para uma que já exista com o valor correto */
+/* Ex: desktop__heading--3 já tem 36px → usar isso no .xml em vez de --2 */
+
+/* ✅ Opção 2: criar nova classe no DSO que "possui" o contexto externo */
+/* .dashboard__card--count adicionada ao DsoDashboard funciona porque */
+/* o contexto "dashboard" pertence a esse DSO */
+styles DsoDashboard {
+    .dashboard__card--count { font-size: 36px; }
+}
+/* No layout XML: Class="dashboard__card--count" */
+```
+
+**Regra de bolso:** para cada par `.classA .classB`, ambas as classes devem ser definidas no mesmo DSO — ou a regra será descartada.
+
 ### Renaming a DSO
 
 GeneXus does not automatically update `@import` references when you rename a DSO. Manually review all places that reference the old name before renaming.
