@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.2.1](https://github.com/lucaskarsten/genexus-ai-toolkit/compare/v1.2.0...v1.2.1) (2026-06-19)
+
+
+### Documentation
+
+* warn about gxnext + GX18 KB incompatibility — `open_knowledge_base` and all write tools create false revisions under the wrong username; includes safe/forbidden tool table and alternatives ([6fd41aa](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/6fd41aa))
+* add complete SQL recovery procedure for gxnext damage on GX18 KB — 5-step guide with identification queries, MEV revert, EVC restore from backup, orphan cleanup, and 7-error diagnostic table ([6fd41aa](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/6fd41aa))
+* document gxnext operational pitfalls — server startup troubleshooting, `import_text_to_kb` rootDirectory pattern ([6fd41aa](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/6fd41aa))
+* document DSO cross-DSO scoped selector silent removal — compiler discards `.classA .classB` when classes belong to different DSOs, with correct alternatives ([6fd41aa](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/6fd41aa))
+
 ## [1.2.0](https://github.com/lucaskarsten/genexus-ai-toolkit/compare/v1.1.0...v1.2.0) (2026-06-18)
 
 
