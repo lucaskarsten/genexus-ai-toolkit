@@ -154,6 +154,252 @@ See [`skills/genexus-kb-sql.md` — Token Type Map](../skills/genexus-kb-sql.md)
 
 ---
 
+---
+
+## Recovery — dano do gxnext em KB GX18
+
+> Consulte também a seção de aviso em `docs/genexus-for-agents.md`.
+
+O GeneXus Next (gxnext MCP), ao abrir uma KB GeneXus 18, cria novas `EntityVersion` para todos os objetos processados usando um `UserId` interno — mesmo sem alterar conteúdo. Resultado: milhares de revisões espúrias no Team Development.
+
+### Identificação
+
+```sql
+-- Confirmar qual UserId é o problema (concentrado em uma data específica)
+SELECT UserId, COUNT(*) as Total,
+  CONVERT(varchar, MIN(EntityVersionTimestamp), 120) as Primeiro,
+  CONVERT(varchar, MAX(EntityVersionTimestamp), 120) as Ultimo
+FROM EntityVersion GROUP BY UserId ORDER BY Ultimo DESC;
+-- UserId com contagem alta concentrada em 1 dia = gxnext (ex: UserId=322)
+
+-- Ver quais objetos foram afetados
+SELECT et.EntityTypeName, ev.EntityVersionName, COUNT(*) as revisoes
+FROM EntityVersion ev
+JOIN EntityType et ON et.EntityTypeId = ev.EntityTypeId
+WHERE ev.UserId = 322  -- substituir pelo UserId ruim
+GROUP BY et.EntityTypeName, ev.EntityVersionName
+ORDER BY revisoes DESC;
+```
+
+### Pré-requisitos
+
+1. **Fechar completamente o GeneXus 18 IDE** (locks impedem as queries)
+2. **Fazer backup antes de qualquer operação:**
+
+```powershell
+sqlcmd -S "(localdb)\MSSQLLocalDB" -Q "BACKUP DATABASE [GX_KB_SeuBanco] TO DISK='C:\tmp\backup_pre_fix.bak' WITH INIT"
+```
+
+3. **Restaurar backup como banco temporário** para consultas de comparação/recuperação:
+
+```sql
+RESTORE DATABASE [GX_KB_SeuBanco_restore]
+FROM DISK='C:\tmp\backup_pre_fix.bak'
+WITH MOVE 'GX_KB_SeuBanco' TO 'C:\...\GX_KB_SeuBanco_restore.mdf',
+     MOVE 'GX_KB_SeuBanco_log' TO 'C:\...\GX_KB_SeuBanco_restore_log.ldf'
+```
+
+### Passo 1 — Reverter ModelEntityVersion e deletar EntityVersions do gxnext
+
+```sql
+BEGIN TRANSACTION;
+
+-- 1a. Reverter MEV para a revisão anterior (ParentVersionId)
+-- CRÍTICO: JOIN com os 3 campos da PK — EntityVersionId não é globalmente único
+UPDATE mev
+SET
+    mev.EntityVersionId = ev.ParentVersionId,
+    mev.ModelUserId = ev_parent.UserId,
+    mev.ModelEntityVersionTimestamp = ev_parent.EntityVersionTimestamp,
+    mev.ModelEntityVersionName = ev_parent.EntityVersionName,
+    mev.ModelEntityVersionDescription = ev_parent.EntityVersionDescription
+FROM ModelEntityVersion mev
+JOIN EntityVersion ev
+    ON mev.EntityTypeId = ev.EntityTypeId
+    AND mev.EntityId = ev.EntityId
+    AND mev.EntityVersionId = ev.EntityVersionId
+    AND ev.UserId = 322  -- UserId ruim
+JOIN EntityVersion ev_parent
+    ON ev.EntityTypeId = ev_parent.EntityTypeId
+    AND ev.EntityId = ev_parent.EntityId
+    AND ev.ParentVersionId = ev_parent.EntityVersionId;
+SELECT 'MEV revertidos:', @@ROWCOUNT;
+
+-- 1b. Deletar histórico do gxnext
+DELETE FROM ModelEntityHistory WHERE HistoryUserId = 322;
+SELECT 'ModelEntityHistory:', @@ROWCOUNT;
+
+-- 1c. Deletar EntityVersions do gxnext
+DELETE FROM EntityVersion WHERE UserId = 322;
+SELECT 'EntityVersions deletadas:', @@ROWCOUNT;
+
+COMMIT;
+```
+
+### Passo 2 — Restaurar EntityVersionComposition do backup
+
+> **Armadilha crítica**: `EntityVersionId` é **local** a cada `(EntityTypeId, EntityId)` — não é globalmente único. Um DELETE/UPDATE usando apenas `EntityVersionId` sem os campos de tipo e entidade vai atingir objetos completamente diferentes. Use sempre todos os 6 campos da PK.
+
+```sql
+BEGIN TRANSACTION;
+
+-- Limpar composições (podem estar inconsistentes após o Passo 1)
+DELETE FROM EntityVersionComposition;
+
+-- Restaurar do backup apenas composições legítimas
+-- (nem compound nem component é do gxnext)
+INSERT INTO [GX_KB_SeuBanco].dbo.EntityVersionComposition
+  (ComponentEntityTypeId, ComponentEntityId, ComponentEntityVersionId,
+   CompoundEntityTypeId, CompoundEntityId, CompoundEntityVersionId)
+SELECT evc.ComponentEntityTypeId, evc.ComponentEntityId, evc.ComponentEntityVersionId,
+       evc.CompoundEntityTypeId, evc.CompoundEntityId, evc.CompoundEntityVersionId
+FROM [GX_KB_SeuBanco_restore].dbo.EntityVersionComposition evc
+JOIN [GX_KB_SeuBanco_restore].dbo.EntityVersion ev_comp
+  ON ev_comp.EntityTypeId = evc.CompoundEntityTypeId
+  AND ev_comp.EntityId = evc.CompoundEntityId
+  AND ev_comp.EntityVersionId = evc.CompoundEntityVersionId
+JOIN [GX_KB_SeuBanco_restore].dbo.EntityVersion ev_cmp
+  ON ev_cmp.EntityTypeId = evc.ComponentEntityTypeId
+  AND ev_cmp.EntityId = evc.ComponentEntityId
+  AND ev_cmp.EntityVersionId = evc.ComponentEntityVersionId
+WHERE ev_comp.UserId <> 322 AND ev_cmp.UserId <> 322;
+
+SELECT 'Composições restauradas:', @@ROWCOUNT;
+COMMIT;
+```
+
+### Passo 3 — Corrigir MEV com cadeia longa de versões gxnext
+
+O gxnext às vezes cria dezenas de versões em sequência (ex: 107 versões de um atributo). O Passo 1 reverte para o pai direto — que também pode ser gxnext. Execute para corrigir os casos em que o pai direto não existe mais:
+
+```sql
+-- 3a. Re-inserir MEVs que sumiram (pai direto também era gxnext)
+BEGIN TRANSACTION;
+INSERT INTO [GX_KB_SeuBanco].dbo.ModelEntityVersion
+  (ModelId, EntityTypeId, EntityId, EntityVersionId, ModelEntityVersionTimestamp,
+   ModelEntityVersionName, ModelEntityVersionDescription,
+   ModelParentEntityTypeId, ModelParentEntityId, ModelUserId)
+SELECT mev_b.ModelId, mev_b.EntityTypeId, mev_b.EntityId,
+  ev_parent.EntityVersionId, ev_parent.EntityVersionTimestamp,
+  ev_parent.EntityVersionName, ev_parent.EntityVersionDescription,
+  mev_b.ModelParentEntityTypeId, mev_b.ModelParentEntityId, ev_parent.UserId
+FROM [GX_KB_SeuBanco_restore].dbo.ModelEntityVersion mev_b
+JOIN [GX_KB_SeuBanco_restore].dbo.EntityVersion ev_bad
+  ON ev_bad.EntityTypeId = mev_b.EntityTypeId AND ev_bad.EntityId = mev_b.EntityId
+  AND ev_bad.EntityVersionId = mev_b.EntityVersionId AND ev_bad.UserId = 322
+JOIN [GX_KB_SeuBanco_restore].dbo.EntityVersion ev_parent
+  ON ev_parent.EntityTypeId = ev_bad.EntityTypeId AND ev_parent.EntityId = ev_bad.EntityId
+  AND ev_parent.EntityVersionId = ev_bad.ParentVersionId
+WHERE NOT EXISTS (
+  SELECT 1 FROM [GX_KB_SeuBanco].dbo.ModelEntityVersion p
+  WHERE p.ModelId = mev_b.ModelId AND p.EntityTypeId = mev_b.EntityTypeId AND p.EntityId = mev_b.EntityId
+);
+SELECT 'MEV reinseridas:', @@ROWCOUNT;
+COMMIT;
+
+-- 3b. Corrigir MEVs que ainda apontam para versão inexistente
+BEGIN TRANSACTION;
+UPDATE mev
+SET
+  mev.EntityVersionId = ev_correct.EntityVersionId,
+  mev.ModelUserId = ev_correct.UserId,
+  mev.ModelEntityVersionTimestamp = ev_correct.EntityVersionTimestamp,
+  mev.ModelEntityVersionName = ev_correct.EntityVersionName,
+  mev.ModelEntityVersionDescription = ev_correct.EntityVersionDescription
+FROM [GX_KB_SeuBanco].dbo.ModelEntityVersion mev
+JOIN (
+  SELECT ev.EntityTypeId, ev.EntityId, MAX(ev.EntityVersionId) as EntityVersionId
+  FROM [GX_KB_SeuBanco].dbo.EntityVersion ev
+  WHERE ev.UserId <> 322
+  GROUP BY ev.EntityTypeId, ev.EntityId
+) latest ON latest.EntityTypeId = mev.EntityTypeId AND latest.EntityId = mev.EntityId
+JOIN [GX_KB_SeuBanco].dbo.EntityVersion ev_correct
+  ON ev_correct.EntityTypeId = latest.EntityTypeId AND ev_correct.EntityId = latest.EntityId
+  AND ev_correct.EntityVersionId = latest.EntityVersionId
+WHERE NOT EXISTS (
+  SELECT 1 FROM [GX_KB_SeuBanco].dbo.EntityVersion ev
+  WHERE ev.EntityTypeId = mev.EntityTypeId AND ev.EntityId = mev.EntityId
+    AND ev.EntityVersionId = mev.EntityVersionId
+);
+SELECT 'MEV corrigidas:', @@ROWCOUNT;
+COMMIT;
+```
+
+### Passo 4 — Limpar ModelEntityOutput
+
+```sql
+-- ModelEntityOutput com órfãos causa NullReferenceException ao abrir KB
+-- GeneXus regenera esta tabela automaticamente ao abrir — pode deletar com segurança
+DELETE FROM ModelEntityOutput
+WHERE NOT EXISTS (
+  SELECT 1 FROM EntityVersion ev
+  WHERE ev.EntityTypeId = ModelEntityOutput.EntityTypeId
+    AND ev.EntityId = ModelEntityOutput.EntityId
+    AND ev.EntityVersionId = ModelEntityOutput.OutputEntityVersionId
+);
+SELECT 'ModelEntityOutput órfãos removidos:', @@ROWCOUNT;
+```
+
+> Repita este passo após cada operação de restauração de EntityVersions.
+
+### Passo 5 — Recuperar objetos criados apenas pelo gxnext
+
+Se objetos novos (importados via MCP antes do incidente) foram deletados junto com as EntityVersions do gxnext, eles aparecem no backup com `ParentVersionId=0` e `UserId=322`:
+
+```sql
+-- Identificar no banco de restore
+SELECT ev.EntityTypeId, et.EntityTypeName, ev.EntityId, ev.EntityVersionName
+FROM [GX_KB_SeuBanco_restore].dbo.EntityVersion ev
+JOIN [GX_KB_SeuBanco_restore].dbo.EntityType et ON et.EntityTypeId = ev.EntityTypeId
+WHERE ev.UserId = 322 AND ev.ParentVersionId = 0
+ORDER BY ev.EntityTypeId, ev.EntityId;
+
+-- Para cada objeto a recuperar, restaurar EntityVersion + ModelEntityVersion + EVC:
+BEGIN TRANSACTION;
+
+INSERT INTO [GX_KB_SeuBanco].dbo.EntityVersion (EntityTypeId, EntityId, EntityVersionId,
+  EntityVersionName, EntityVersionDescription, UserId, EntityVersionTimestamp, ParentVersionId,
+  EntityVersionComment, EntityVersionCategories, EntityVersionProperties, TypeVersionId, EntityVersionData)
+SELECT EntityTypeId, EntityId, EntityVersionId, EntityVersionName, EntityVersionDescription,
+  UserId, EntityVersionTimestamp, ParentVersionId, EntityVersionComment,
+  EntityVersionCategories, EntityVersionProperties, TypeVersionId, EntityVersionData
+FROM [GX_KB_SeuBanco_restore].dbo.EntityVersion
+WHERE EntityTypeId = <tipo> AND EntityId = <id>;
+
+INSERT INTO [GX_KB_SeuBanco].dbo.ModelEntityVersion (ModelId, EntityTypeId, EntityId,
+  EntityVersionId, ModelEntityVersionTimestamp, ModelEntityVersionName, ModelEntityVersionDescription,
+  ModelParentEntityTypeId, ModelParentEntityId, ModelUserId)
+SELECT ModelId, EntityTypeId, EntityId, EntityVersionId, ModelEntityVersionTimestamp,
+  ModelEntityVersionName, ModelEntityVersionDescription, ModelParentEntityTypeId, ModelParentEntityId, ModelUserId
+FROM [GX_KB_SeuBanco_restore].dbo.ModelEntityVersion
+WHERE EntityTypeId = <tipo> AND EntityId = <id>;
+
+INSERT INTO [GX_KB_SeuBanco].dbo.EntityVersionComposition (ComponentEntityTypeId, ComponentEntityId,
+  ComponentEntityVersionId, CompoundEntityTypeId, CompoundEntityId, CompoundEntityVersionId)
+SELECT ComponentEntityTypeId, ComponentEntityId, ComponentEntityVersionId,
+  CompoundEntityTypeId, CompoundEntityId, CompoundEntityVersionId
+FROM [GX_KB_SeuBanco_restore].dbo.EntityVersionComposition
+WHERE CompoundEntityTypeId = <tipo> AND CompoundEntityId = <id>;
+
+COMMIT;
+```
+
+**Atenção:** Ao recuperar objetos compostos (Transaction, WebPanel, Procedure, SDT), os sub-objetos também precisam ser restaurados. Verifique a EVC e restaure cada componente (Structure, Events, Rules, Variables, WebForm, etc.) incluindo seus sub-componentes recursivos. Para Transactions, os Attributes novos (EntityTypeId=24) são objetos independentes com seus próprios MEVs — não são sub-componentes da EVC e precisam ser restaurados separadamente.
+
+### Diagnóstico de erros pós-fix
+
+| Erro | Causa | Fix |
+|---|---|---|
+| `NullReferenceException (Artech.Architecture.Common)` ao abrir KB | `ModelEntityOutput` com órfãos | DELETE conforme Passo 4 — GX regenera ao abrir |
+| `Unable to Deserialize Data. Attribute 'N' in 'TrnX' does not exist` (atributo pré-existente) | MEV do atributo aponta para versão inexistente | Passo 3b — corrigir MEVs com cadeia gxnext longa |
+| `Unable to Deserialize Data. Attribute 'N' in 'TrnX' does not exist` (atributo novo) | Atributo (EntityTypeId=24) era novo e não foi restaurado no Passo 5 | Restaurar EntityVersion + MEV do atributo do backup + limpar ModelEntityOutput |
+| Objeto sem WebForm / Events após fix | EVC foi deletada com EntityVersionId não qualificado (Passo 2 errado) | Restaurar EVC do backup com os 6 campos da PK |
+| MEV apontando para versão deletada (cadeia gxnext) | ParentVersionId do gxnext também é gxnext | Passo 3 — reinserir e corrigir MEVs |
+| Locks bloqueando queries | Sessões órfãs do período de investigação | `SELECT session_id FROM sys.dm_exec_requests WHERE database_id = DB_ID('...')` + `KILL <id>` |
+| `DELETE EntityVersionComposition` apagou entradas legítimas | `EntityVersionId` não é globalmente único — DELETE sem `EntityTypeId`+`EntityId` atinge objetos errados | Restaurar EVC do backup filtrando pelos 3 campos de cada lado |
+
+---
+
 ## Documented Pitfalls
 
 | Error | Cause | Fix |

@@ -78,6 +78,26 @@ The AI generates the `.view` file → saved to `output/UC/UcProductPicker_*.view
 
 ---
 
+## ⚠️ Warning — gxnext + GeneXus 18 KB
+
+**Do not use gxnext MCP tools on a GeneXus 18 Knowledge Base.**
+
+When GeneXus Next opens a GX18 KB — even just to list objects — it registers a new revision for every object it processes, using an internal user ID instead of your Windows session user. This causes:
+
+- Team Development shows **thousands of false "modified" objects** under the wrong username
+- The KB version history is polluted in a way that is **hard to reverse without direct SQL intervention**
+- Other developers see spurious changes they did not make
+
+This was confirmed in production on 17/06/2026 and required ~6 hours of SQL recovery work.
+
+**Safe operations on GX18 KB:** read-only SQL queries via `GX_KB_SERVER` + `GX_KB_DATABASE`, and `export_kb_to_text`.
+
+**Forbidden operations on GX18 KB:** `open_knowledge_base`, `import_text_to_kb`, `build_all`, `build_one`, `reorganize`, and any other tool that writes to the KB.
+
+> Full technical explanation and recovery procedure: [docs/genexus-for-agents.md → section 7](docs/genexus-for-agents.md) and [docs/kb-sql-reference.md → Recovery section](docs/kb-sql-reference.md).
+
+---
+
 ## Path B — GeneXus Next + MCP Quickstart
 
 ### 1. Clone with submodules
