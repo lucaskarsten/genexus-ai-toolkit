@@ -193,7 +193,109 @@ Crie um WebPanel WbpCustomerList com grid paginado da Transaction Customer.
 
 ---
 
-## 7. gxnext vs. edição manual de arquivos
+## 7. ⚠️ gxnext + KB GeneXus 18 — incompatibilidade destrutiva
+
+**Nunca use ferramentas gxnext que abram a KB em uma KB GeneXus 18.** Isso inclui `open_knowledge_base`, `import_text_to_kb`, `build_all`, e qualquer outra operação de escrita.
+
+**Por quê:** O GeneXus Next usa um `UserId` interno diferente do usuário Windows da sessão. Ao abrir uma KB GX18, o servidor registra uma nova `EntityVersion` para cada objeto que processa — mesmo sem alterar nada. Isso resulta em:
+- Dezenas de milhares de revisões falsas no Team Development
+- Todos os objetos aparecendo como "modificados" pelo usuário errado
+- Histórico de versões corrompido, difícil de reverter sem intervenção SQL direta
+
+Este comportamento foi confirmado em produção em 17/06/2026. O recovery custou ~6 horas de trabalho SQL.
+
+### Ferramentas seguras vs. proibidas em KB GX18
+
+| Ferramenta gxnext | GX18 | Motivo |
+|---|---|---|
+| `export_kb_to_text` | ✅ segura | Lê direto do SQL sem abrir sessão KB |
+| `validate_kb_text_files` | ✅ segura | Só valida, não abre KB |
+| `get_kb_property` | ✅ segura | Leitura de config |
+| `open_knowledge_base` | 🚫 **PROIBIDA** | Cria revisões em todos os objetos processados |
+| `import_text_to_kb` | 🚫 **PROIBIDA** | Implica abertura da KB |
+| `import_knowledge_manager` | 🚫 **PROIBIDA** | Importação em massa + abertura |
+| `build_all` / `build_one` | 🚫 **PROIBIDA** | Compila = salva implicitamente |
+| `reorganize` | 🚫 **PROIBIDA** | Reescreve estrutura interna |
+| `create_or_impact_database` | 🚫 **PROIBIDA** | Altera banco de deploy |
+
+### Alternativas para KB GX18
+
+| Necessidade | Alternativa segura |
+|---|---|
+| Exportar objetos (XPZ) | IDE GeneXus 18 → Knowledge Manager → Export |
+| Ler conteúdo de objetos | `export_kb_to_text` ou SQL direto via `GX_KB_SERVER` |
+| Criar/modificar objetos | Gerar templates em `output/` → aplicar manualmente no IDE GX18 |
+| Build | IDE GeneXus 18 — nunca via gxnext em KB GX18 |
+
+> Se o dano já ocorreu, consulte `docs/kb-sql-reference.md` → seção "Recovery — dano do gxnext em KB GX18".
+
+---
+
+## 8. Troubleshooting — servidor gxnext não responde
+
+Se as ferramentas gxnext retornam "MCP transport dropped" ou não respondem, o servidor pode ter travado sem encerrar.
+
+**Diagnosticar:**
+
+```powershell
+netstat -an | findstr 8001
+```
+
+Se não aparecer nenhuma linha, a porta não está escutando.
+
+**Iniciar manualmente (GeneXus Next nativo):**
+
+```powershell
+cd "C:\Users\<seu-usuario>\AppData\Local\Programs\GeneXus\GeneXus Next"
+.\bl\GeneXus.Services.Host.exe
+```
+
+Aguarde ~15 segundos. O servidor está pronto quando logar:
+
+```
+Now listening on: http://localhost:8001
+Application started. Press Ctrl+C to shut down.
+```
+
+> A KB configurada no `.mcp.json` é aberta automaticamente. Se for uma KB GX18, **não use nenhuma ferramenta de escrita** — consulte a seção 7 acima.
+
+---
+
+## 9. import_text_to_kb — padrão de rootDirectory
+
+A ferramenta `import_text_to_kb` requer que o `rootDirectory` seja um diretório **limpo com apenas os arquivos a importar**. Usar o root do projeto causa "MCP server transport dropped mid-call" de forma consistente — o servidor faz timeout ao tentar indexar o diretório inteiro.
+
+**Padrão correto:**
+
+```
+1. Criar diretório temporário: output/<CATEGORIA>/tmp_import/
+2. Copiar APENAS os arquivos alvo, mantendo a estrutura src/:
+   tmp_import/
+     src/
+       <Modulo>/
+         <SubModulo>/
+           NomeDoObjeto.webcomponent.layout.xml
+     src.ns/
+       Themes/
+         NomeDoDSO.designsystem.main.gx
+3. Usar tmp_import/ como rootDirectory na chamada
+4. Deletar tmp_import/ após o import
+```
+
+**Estrutura de paths exigida dentro do rootDirectory:**
+
+| Tipo | Caminho |
+|---|---|
+| WebComponent (WBC) | `src/<Modulo>/<SubModulo>/NomeDoObjeto.webcomponent.layout.xml` |
+| WebPanel (WBP) | `src/<Modulo>/<SubModulo>/NomeDoObjeto.webpanel.layout.xml` |
+| DSO | `src.ns/Themes/NomeDoDSO.designsystem.main.gx` |
+| Procedure | `src/<Modulo>/<SubModulo>/NomeDoObjeto.procedure.gx` |
+
+> Esta ferramenta é proibida para KBs GeneXus 18 — consulte a seção 7.
+
+---
+
+## 10. gxnext vs. edição manual de arquivos
 
 | Situação | Use |
 |---|---|
