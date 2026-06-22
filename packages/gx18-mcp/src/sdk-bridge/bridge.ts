@@ -18,6 +18,7 @@ class SdkBridge {
   private lineBuffer = '';
   private starting: Promise<void> | null = null;
   private startedAt = 0;
+  private isStarting = false;
 
   async send<T>(method: string, params: Record<string, unknown> = {}, timeoutMs = 30000): Promise<T> {
     await this.ensureStarted();
@@ -48,6 +49,10 @@ class SdkBridge {
         `Run: npm run build:worker`
       );
     }
+
+    this.isStarting = true;
+    const t0 = Date.now();
+    process.stderr.write('[gx18-bridge] Iniciando worker C# (primeira vez pode levar ~30s enquanto o SDK carrega)...\n');
 
     this.worker = spawn(config.workerExe, [], {
       env: {
@@ -100,15 +105,17 @@ class SdkBridge {
       }
     });
 
-    // Wait for ping to confirm worker is ready (15s timeout for startup)
-    await this.send('ping', {}, 15000);
+    // Wait for ping to confirm worker is ready (30s timeout — SDK cold-start)
+    await this.send('ping', {}, 30000);
+    this.isStarting = false;
     this.restarts = 0;
     this.startedAt = Date.now();
+    process.stderr.write(`[gx18-bridge] Worker pronto em ${((Date.now() - t0) / 1000).toFixed(1)}s\n`);
   }
 
-  status(): { alive: boolean; pid: number | undefined; uptimeMs: number } {
+  status(): { alive: boolean; starting: boolean; pid: number | undefined; uptimeMs: number } {
     const alive = this.worker !== null && this.worker.exitCode === null;
-    return { alive, pid: this.worker?.pid, uptimeMs: alive && this.startedAt ? Date.now() - this.startedAt : 0 };
+    return { alive, starting: this.isStarting, pid: this.worker?.pid, uptimeMs: alive && this.startedAt ? Date.now() - this.startedAt : 0 };
   }
 
   async restart(): Promise<void> {

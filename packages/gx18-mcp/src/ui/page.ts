@@ -628,13 +628,29 @@ function loadDashboard() {
     if (r.status !== 200) return;
     var s = r.body;
     var alive = !!s.alive;
-    el('sc-worker').className = 'stat-card ' + (alive ? 'ok' : 'fail');
-    el('sc-worker-val').textContent = alive ? 'Running' : 'Stopped';
+    var starting = !!s.starting;
+    var wClass = alive ? 'ok' : (starting ? 'warn' : 'fail');
+    el('sc-worker').className = 'stat-card ' + wClass;
+    el('sc-worker-val').textContent = alive ? 'Running' : (starting ? 'Iniciando...' : 'Stopped');
     el('sc-pid').textContent = s.pid != null ? String(s.pid) : '—';
     el('sc-uptime').textContent = s.uptimeMs ? fmtUptime(s.uptimeMs) : '—';
     var hw = el('hd-worker');
-    hw.textContent = (alive ? '● Running' : '● Stopped');
-    hw.style.color = alive ? 'var(--ok)' : 'var(--fail)';
+    hw.textContent = alive ? '● Running' : (starting ? '◌ Iniciando...' : '● Stopped');
+    hw.style.color = alive ? 'var(--ok)' : (starting ? 'var(--warn)' : 'var(--fail)');
+    // Auto-poll every 3s while starting so the dashboard updates when ready.
+    if (starting && !(window as any)._workerPoll) {
+      (window as any)._workerPoll = setInterval(function() {
+        api('GET', '/api/worker/status').then(function(pr: any) {
+          if (pr.status !== 200) return;
+          if (pr.body.alive || !pr.body.starting) {
+            clearInterval((window as any)._workerPoll); (window as any)._workerPoll = null;
+            loadDashboard();
+          }
+        });
+      }, 3000);
+    } else if (!starting && (window as any)._workerPoll) {
+      clearInterval((window as any)._workerPoll); (window as any)._workerPoll = null;
+    }
   });
   api('POST', '/api/doctor').then(function(r) {
     if (r.status !== 200) {
