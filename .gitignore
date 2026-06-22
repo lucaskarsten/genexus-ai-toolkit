@@ -18,5 +18,6 @@ node_modules/
 .mcp.json
 .claude/settings.local.json
 /gx-sugestoes/
-src.ns/
-src/
+# Repo-root exported GeneXus objects (anchored so nested package src/ dirs are NOT ignored)
+/src.ns/
+/src/

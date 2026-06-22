@@ -1,0 +1,236 @@
+using System;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Security.Principal;
+using System.Collections.Generic;
+using System.Web.Script.Serialization;
+using Gx18Mcp.SdkWorker.Sql;
+using Gx18Mcp.SdkWorker.Identity;
+using Gx18Mcp.SdkWorker.Sdk;
+using Gx18Mcp.SdkWorker.Oracle;
+
+namespace Gx18Mcp.SdkWorker
+{
+    class Program
+    {
+        private static readonly JavaScriptSerializer _json = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
+        private static KbSqlClient _sql;
+        private static OracleClient _oracle;
+        private static IdentityResolver _identity;
+        private static AssemblyResolver _asmResolver;
+        private static KbSession _kbSession;
+        private static bool _sdkReady = false;
+
+        [STAThread]
+        static int Main(string[] args)
+        {
+            // Configure stdout for newline-delimited JSON (NO BOM — UTF8Encoding(false))
+            // System.Text.Encoding.UTF8 emits a BOM prefix that breaks JSON.parse on the Node.js side.
+            var noBomUtf8 = new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+            Console.OutputEncoding = noBomUtf8;
+            Console.InputEncoding = noBomUtf8;
+            var stdout = new StreamWriter(Console.OpenStandardOutput(), noBomUtf8) { AutoFlush = true, NewLine = "\n" };
+            Console.SetOut(stdout);
+
+            // Initialize SQL client (always safe — no SDK)
+            var kbServer = Environment.GetEnvironmentVariable("GX_KB_SERVER") ?? @"(localdb)\MSSQLLocalDB";
+            var kbDatabase = Environment.GetEnvironmentVariable("GX_KB_DATABASE") ?? "";
+            var gx18Dir = Environment.GetEnvironmentVariable("GX18_INSTALL_DIR")
+                ?? @"C:\Program Files (x86)\GeneXus\GeneXus18U6";
+
+            // The GeneXus BL loads native DLLs from the install dir AND from the shared Artech
+            // protection folder (Common Files\Artech\GXprot*\Protect.dll). Our worker runs outside
+            // both, so we must add them to the native loader search path.
+            var nativeDirs = new System.Collections.Generic.List<string> { gx18Dir };
+            var protDir = FindProtectionDir();
+            if (protDir != null) nativeDirs.Add(protDir);
+            foreach (var d in nativeDirs) { try { AddDllDirectory(d); } catch { } }
+            try { SetDllDirectory(gx18Dir); } catch { }
+            Environment.SetEnvironmentVariable("PATH",
+                string.Join(";", nativeDirs) + ";" + (Environment.GetEnvironmentVariable("PATH") ?? ""));
+
+            _sql = new KbSqlClient(kbServer, kbDatabase);
+            _oracle = OracleClient.FromEnv();  // null if ORACLE_HOST not set
+            _identity = new IdentityResolver(WindowsIdentity.GetCurrent().Name, _sql);
+            _asmResolver = new AssemblyResolver(gx18Dir);
+
+            Log($"Worker started. User: {WindowsIdentity.GetCurrent().Name}, KB: {kbDatabase}");
+
+            // Main message loop
+            string line;
+            while ((line = Console.ReadLine()) != null)
+            {
+                if (string.IsNullOrWhiteSpace(line)) continue;
+                Dictionary<string, object> req;
+                int id = 0;
+                try
+                {
+                    req = _json.Deserialize<Dictionary<string, object>>(line);
+                    id = Convert.ToInt32(req["id"]);
+                    var method = req["method"] as string ?? "";
+                    var paramsDict = req.ContainsKey("params") ? req["params"] as Dictionary<string, object> : new Dictionary<string, object>();
+                    var result = Dispatch(method, paramsDict ?? new Dictionary<string, object>());
+                    WriteSuccess(id, result);
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine("[gx18-worker] FULL EXCEPTION:\n" + ex.ToString());
+                    WriteError(id, Unwrap(ex));
+                }
+            }
+            return 0;
+        }
+
+        private static object Dispatch(string method, Dictionary<string, object> p)
+        {
+            switch (method)
+            {
+                case "ping":    return Ping();
+                case "whoami":  return _identity.GetInfo(_sdkReady, Environment.GetEnvironmentVariable("GX_KB_PATH"), Environment.GetEnvironmentVariable("GX18_INSTALL_DIR") ?? @"C:\Program Files (x86)\GeneXus\GeneXus18U6");
+                case "find":    return _sql.Find(S(p, "pattern"), N(p, "type"), N(p, "limit", 50));
+                case "list":    return _sql.List(N(p, "type"), S(p, "module"), N(p, "limit", 100), N(p, "offset", 0));
+                case "get":     return _sql.Get(S(p, "name"), N(p, "type"));
+                case "read_source":    return _sql.ReadSource(N(p, "entityTypeId"), N(p, "entityId"));
+                case "read_properties": return _sql.ReadProperties(S(p, "name"), N(p, "type"));
+                case "read_structure":  return _sql.ReadStructure(S(p, "name"));
+                case "sql_query": return _sql.Query(S(p, "query"), B(p, "readOnly", true));
+                case "oracle_query":
+                    if (_oracle == null) throw new Exception("Oracle not configured — set ORACLE_HOST in .env");
+                    return _oracle.Query(S(p, "query"), B(p, "readOnly", true), N(p, "limit", 100));
+                case "export":   return _sql.Export(S(p, "name"), N(p, "type"), S(p, "outputDir", Environment.GetEnvironmentVariable("GX_OUTPUT_PATH") ?? @".\output"));
+                case "create":
+                {
+                    var sections = new Dictionary<string, object>();
+                    foreach (var key in new[] { "source", "events", "rules", "conditions", "layout", "properties", "template", "tokens", "styles", "elements", "structure" })
+                        if (p.ContainsKey(key) && p[key] != null) sections[key] = p[key];
+                    return EnsureSdk().CreateByKey(S(p, "type"), S(p, "name"), S(p, "module"), sections);
+                }
+                case "modify":   return EnsureSdk().ModifyByKey(S(p, "name"), S(p, "type"), S(p, "section"), S(p, "content"));
+                case "export_xpz": return EnsureSdk().ExportXpz(S(p, "type"), S(p, "name"), S(p, "outputFile"));
+                case "set_property": return EnsureSdk().SetProperty(S(p, "name"), N(p, "type"), S(p, "property"), S(p, "value"));
+                case "rename":   return EnsureSdk().Rename(S(p, "name"), N(p, "type"), S(p, "newName"));
+                case "validate": return EnsureSdk().Validate(S(p, "name"), N(p, "type"));
+                case "build":    return EnsureSdk().Build(S(p, "name"), N(p, "type"));
+                case "open_spike": return OpenSpike();
+                case "import_spike": return ImportSpike(S(p, "xpzFile"), S(p, "type"), S(p, "name"), B(p, "fullOverwrite", true));
+                case "probe_sdk": return SdkProbe.Run(
+                    Environment.GetEnvironmentVariable("GX18_INSTALL_DIR") ?? @"C:\Program Files (x86)\GeneXus\GeneXus18U6",
+                    S(p, "assembly"), S(p, "type"), S(p, "filter"));
+                case "shutdown": Environment.Exit(0); return null;
+                default: throw new ArgumentException($"Unknown method: {method}");
+            }
+        }
+
+        // Spike: measure EntityVersion delta around an SDK open/close.
+        // Proves whether KnowledgeBase.Open() creates revisions (the gxnext storm).
+        // MUST be run against a disposable clone KB, never the live KB.
+        private static object OpenSpike()
+        {
+            const string countSql = "SELECT COUNT(*) FROM EntityVersion";
+            long before = _sql.ScalarLong(countSql);
+
+            _asmResolver.Register();
+            var session = new KbSession(Environment.GetEnvironmentVariable("GX_KB_PATH") ?? "");
+            object user;
+            try
+            {
+                session.Open();
+                user = session.GetUserInfo();
+            }
+            finally
+            {
+                session.Dispose();
+            }
+
+            long after = _sql.ScalarLong(countSql);
+            return new { before, after, delta = after - before, user };
+        }
+
+        // Spike: import an .xpz into a clone KB and measure the EntityVersion delta + stamped UserId.
+        // Proves whether the native GX18 import (a) stamps the correct Windows user and (b) creates a
+        // bounded number of revisions (not the gxnext storm). MUST run against a disposable clone.
+        private static object ImportSpike(string xpzFile, string type, string name, bool fullOverwrite)
+        {
+            const string countSql = "SELECT COUNT(*) FROM EntityVersion";
+            long before = _sql.ScalarLong(countSql);
+            var result = EnsureSdk().ImportXpz(xpzFile, type, name, fullOverwrite);
+            long after = _sql.ScalarLong(countSql);
+            return new { before, after, delta = after - before, import = result };
+        }
+
+        private static object Ping() => new {
+            ok = true,
+            sdkReady = _sdkReady,
+            sqlReady = true,   // lazy — TestConnection() is slow (SQL Server auto-start); use sql_query to verify
+            user = WindowsIdentity.GetCurrent().Name,
+            kbPath = Environment.GetEnvironmentVariable("GX_KB_PATH") ?? ""
+        };
+
+        private static ObjectFactory EnsureSdk()
+        {
+            if (_kbSession == null)
+            {
+                Log("Initializing GX18 SDK...");
+                _asmResolver.Register();
+                _kbSession = new KbSession(Environment.GetEnvironmentVariable("GX_KB_PATH") ?? "");
+                _kbSession.Open();
+                _sdkReady = true;
+                Log("SDK ready.");
+            }
+            return new ObjectFactory(_kbSession, _identity, _sql);
+        }
+
+        private static void WriteSuccess(int id, object result)
+        {
+            Console.WriteLine(_json.Serialize(new { id, result }));
+        }
+
+        private static void WriteError(int id, string error)
+        {
+            Console.WriteLine(_json.Serialize(new { id, error }));
+        }
+
+        [DllImport("kernel32", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern bool SetDllDirectory(string lpPathName);
+
+        [DllImport("kernel32", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern IntPtr AddDllDirectory(string NewDirectory);
+
+        // Locate the shared GeneXus protection folder (Common Files\Artech\GXprot*\Protect.dll).
+        private static string FindProtectionDir()
+        {
+            var commonX86 = Environment.GetEnvironmentVariable("CommonProgramFiles(x86)")
+                ?? @"C:\Program Files (x86)\Common Files";
+            var artech = Path.Combine(commonX86, "Artech");
+            if (!Directory.Exists(artech)) return null;
+            foreach (var dir in Directory.GetDirectories(artech, "GXprot*"))
+                if (File.Exists(Path.Combine(dir, "Protect.dll"))) return dir;
+            return null;
+        }
+
+        private static string Unwrap(Exception ex)
+        {
+            var sb = new System.Text.StringBuilder();
+            var e = ex;
+            int depth = 0;
+            while (e != null && depth < 6)
+            {
+                if (sb.Length > 0) sb.Append(" -> ");
+                sb.Append(e.GetType().Name).Append(": ").Append(e.Message);
+                e = e.InnerException;
+                depth++;
+            }
+            return sb.ToString();
+        }
+
+        private static void Log(string msg) => Console.Error.WriteLine($"[gx18-worker] {msg}");
+
+        // Param helpers
+        private static string S(Dictionary<string, object> p, string k, string def = null)
+            => p.ContainsKey(k) && p[k] != null ? p[k].ToString() : def;
+        private static int N(Dictionary<string, object> p, string k, int def = 0)
+            => p.ContainsKey(k) && p[k] != null ? Convert.ToInt32(p[k]) : def;
+        private static bool B(Dictionary<string, object> p, string k, bool def = false)
+            => p.ContainsKey(k) && p[k] != null ? Convert.ToBoolean(p[k]) : def;
+    }
+}
