@@ -38,7 +38,20 @@ export const CLIENTS: ClientTarget[] = [
     id: 'claude-desktop',
     label: 'Claude Desktop (claude_desktop_config.json)',
     rootKey: 'mcpServers',
-    path: () => path.join(os.homedir(), 'AppData', 'Roaming', 'Claude', 'claude_desktop_config.json'),
+    path: () => {
+      // Microsoft Store version: AppData\Local\Packages\Claude_<id>\LocalCache\Roaming\Claude\
+      const pkgBase = path.join(os.homedir(), 'AppData', 'Local', 'Packages');
+      try {
+        const storeDir = fs.readdirSync(pkgBase).find(d => d.startsWith('Claude_'));
+        if (storeDir) {
+          const storeConfig = path.join(pkgBase, storeDir, 'LocalCache', 'Roaming', 'Claude', 'claude_desktop_config.json');
+          // Return even if file doesn't exist yet — we'll create it on register
+          if (fs.existsSync(path.dirname(storeConfig))) return storeConfig;
+        }
+      } catch { /* AppData\Local\Packages not accessible */ }
+      // Standard installation: AppData\Roaming\Claude\
+      return path.join(os.homedir(), 'AppData', 'Roaming', 'Claude', 'claude_desktop_config.json');
+    },
   },
   {
     id: 'cursor',
