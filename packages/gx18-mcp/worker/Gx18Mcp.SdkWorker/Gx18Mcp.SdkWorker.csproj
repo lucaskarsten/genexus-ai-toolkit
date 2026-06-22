@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <PlatformTarget>x86</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <Nullable>disable</Nullable>
+    <Optimize>true</Optimize>
+    <AssemblyName>Gx18Mcp.SdkWorker</AssemblyName>
+    <RootNamespace>Gx18Mcp.SdkWorker</RootNamespace>
+    <!-- STAThread is set via attribute on Main, not here -->
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- System.Web.Extensions is not included by default in the SDK implicit set for net48 -->
+    <Reference Include="System.Web.Extensions" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- ODP.NET Managed: fully managed Oracle driver, supports NNE, no Oracle Client needed -->
+    <PackageReference Include="Oracle.ManagedDataAccess" Version="21.15.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Canonical entity-type registry, shared with the TS server. Embedded so EntityTypeRegistry
+         can load it at runtime. Single source of truth: spec/entity-types.json. -->
+    <EmbeddedResource Include="..\..\spec\entity-types.json" Link="entity-types.json" />
+  </ItemGroup>
+
+</Project>

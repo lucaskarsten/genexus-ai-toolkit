@@ -1,0 +1,52 @@
+{
+  "name": "gx18-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for GeneXus 18 — native SDK access without UserId corruption",
+  "keywords": [
+    "genexus",
+    "mcp",
+    "gx18",
+    "model-context-protocol"
+  ],
+  "license": "MIT",
+  "bin": {
+    "gx18-mcp": "dist/bin/gx18-mcp.js"
+  },
+  "main": "dist/src/server.js",
+  "files": [
+    "dist/bin",
+    "dist/src",
+    "dist/worker",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "build": "node esbuild.config.js",
+    "build:worker": "powershell -File scripts/build-worker.ps1",
+    "watch": "node esbuild.config.js --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:worker": "powershell -File scripts/test-worker.ps1",
+    "prepublishOnly": "npm run build && npm run build:worker"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "chalk": "^4.1.2",
+    "commander": "^12.0.0",
+    "dotenv": "^16.0.0",
+    "inquirer": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^9.0.0",
+    "@types/node": "^20.0.0",
+    "esbuild": "^0.20.0",
+    "typescript": "^5.4.0",
+    "vitest": "^4.1.9"
+  },
+  "allowScripts": {
+    "esbuild@0.20.2": true,
+    "oracledb@6.10.0": true
+  }
+}

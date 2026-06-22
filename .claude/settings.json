@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell($Server *)",
+      "PowerShell(Invoke-Sqlcmd *)",
+      "PowerShell(netstat *)",
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell(Test-Path *)",
+      "PowerShell(Select-String *)",
+      "PowerShell(Get-Content *)"
+    ]
+  }
+}

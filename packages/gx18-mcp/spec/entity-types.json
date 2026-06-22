@@ -1,0 +1,185 @@
+{
+  "$comment": "CANONICAL registry for GeneXus 18 object types. Single source of truth shared by the TS MCP server (imports this JSON) and the C# SDK worker (embeds it as a resource). Do NOT hand-edit the duplicated maps in code — change this file and let both sides derive from it. Locked to current behavior by contract tests on both sides.",
+  "objectTypes": [
+    {
+      "key": "procedure",
+      "entityTypeId": 34,
+      "displayName": "Procedure",
+      "sdkAssembly": "Artech.Genexus.Common",
+      "sdkType": "Artech.Genexus.Common.Objects.Procedure",
+      "writeSupported": true,
+      "structured": false,
+      "isComponent": false,
+      "sections": [
+        { "key": "source", "part": "ProcedurePart", "kind": "source" },
+        { "key": "rules", "part": "Rules", "kind": "source" },
+        { "key": "conditions", "part": "Conditions", "kind": "source" }
+      ]
+    },
+    {
+      "key": "webpanel",
+      "entityTypeId": 43,
+      "displayName": "WebPanel",
+      "sdkAssembly": "Artech.Genexus.Common",
+      "sdkType": "Artech.Genexus.Common.Objects.WebPanel",
+      "writeSupported": true,
+      "structured": false,
+      "isComponent": false,
+      "sections": [
+        { "key": "events", "part": "Events", "kind": "source" },
+        { "key": "rules", "part": "Rules", "kind": "source" },
+        { "key": "conditions", "part": "Conditions", "kind": "source" },
+        { "key": "layout", "part": "WebForm", "kind": "editable" }
+      ]
+    },
+    {
+      "key": "webcomponent",
+      "entityTypeId": 43,
+      "displayName": "WebPanel",
+      "sdkAssembly": "Artech.Genexus.Common",
+      "sdkType": "Artech.Genexus.Common.Objects.WebPanel",
+      "writeSupported": true,
+      "structured": false,
+      "isComponent": true,
+      "sections": [
+        { "key": "events", "part": "Events", "kind": "source" },
+        { "key": "rules", "part": "Rules", "kind": "source" },
+        { "key": "conditions", "part": "Conditions", "kind": "source" },
+        { "key": "layout", "part": "WebForm", "kind": "editable" }
+      ]
+    },
+    {
+      "key": "api",
+      "entityTypeId": 86,
+      "displayName": "API",
+      "sdkAssembly": "Artech.Genexus.Common",
+      "sdkType": "Artech.Genexus.Common.Objects.API",
+      "writeSupported": true,
+      "structured": false,
+      "isComponent": false,
+      "sections": [
+        { "key": "source", "part": "ServiceGroupSource", "kind": "source" },
+        { "key": "events", "part": "Events", "kind": "source" }
+      ]
+    },
+    {
+      "key": "dso",
+      "entityTypeId": 161,
+      "displayName": "DSO",
+      "sdkAssembly": "Artech.Genexus.Common",
+      "sdkType": "Artech.Genexus.Common.Objects.DesignSystem",
+      "writeSupported": true,
+      "structured": false,
+      "isComponent": false,
+      "sections": [
+        { "key": "tokens", "part": "DesignTokens", "kind": "source" },
+        { "key": "styles", "part": "DesignStyles", "kind": "source" },
+        { "key": "elements", "part": "DesignElements", "kind": "source" },
+        { "key": "source", "part": "DesignStyles", "kind": "source" }
+      ]
+    },
+    {
+      "key": "usercontrol",
+      "entityTypeId": 147,
+      "displayName": "UserControl",
+      "sdkAssembly": "Artech.Genexus.Common",
+      "sdkType": "Artech.Genexus.Common.Objects.UserControl",
+      "writeSupported": true,
+      "structured": false,
+      "isComponent": false,
+      "sections": [
+        { "key": "properties", "part": "UserControlPropertiesPart", "kind": "source" },
+        { "key": "template", "part": "UserControlScreenTemplatePart", "kind": "source" },
+        { "key": "source", "part": "UserControlScreenTemplatePart", "kind": "source" }
+      ]
+    },
+    {
+      "key": "transaction",
+      "entityTypeId": 39,
+      "displayName": "Transaction",
+      "sdkAssembly": "Artech.Genexus.Common",
+      "sdkType": "Artech.Genexus.Common.Objects.Transaction",
+      "writeSupported": true,
+      "structured": true,
+      "isComponent": false,
+      "sections": [
+        { "key": "structure", "part": "Structure", "kind": "structure" },
+        { "key": "rules", "part": "Rules", "kind": "source" },
+        { "key": "events", "part": "Events", "kind": "source" }
+      ]
+    },
+    {
+      "key": "sdt",
+      "entityTypeId": 36,
+      "displayName": "SDT",
+      "sdkAssembly": "Artech.Genexus.Common",
+      "sdkType": "Artech.Genexus.Common.Objects.SDT",
+      "writeSupported": true,
+      "structured": true,
+      "isComponent": false,
+      "sections": [
+        { "key": "structure", "part": "SDTStructure", "kind": "structure" }
+      ]
+    },
+    {
+      "key": "dataselector",
+      "entityTypeId": 88,
+      "displayName": "DataSelector",
+      "sdkAssembly": "Artech.Genexus.Common",
+      "sdkType": "Artech.Genexus.Common.Objects.DataSelector",
+      "writeSupported": true,
+      "structured": true,
+      "isComponent": false,
+      "sections": [
+        { "key": "structure", "part": "DataSelectorStructure", "kind": "structure" }
+      ]
+    }
+  ],
+  "entityTypeNames": {
+    "34": "Procedure",
+    "35": "Report",
+    "36": "SDT",
+    "38": "Theme",
+    "39": "Transaction",
+    "43": "WebPanel",
+    "44": "WorkPanel",
+    "57": "Conditions",
+    "62": "Documentation",
+    "64": "Events",
+    "65": "Help",
+    "69": "Rules",
+    "72": "Variables",
+    "74": "WebForm",
+    "82": "Layout",
+    "100": "Module",
+    "147": "UserControl",
+    "161": "DSO"
+  },
+  "modify": {
+    "$comment": "EntityTypeId -> typeKey accepted by gx_modify (its numeric 'type' param). Curated subset of objectTypes (collisions resolved to the non-component key). Kept explicit to preserve current behavior; a contract test asserts every value is a real objectType key.",
+    "entityTypeToKey": {
+      "34": "procedure",
+      "36": "sdt",
+      "39": "transaction",
+      "43": "webpanel",
+      "147": "usercontrol",
+      "161": "dso"
+    }
+  },
+  "read": {
+    "$comment": "Used by gx_read to locate a sub-component part. componentTypeBySection maps a section name to the sub-component EntityTypeId; defaultSectionByType picks a section when none is given; fallbackSection is the last resort.",
+    "componentTypeBySection": {
+      "source": 69,
+      "rules": 69,
+      "events": 64,
+      "layout": 74,
+      "variables": 72
+    },
+    "defaultSectionByType": {
+      "34": "source",
+      "43": "events",
+      "147": "source"
+    },
+    "fallbackSection": "source"
+  }
+}

@@ -97,6 +97,8 @@ See `docs/genexus-for-agents.md` for the full setup guide.
 
 If you discover something new about the project environment during a session (a new path, an undocumented API, unexpected SQL structure), record it using the project memory system.
 
+**Project-specific knowledge** (KB paths, object locations, new objects created, SQL findings, deploy paths, naming patterns) goes into `CLAUDE.local.md` at the project root — not in memory. That file is local-only (`*.local.*` is gitignored) and is the single source of truth for the active project's context. Update it proactively whenever you learn something that would help a future session understand the environment faster.
+
 ## Project environment variables
 
 | Variable | Purpose |

@@ -1,0 +1,14 @@
+# Build artifacts — TypeScript (esbuild) + C# worker (dotnet) outputs
+dist/
+
+# C# worker/test build output (NOTE: top-level bin/ holds TS source — do not ignore that)
+worker/**/bin/
+worker/**/obj/
+
+# Test / coverage
+coverage/
+TestResults/
+*.user
+
+# Local dev scratch (raw JSON-RPC probe, etc.)
+_*.mjs
