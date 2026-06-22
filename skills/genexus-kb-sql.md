@@ -1,9 +1,9 @@
 ---
 name: genexus-kb-sql
-description: GeneXus Knowledge Base SQL specialist — direct KB access via SQL and PowerShell, bypassing the IDE. Covers EntityType mapping, GZip blob format, read/write scripts. Use nexa (gxnext/MCP) when the GeneXus IDE is available.
+description: GeneXus Knowledge Base SQL specialist — direct KB access via SQL and PowerShell. Covers EntityType mapping, GZip blob format, read/write scripts. Use gx18-mcp tools (gx_find, gx_read, gx_sql) as the primary path; fall back to raw SQL + PowerShell when needed.
 ---
 
-> **Supplement to nexa:** Este skill é o caminho alternativo para acesso ao KB quando o IDE não está disponível. Para criar ou modificar objetos GeneXus via agente, prefira o skill **nexa** com gxnext/MCP — é mais seguro e oficial.
+> **Supplement to gx18-mcp:** Para acesso ao KB via agente, **prefira as tools do gx18-mcp** (`gx_find`, `gx_read`, `gx_sql`, `gx_create`, `gx_modify`) — são mais seguras e preservam o autor correto. Este skill cobre o acesso SQL direto + PowerShell para casos avançados ou quando o MCP não estiver disponível.
 
 # GeneXus KB SQL — Direct KB Read/Write Specialist
 

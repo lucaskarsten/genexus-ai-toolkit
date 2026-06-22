@@ -9,6 +9,12 @@
     "model-context-protocol"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lucaskarsten/genexus-ai-toolkit.git",
+    "directory": "packages/gx18-mcp"
+  },
+  "homepage": "https://github.com/lucaskarsten/genexus-ai-toolkit/tree/master/packages/gx18-mcp",
   "bin": {
     "gx18-mcp": "dist/bin/gx18-mcp.js"
   },

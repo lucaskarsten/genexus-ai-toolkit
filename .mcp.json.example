@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "gx18": {
+      "command": "npx",
+      "args": ["-y", "gx18-mcp", "start"]
+    }
+  }
+}

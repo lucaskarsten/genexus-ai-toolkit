@@ -802,10 +802,127 @@ function injectCss(id, css) {
 
 ---
 
+## GeneXus Language Quick Reference (from nexa)
+
+> Digest of the most-used constructs. For the full spec, load `skills/nexa/nexa/` or consult the reference files listed below.
+
+### Attribute type markers (Transactions)
+
+| Marker | Meaning | Example |
+|---|---|---|
+| `Name*` | Primary Key — unique, not null, must come first | `CustomerId*` |
+| `Name!` | Description attribute — displayed in prompts and lists | `CustomerName!` |
+| `Name?` | Nullable — allows null; forbidden on PK | `CustomerPhone?` |
+| `Name []` | Foreign Key — infers type from referenced transaction | `CountryId []` |
+| `Formula = '...'` | Computed attribute — not stored unless `Redundant = 'True'` | `TotalAmount` |
+
+Full reference: `skills/nexa/nexa/references/common-attribute-types.md`
+
+### Core rules (Transactions and Procedures)
+
+```genexus
+Parm(in: &CustomerId, out: &CustomerName);     // object signature
+CustomerName = !'Active' IF CustomerStatus = 1; // Assign
+Default(InvoiceDate, &Today);                   // Default value
+Error('Price must be positive') IF ProductPrice <= 0;  // Validation
+Msg('Discount applied') IF DiscountPercentage > 0;     // Info message
+NoAccept(CustomerPassword) IF &IsGuest;         // Read-only field
+Serial(InvoiceItemId, InvoiceLastLine, 1);      // Sequential numbering
+Add(TotalAmount, ItemAmount);                   // Accumulate
+Subtract(StockQuantity, OrderQuantity);         // Decrement
+Error_Handler('HandleError');                   // Proc error handler
+```
+
+Full reference: `skills/nexa/nexa/references/common-rules.md`
+
+### Rule triggers (Transaction lifecycle)
+
+| Trigger | When |
+|---|---|
+| `BeforeValidate` | Before the validation process starts |
+| `BeforeInsert` / `BeforeUpdate` / `BeforeDelete` | Before each CRUD operation |
+| `AfterValidate` | After user confirmation, before CRUD |
+| `AfterInsert` / `AfterUpdate` / `AfterDelete` | Immediately after each CRUD |
+| `AfterComplete` | After the Logical Unit of Work commits |
+| `AfterLevel [level <attribute>]` | After completing a sub-level |
+
+```genexus
+UserRegistrationDate = &Today ON BeforeInsert;
+Msg(Format('Saved: %1', CustomerId)) ON AfterComplete;
+```
+
+### Common commands
+
+```genexus
+// For Each
+For Each Customer
+    Where Customer.Active = 1
+    &Count += 1
+EndFor
+
+// If
+If &Value > 0
+    Do 'ProcessPositive'
+Else
+    Do 'ProcessNegative'
+EndIf
+
+// Do Case
+Do Case
+    Case &Status = 'A'
+        Do 'HandleActive'
+    Case &Status = 'I'
+        Do 'HandleInactive'
+    Otherwise
+        Do 'HandleUnknown'
+EndCase
+
+// Call
+PrcMyProcedure(&Param1, &Param2)
+&Result = PrcMyFunction(&Param)      // function-style (last parm is out:)
+```
+
+Full reference: `skills/nexa/nexa/references/common-commands.md`, `common-commands-foreach.md`
+
+### Data types
+
+| GeneXus type | SQL equivalent | Notes |
+|---|---|---|
+| `Numeric(n.d)` | DECIMAL(n, d) | Use `string` + `Str()` in UC — numeric truncates decimals |
+| `VarChar(n)` | VARCHAR(n) | Max 32767; for longer use LongVarChar |
+| `LongVarChar(4K)` | TEXT/NTEXT | For large text fields |
+| `Date` | DATE | No time component |
+| `DateTime` | DATETIME | Date + time |
+| `Boolean` | BIT | `True` / `False` |
+| `GUID` | UNIQUEIDENTIFIER | Generated via `GUID.NewGuid()` |
+
+Full reference: `skills/nexa/nexa/references/common-attribute-types.md`, `common-data.md`
+
+### nexa reference files (authoritative)
+
+| Topic | File |
+|---|---|
+| Attribute types (PK, FK, Formula, Redundant, Nullable) | `references/common-attribute-types.md` |
+| Rules (Parm, Assign, Default, Error, Msg, Serial, Add, Subtract) | `references/common-rules.md` |
+| Commands (For Each, If, Do Case, Sub, Call) | `references/common-commands.md`, `references/common-commands-foreach.md` |
+| Data types (Numeric, VarChar, Date, etc.) | `references/common-data.md` |
+| Extended types (HttpClient, XMLReader, File, etc.) | `references/common-extended-types.md` |
+| Collections | `references/common-collections.md` |
+| Business Components | `references/common-business-component.md` |
+| Serialization (ToJson, FromJson) | `references/common-serialization.md` |
+| Standard variables (&Today, &GxErrCode, etc.) | `references/common-standard-variables.md` |
+| Transaction object spec | `references/object-transaction.md` |
+| Procedure object spec | `references/object-procedure-rules.md` |
+| SDT object spec | `references/object-structured-data-type.md` |
+| Panel (WebPanel / WebComponent) | `references/object-panel.md` |
+
+---
+
 ## Cross-references
 
 - **UC deep dive** (full lifecycle, AfterShow patterns, MutationObserver): `skills/genexus-uc.md`
 - **KB SQL** (EntityType map, GZip blob read/write, PowerShell scripts): `skills/genexus-kb-sql.md`
+- **nexa full spec** (authoritative language reference): `skills/nexa/nexa/` — `claude --add-dir skills/nexa/nexa`
 - **BEM + DSO detailed guide**: `docs/bem-css-naming.md`
 - **Runtime API reference** (gx.dom, gx.fx.obs, gx.grid, gx.popup): `docs/runtime-api-reference.md`
 - **Common pitfalls** (top 10 with symptoms and fixes): `docs/common-pitfalls.md`

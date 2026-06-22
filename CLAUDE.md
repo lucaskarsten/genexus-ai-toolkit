@@ -13,12 +13,13 @@ The toolkit docs and skills are **tactical supplements** — they cover GeneXus 
 | Concern | Use |
 |---|---|
 | Object syntax, rules, events, properties | **nexa** |
-| Build, gxnext/MCP workflow, KB models | **nexa** |
+| Build workflow, KB models | **nexa** |
+| Read/write KB GeneXus 18 (create, modify, import, export) | **gx18-mcp tools** (`gx_find`, `gx_read`, `gx_create`, `gx_modify`, `gx_import`) |
 | AfterShow patterns A/B, init-guard, MutationObserver | `docs/` + `skills/genexus-uc.md` |
 | Runtime API (gx.dom, gx.fx.obs pub/sub, gx.grid) | `docs/runtime-api-reference.md` |
 | BEM CSS / DSO conventions for this project | `docs/bem-css-naming.md` |
 | Real-world GX18 pitfalls | `docs/common-pitfalls.md` |
-| Direct KB SQL + PowerShell access (no IDE) | `skills/genexus-kb-sql.md` |
+| Direct KB SQL queries (exploration, advanced) | `gx_sql` tool or `skills/genexus-kb-sql.md` |
 | Conflict between nexa and toolkit | **nexa prevails** |
 | Writing/modifying any skill or doc | `docs/llm-engineering.md` — checklist first |
 
@@ -27,12 +28,12 @@ The toolkit docs and skills are **tactical supplements** — they cover GeneXus 
 Consult sources in this order:
 
 1. **nexa** — platform rules, object syntax, canonical GeneXus patterns (load first, always)
-2. **`output/`** — check for similar suggestions already generated
-3. **`examples/`** — find reusable templates and working UC examples
-4. **`docs/`** — project-specific tactical knowledge (pitfalls, runtime API, BEM, UC guide)
-5. **`$env:GX_KB_PATH`** — GeneXus KB root (original object sources)
-6. **`$env:GX_COMPILER_OUTPUT`** — compiled/deployed files (read-only reference)
-7. **SQL on `$env:GX_KB_DATABASE`** — real object and attribute structure
+2. **gx18-mcp tools** — read existing KB objects (`gx_find`, `gx_read`, `gx_get`) before creating new ones; always check what already exists
+3. **`output/`** — check for similar suggestions already generated
+4. **`examples/`** — find reusable templates and working UC examples
+5. **`docs/`** — project-specific tactical knowledge (pitfalls, runtime API, BEM, UC guide)
+6. **`$env:GX_KB_PATH`** — GeneXus KB root (original object sources)
+7. **`$env:GX_COMPILER_OUTPUT`** — compiled/deployed files (read-only reference)
 
 ## Output — save suggestions to `output/`
 
@@ -63,35 +64,31 @@ output/<CATEGORY>/<ObjectName>_<description>.<ext>
 
 ## GeneXus for Agents (MCP)
 
-This project includes `.mcp.json` with the `gxnext` server pre-configured (`http://localhost:8001/mcp`). Requires GeneXus Next 2026.01+ running.
+This project uses **gx18-mcp** as the primary MCP server for all KB operations — read and write. It connects directly to GeneXus 18 via SQL (reads) and the native SDK (writes), preserving the correct Windows user identity.
 
-**Check connection:** `/mcp` → should show `gxnext ✅ connected`
+**Check connection:** `/mcp` → should show `gx18 ✅ connected`
 
-**When to use gxnext vs. file output:**
-- Use `gxnext` tools to create/modify objects directly in the KB (Transaction, WebPanel, Procedure, build) — nexa's hierarchical `src/` paths apply here
-- Use the `output/` file approach when the user wants to review before applying — flat `output/<CATEGORY>/` paths are local staging (gitignored)
+**Workflow — reading:**
+- Use `gx_find` / `gx_list` to locate objects
+- Use `gx_read` / `gx_properties` / `gx_structure` to inspect source and metadata
+- Use `gx_sql` for ad-hoc KB queries
+
+**Workflow — writing:**
+- Use `gx_create` / `gx_modify` to create or edit objects (requires `confirm: true`)
+- Use `gx_export` → edit → `gx_import` for sections the SDK write path can't reach (e.g., UC `AfterShow`/`Methods` scripts)
+- When in doubt: generate to `output/` first, let the user review, then apply via `gx_import` or IDE
 
 **nexa skill:** located at `skills/nexa/nexa/` (submodule from the official [genexuslabs/genexus-skills](https://github.com/genexuslabs/genexus-skills) repo). Register with `claude --add-dir skills/nexa/nexa`. The skill activates automatically when GeneXus objects or KB operations are mentioned.
 
 See `docs/genexus-for-agents.md` for the full setup guide.
 
-## Ferramentas gxnext: regras de segurança
+## gxnext — somente leitura, emergência
 
-**Nunca chame as ferramentas abaixo sem confirmação explícita do usuário na mensagem atual.** Cada chamada cria revisões na KB para todos os objetos processados — mesmo que o conteúdo não mude. Isso polui o histórico do Team Development e é irreversível sem revert manual.
+**gxnext MCP não deve ser usado para escrita em KBs GeneXus 18.** Em 17/06/2026, o uso de ferramentas de escrita gxnext gerou ~76 mil revisões espúrias no Team Development — irreversível sem recovery SQL manual de 6 horas.
 
-| Ferramenta | Risco |
-|---|---|
-| `import_text_to_kb` | Cria revisões na KB para todos os objetos importados |
-| `import_knowledge_manager` | Importação em massa na KB |
-| `reorganize` | Reescreve estrutura interna da KB |
-| `create_or_impact_database` | Altera banco de dados de deploy |
-| `set_kb_property` / `reset_kb_property` | Altera configurações da KB |
-| `install_module` / `update_module` / `restore_module` / `add_modules_server` | Instala/atualiza módulos na KB |
-| `build_all` / `build_one` / `compile_object` | Compila objetos (salva implicitamente na KB) |
+Ferramentas seguras (não abrem sessão KB): `export_kb_to_text`, `validate_kb_text_files`, `get_kb_property`, `search_modules`.
 
-**Ferramentas seguras (somente leitura):** `export_kb_to_text`, `export_knowledge_manager`, `validate_kb_text_files`, `get_kb_property`, `search_modules`, `open_knowledge_base`, `close_knowledge_base`.
-
-**Regra:** se o usuário não pediu explicitamente uma operação de escrita nesta mensagem, não a execute. Use `output/` como staging e deixe o usuário aplicar manualmente via IDE.
+**Toda escrita → gx18-mcp tools ou IDE GX18.** Para o guia completo de segurança e a tabela de ferramentas proibidas, veja `docs/genexus-for-agents.md`.
 
 ## Learnings
 
@@ -109,5 +106,6 @@ If you discover something new about the project environment during a session (a 
 | `GX_KB_SERVER` | SQL Server instance for KB access |
 | `GX_KB_DATABASE` | KB database name |
 | `GX_PROJECT_PREFIX` | Prefix used in generated object names |
+| `GX18_READONLY` | Set to `true` to disable all write tools |
 
 See `.env` for the current values. Copy `.env.example` to `.env` if it does not exist.

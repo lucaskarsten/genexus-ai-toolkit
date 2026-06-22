@@ -38,7 +38,7 @@ impossible.
 | | gxnext (GX Next 2026) | gx18-mcp |
 |---|---|---|
 | Process identity | service account → KB `UserId 322` | child of the dev's shell → Windows user |
-| KB user resolved | foreign | `321 = COMPUSOFT\lucas.karsten` (real dev) |
+| KB user resolved | foreign | `DOMAIN\developer` (real dev — your Windows user) |
 | Revisions on open | tens of thousands (storm) | **0** (`AvoidStartupUpdate=true`) |
 | Post-save check | none | asserts `UserId` on every save |
 
@@ -93,6 +93,11 @@ Opening a GX18 KB from a process **outside** the install dir requires, in order:
 | `gx_export` | Export an object to a real `.xpz` (Knowledge Manager) — also validates it |
 | `gx_import` | Import a `.xpz` via the native Knowledge Manager (`ImportFile`). Requires `confirm:true`. UserId-verified. The export→edit→import round-trip reaches sections the SDK write path can't (e.g. UC `AfterShow`/`Methods` scripts in CDATA) |
 | `gx_set_property` / `gx_rename` / `gx_validate` / `gx_build` | Not yet implemented (stubs) |
+
+### Config
+| Tool | Purpose |
+|---|---|
+| `gx_save_config` | Update KB paths (`GX_KB_PATH`, `GX_KB_DATABASE`, etc.) and restart the worker — usable from chat without opening the browser UI |
 
 ---
 

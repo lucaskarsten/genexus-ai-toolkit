@@ -1,314 +1,211 @@
 # GeneXus for Agents — Setup Guide
 
-GeneXus for Agents (disponível desde GeneXus Next 2026.01) expõe o Knowledge Base via MCP — permitindo que agentes de IA criem objetos, modifiquem propriedades, executem builds e consultem metadados por linguagem natural.
-
-Este toolkit inclui configuração pronta para **Claude Code**, **OpenAI Codex CLI**, e **VS Code / Cursor**.
+This guide covers how to connect AI clients to your GeneXus 18 Knowledge Base using **gx18-mcp**, and how to load the GeneXus language skill (nexa) for richer context.
 
 ---
 
-## Pré-requisitos
+## 1. gx18-mcp — Primary MCP server
 
-- **GeneXus Next 2026.01** ou posterior
-- Este toolkit clonado com submodules: `git clone --recurse-submodules ...`
-- `.env` configurado: copie `.env.example` → `.env` e preencha `GX_DOCKER_FOLDER`
+`gx18-mcp` is the MCP server for GeneXus 18. It connects directly to the KB via SQL (reads) and the native GX18 SDK (writes), using your Windows identity — no foreign user IDs, no revision storms.
 
----
+### Setup
 
-## 1. Iniciar o GeneXus MCP Server
+**Option A — Standalone exe (no Node.js required):**
 
-### Opção A — Docker (recomendado)
+1. Download and extract `GeneXusAIToolkit-windows.zip` from the [latest release](https://github.com/lucaskarsten/genexus-ai-toolkit/releases/latest)
+2. Double-click `GeneXusAIToolkit.exe` → browser opens with the setup UI
+3. Fill in KB paths (or click **Auto-detectar KBs**)
+4. Go to **Connections** → click **Register** for your AI client
+5. Restart the client — `gx18 ✅ connected`
 
-Configure o path do Docker no `.env`:
+**Option B — npm:**
 
-```
-GX_DOCKER_FOLDER=C:\Users\você\Downloads\gx-desktop-web-1.2.48-r117
-```
-
-Depois suba com o script do toolkit:
-
-```powershell
-.\scripts\start-gxnext.ps1
+```bash
+npm install -g gx18-mcp
+gx18-mcp setup
 ```
 
-O script lê `GX_DOCKER_FOLDER` do `.env`, sobe o stack (`gxweb + gxms + sql + opensearch`) e aguarda a IDE ficar disponível.
+**Option C — From this repo:**
 
-| Endpoint | URL |
-|---|---|
-| IDE | http://localhost:3000 |
-| MCP | http://localhost:**8001**/mcp |
+```bash
+cd packages/gx18-mcp
+npm install && npm run build
+node dist/bin/gx18-mcp.js ui
+```
 
-### Opção B — GeneXus Next nativo
+### Manual MCP registration
 
-Abra o GeneXus Next normalmente. O `GeneXus.Services.Host.exe` sobe automaticamente.
+If you prefer to register manually instead of using the UI Connections tab:
 
-| Endpoint | URL |
-|---|---|
-| IDE | (app desktop) |
-| MCP | http://localhost:**1989**/mcp |
+**Claude Code:**
+```bash
+# Copy .mcp.json.example → .mcp.json and edit KB path, or:
+claude mcp add gx18 -- node /path/to/gx18-mcp/dist/bin/gx18-mcp.js start
+```
 
-> Se usar nativo, mude a URL de MCP para `http://localhost:1989/mcp` nos configs abaixo.
-
-**Configurar pasta de KBs (opcional):**
-
-Crie `GeneXusNext\bl\settings-overrides.json`:
-
+**Claude Desktop** — add to `claude_desktop_config.json`:
 ```json
 {
-  "ProjectsFolder": "C:\\KBs",
-  "ProjectsDataFolder": "C:\\KBs",
-  "SqlServerDefaultInstance": ".\\SQLEXPRESS"
-}
-```
-
----
-
-## 2. Claude Code
-
-Este toolkit já inclui `.mcp.json` na raiz. O servidor é detectado automaticamente ao abrir o projeto.
-
-**Verificar conexão:**
-
-```
-/mcp
-```
-
-Você deve ver `gxnext ✅ connected`.
-
-**Adicionar manualmente (se necessário):**
-
-```bash
-# Projeto — Docker
-claude mcp add --transport http gxnext http://localhost:8001/mcp
-
-# Projeto — nativo
-claude mcp add --transport http gxnext http://localhost:1989/mcp
-
-# Global (todos os projetos)
-claude mcp add --scope user --transport http gxnext http://localhost:1989/mcp
-```
-
-**Instalar a skill nexa:**
-
-```bash
-claude --add-dir skills/nexa/nexa
-```
-
----
-
-## 3. OpenAI Codex CLI
-
-Este toolkit inclui `codex.toml` na raiz, que é lido automaticamente pelo Codex CLI.
-
-```bash
-# Instalar Codex CLI (uma vez)
-npm install -g @openai/codex
-
-# Executar no diretório do toolkit
-codex
-```
-
-O `codex.toml` já aponta para `http://localhost:8001/mcp`. Se usar GeneXus Next nativo, edite a URL:
-
-```toml
-# codex.toml
-[mcp_servers.gxnext]
-type = "http"
-url  = "http://localhost:1989/mcp"
-```
-
-**Contexto GeneXus para o Codex:** copie os skills para o contexto da sessão ou inclua via `--context`:
-
-```bash
-codex --context skills/genexus-expert.md "Crie uma Transaction chamada Product"
-```
-
----
-
-## 4. VS Code (GitHub Copilot Agent) / Cursor
-
-Este toolkit inclui `.vscode/mcp.json` com a configuração do `gxnext`.
-
-**VS Code:** Copilot agent mode detecta `.vscode/mcp.json` automaticamente. Abra o projeto e verifique em **MCP Servers** no painel do Copilot.
-
-**Cursor:** Crie `.cursor/mcp.json` com o mesmo conteúdo de `.vscode/mcp.json`:
-
-```bash
-cp .vscode/mcp.json .cursor/mcp.json
-```
-
-```json
-{
-  "servers": {
-    "gxnext": {
-      "type": "http",
-      "url": "http://localhost:8001/mcp"
+  "mcpServers": {
+    "gx18": {
+      "command": "C:\\Tools\\GeneXusAIToolkit\\GeneXusAIToolkit.exe",
+      "args": ["start"]
     }
   }
 }
 ```
 
+**VS Code / Cursor** — add to `.vscode/mcp.json`:
+```json
+{
+  "servers": {
+    "gx18": {
+      "type": "stdio",
+      "command": "C:\\Tools\\GeneXusAIToolkit\\GeneXusAIToolkit.exe",
+      "args": ["start"]
+    }
+  }
+}
+```
+
+**OpenAI Codex CLI** — `codex.toml` in this repo is pre-configured:
+```toml
+[mcp_servers.gx18]
+type = "stdio"
+command = "npx"
+args   = ["-y", "gx18-mcp", "start"]
+```
+
+### Environment variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `GX_KB_PATH` | — | GeneXus KB root folder |
+| `GX_KB_SERVER` | `(localdb)\MSSQLLocalDB` | SQL Server instance (keep the parentheses) |
+| `GX_KB_DATABASE` | — | KB database name |
+| `GX_18_DIR` | auto-detected | GeneXus 18 install folder |
+| `GX18_READONLY` | `false` | Set `true` to disable all write tools |
+| `ORACLE_HOST/PORT/SERVICE/USER/PASSWORD` | — | Oracle connection (for `gx_db_query`) |
+
+Copy `.env.example` → `.env` and set `GX_KB_PATH`, `GX_KB_DATABASE`.
+
+### Tool reference
+
+| Tool | Type | What it does |
+|---|---|---|
+| `gx_find` / `gx_list` / `gx_get` | Read | Search and list KB objects |
+| `gx_read` / `gx_properties` / `gx_structure` | Read | Source code, properties, structure |
+| `gx_whoami` | Read | Current Windows user → KB UserId |
+| `gx_sql` | Read | Direct SQL against the KB |
+| `gx_db_connections` / `gx_db_query` | Read | Query KB or Oracle via named connections |
+| `gx_create` / `gx_modify` | Write | Create or edit objects via the GX18 SDK |
+| `gx_export` / `gx_import` | Write | Export/import `.xpz` (round-trip for UC scripts) |
+| `gx_save_config` | Config | Update KB paths and restart the worker |
+
+Write tools require `confirm: true`. Architecture details: [docs/gx18-mcp.md](gx18-mcp.md).
+
+### Typical workflow
+
+```
+Prompt
+  ↓
+gx_find / gx_read   ← locate and inspect existing objects first
+  ↓
+gx_create / gx_modify  ← write directly to KB (SDK, UserId-verified)
+  OR
+output/ → IDE import   ← generate locally, user reviews, applies via IDE
+  ↓
+Build in GeneXus 18 IDE (gx_build is still a stub)
+```
+
+### Troubleshooting
+
+**Worker doesn't start:**
+```bash
+node dist/bin/gx18-mcp.js doctor
+```
+
+**Can't connect to SQL Server:** check that `GX_KB_SERVER` includes parentheses: `(localdb)\MSSQLLocalDB`.
+
+**Write fails with `UserId` assertion:** the KB is open in another process using a different Windows user. Close GeneXus IDE and retry.
+
 ---
 
-## 5. ChatGPT Desktop
+## 2. nexa — GeneXus language authority
 
-ChatGPT Desktop suporta MCP via configuração manual no app.
+`skills/nexa/` is a git submodule from [genexuslabs/genexus-skills](https://github.com/genexuslabs/genexus-skills) — the authoritative GeneXus language reference maintained by GeneXus Labs. It covers 24+ object types, all rules/events/properties, and the full language spec.
 
-1. Abra **Settings → Beta features → Model Context Protocol**
-2. Adicione servidor:
-   - **Name:** gxnext
-   - **Type:** HTTP
-   - **URL:** `http://localhost:8001/mcp`
-3. Reinicie o ChatGPT Desktop
+**When to load nexa:** any task involving Transaction structure, Procedure rules, SDT design, domain types, KB model decisions, or anything that requires the authoritative GeneXus language spec.
+
+```bash
+# Register with Claude Code (once per session or project)
+claude --add-dir skills/nexa/nexa
+
+# Update submodule to latest
+git submodule update --remote skills/nexa
+```
+
+The skill activates automatically when GeneXus object or KB operations are mentioned. For quick GX18 patterns (JS ES5, AfterShow, DSO), `skills/genexus-expert.md` is sufficient.
 
 ---
 
-## 6. Fluxo de trabalho típico
+## 3. gxnext — optional, read-only only
 
-```
-Prompt natural (qualquer agente)
-    ↓
-Skill nexa (contexto GeneXus)
-    ↓
-Ferramentas gxnext via MCP
-  └─ criar/modificar objetos no KB
-  └─ configurar propriedades
-  └─ executar build
-    ↓
-GeneXus Next compila → resultado ao agente
-```
+The official GeneXus MCP server (GeneXus Next 2026+). **Not required** for gx18-mcp workflow. Use it only if you also run GeneXus Next and need its specific tooling.
 
-**Exemplos de prompts:**
+> **Critical — do NOT use gxnext write tools against a GeneXus 18 KB.** On 2026-06-17, using write tools on a GX18 KB generated ~76,000 false `EntityVersion` rows in Team Development — reversible only with 6 hours of SQL recovery work.
 
-```
-Crie uma Transaction chamada Customer com CustomerId (autonumber), CustomerName e CustomerEmail.
+### Safe vs forbidden tools (for GX18 KBs)
 
-Adicione regra de validação em Order: TotalAmount não pode ser negativo.
-
-Execute o build do modelo Java para a KB atual.
-
-Liste todos os WebPanels que referenciam a Transaction Product.
-
-Crie um WebPanel WbpCustomerList com grid paginado da Transaction Customer.
-```
-
----
-
-## 7. gxnext + KB GeneXus 18 — use com cuidado
-
-É possível usar o gxnext MCP contra uma KB GeneXus 18, mas há um efeito colateral importante que você precisa entender antes.
-
-**O que acontece ao abrir a KB pelo gxnext:** O GeneXus Next usa um `UserId` interno diferente do usuário Windows da sessão. Ao abrir uma KB GX18, o servidor registra uma nova `EntityVersion` para cada objeto que processa — mesmo sem alterar o conteúdo. Isso faz o Team Development mostrar esses objetos como "modificados" pelo usuário errado.
-
-Esse comportamento foi confirmado em produção em 17/06/2026 e gerou ~76 mil revisões espúrias. O recovery custou ~6 horas de trabalho SQL direto.
-
-### Abordagem recomendada por caso de uso
-
-| O que você quer fazer | Como fazer com segurança |
+| gxnext tool | Effect on GX18 KB |
 |---|---|
-| **Analisar objetos / pesquisar na KB** | `export_kb_to_text` ou SQL direto — não abrem sessão KB |
-| **Gerar código com IA e revisar** | Workflow `output/` deste toolkit — IA propõe, você aplica pelo IDE |
-| **Aplicar objetos em produção** | Exporte para XPZ pelo **IDE GX18** (Knowledge Manager → Export), aplique numa **KB clone**, valide, depois importe na produção |
-| **Usar ferramentas de escrita diretamente** | Faça **backup SQL completo antes** e saiba que o Team Development vai mostrar objetos modificados pelo usuário do gxnext — reversível, mas trabalhoso |
+| `export_kb_to_text` | ✅ Safe — reads SQL directly, no session opened |
+| `validate_kb_text_files` | ✅ Safe — validates local files only |
+| `get_kb_property` | ✅ Safe — config read |
+| `search_modules` | ✅ Safe — metadata read |
+| `open_knowledge_base` | ⚠️ Creates revision rows for every object processed |
+| `import_text_to_kb` | ⚠️ Opens KB + writes objects with wrong UserId |
+| `import_knowledge_manager` | ⚠️ Mass import + KB open |
+| `build_all` / `build_one` / `compile_object` | ⚠️ Compiles + saves implicitly |
+| `reorganize` | ⚠️ Rewrites internal KB structure |
+| `create_or_impact_database` | ⚠️ Modifies deploy database |
+| `set_kb_property` / `reset_kb_property` | ⚠️ Alters KB config |
+| `install_module` / `update_module` / `restore_module` | ⚠️ Installs/updates modules |
 
-### O que cada ferramenta faz na KB GX18
+**Rule:** if the user did not explicitly request a write operation in this message, do not call it. Use `output/` for staging; let the user apply via gx18-mcp or the IDE.
 
-| Ferramenta gxnext | Efeito em KB GX18 |
-|---|---|
-| `export_kb_to_text` | ✅ Segura — lê direto do SQL, não abre sessão |
-| `validate_kb_text_files` | ✅ Segura — só valida arquivos locais |
-| `get_kb_property` | ✅ Segura — leitura de configuração |
-| `open_knowledge_base` | ⚠️ Cria revisões em todos os objetos processados |
-| `import_text_to_kb` | ⚠️ Abre KB + grava objetos com UserId do gxnext |
-| `import_knowledge_manager` | ⚠️ Importação em massa + abertura da KB |
-| `build_all` / `build_one` | ⚠️ Compila e salva implicitamente na KB |
-| `reorganize` | ⚠️ Reescreve estrutura interna da KB |
-| `create_or_impact_database` | ⚠️ Altera banco de deploy |
-
-> **Regra de ouro:** nunca use ferramentas de escrita na KB de produção sem backup SQL prévio. Se o dano já ocorreu, consulte [docs/kb-sql-reference.md → Recovery section](kb-sql-reference.md).
-
----
-
-## 8. Troubleshooting — servidor gxnext não responde
-
-Se as ferramentas gxnext retornam "MCP transport dropped" ou não respondem, o servidor pode ter travado sem encerrar.
-
-**Diagnosticar:**
+### Starting gxnext (Docker)
 
 ```powershell
-netstat -an | findstr 8001
+.\scripts\optional\start-gxnext.ps1
 ```
 
-Se não aparecer nenhuma linha, a porta não está escutando.
+Reads `GX_DOCKER_FOLDER` and `GX_MCP_PORT` from `.env`. Waits for the IDE (`localhost:3000`) and MCP (`localhost:8001`) to be ready.
 
-**Iniciar manualmente (GeneXus Next nativo):**
+### Registering gxnext in Claude Code (optional)
 
-```powershell
-cd "C:\Users\<seu-usuario>\AppData\Local\Programs\GeneXus\GeneXus Next"
-.\bl\GeneXus.Services.Host.exe
+```bash
+# Copy .mcp.json.example → .mcp.json, then uncomment the gxnext-readonly entry
+# Or add manually:
+claude mcp add --transport http gxnext-readonly http://localhost:8001/mcp
 ```
 
-Aguarde ~15 segundos. O servidor está pronto quando logar:
+### import_text_to_kb — clean temp directory
+
+If you ever need `import_text_to_kb` (only on GeneXus Next KBs, never GX18), use a temp directory containing **only the target files**. Importing from the project root causes MCP transport timeout from the volume of files.
 
 ```
-Now listening on: http://localhost:8001
-Application started. Press Ctrl+C to shut down.
+output/<CATEGORY>/tmp_import/
+  src/
+    <Module>/<SubModule>/TargetObject.webcomponent.layout.xml
+  src.ns/
+    Themes/TargetDSO.designsystem.main.gx
 ```
-
-> A KB configurada no `.mcp.json` é aberta automaticamente. Se for uma KB GX18, **não use nenhuma ferramenta de escrita** — consulte a seção 7 acima.
 
 ---
 
-## 9. import_text_to_kb — padrão de rootDirectory
+## References
 
-A ferramenta `import_text_to_kb` requer que o `rootDirectory` seja um diretório **limpo com apenas os arquivos a importar**. Usar o root do projeto causa "MCP server transport dropped mid-call" de forma consistente — o servidor faz timeout ao tentar indexar o diretório inteiro.
-
-**Padrão correto:**
-
-```
-1. Criar diretório temporário: output/<CATEGORIA>/tmp_import/
-2. Copiar APENAS os arquivos alvo, mantendo a estrutura src/:
-   tmp_import/
-     src/
-       <Modulo>/
-         <SubModulo>/
-           NomeDoObjeto.webcomponent.layout.xml
-     src.ns/
-       Themes/
-         NomeDoDSO.designsystem.main.gx
-3. Usar tmp_import/ como rootDirectory na chamada
-4. Deletar tmp_import/ após o import
-```
-
-**Estrutura de paths exigida dentro do rootDirectory:**
-
-| Tipo | Caminho |
-|---|---|
-| WebComponent (WBC) | `src/<Modulo>/<SubModulo>/NomeDoObjeto.webcomponent.layout.xml` |
-| WebPanel (WBP) | `src/<Modulo>/<SubModulo>/NomeDoObjeto.webpanel.layout.xml` |
-| DSO | `src.ns/Themes/NomeDoDSO.designsystem.main.gx` |
-| Procedure | `src/<Modulo>/<SubModulo>/NomeDoObjeto.procedure.gx` |
-
-> Esta ferramenta é proibida para KBs GeneXus 18 — consulte a seção 7.
-
----
-
-## 10. gxnext vs. edição manual de arquivos
-
-| Situação | Use |
-|---|---|
-| Criar/modificar objetos diretamente no KB | `gxnext` via MCP |
-| Gerar templates para revisar antes de aplicar | Skills deste toolkit → `output/` |
-| Consultar estrutura do KB via SQL | `docs/kb-sql-reference.md` |
-| Inspecionar HTML/CSS gerado pelo compilador | `GX_COMPILER_OUTPUT` + scripts |
-
-Com GeneXus Next + gxnext, não é necessário copiar-colar arquivos `.view` no IDE — o agente aplica as mudanças diretamente no KB.
-
----
-
-## Referências
-
-- [GeneXus for Agents — documentação oficial](https://wiki.genexus.com/commwiki/wiki?61619)
-- [GeneXus MCP Server](https://wiki.genexus.com/commwiki/wiki?61623)
-- [Guia de instalação Windows Native](https://wiki.genexus.com/commwiki/wiki?61624)
-- [genexuslabs/genexus-skills](https://github.com/genexuslabs/genexus-skills) — skill nexa oficial
+- [genexuslabs/genexus-skills](https://github.com/genexuslabs/genexus-skills) — nexa official skill
+- [GeneXus for Agents — official docs](https://wiki.genexus.com/commwiki/wiki?61619) (GeneXus Next)
 - [openai/codex](https://github.com/openai/codex) — Codex CLI

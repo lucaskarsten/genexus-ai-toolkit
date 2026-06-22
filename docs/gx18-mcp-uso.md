@@ -26,8 +26,8 @@ escrita via SDK GX18 com o **usuário Windows correto** (autor = você, não uma
 | Export `.xpz` de SDT recém-criado na mesma sessão | ⚠️ retorna false — [issue #10](https://github.com/lucaskarsten/genexus-ai-toolkit/issues/10) |
 | `gx_set_property`, `gx_rename`, `gx_validate`, `gx_build` | ⛔ stubs ([#11](https://github.com/lucaskarsten/genexus-ai-toolkit/issues/11), [#12](https://github.com/lucaskarsten/genexus-ai-toolkit/issues/12)) |
 
-**Toda escrita já foi validada no clone descartável** (`GX_KB_FoccoLojas_SPIKE`) com autor correto
-(UserId 321) e exatamente 1 revisão. Nunca foi testada na KB live.
+**Toda escrita já foi validada no clone descartável** com autor correto
+(UserId real do Windows) e exatamente 1 revisão. Sempre teste no clone antes de gravar na KB live.
 
 ---
 
@@ -112,8 +112,8 @@ node dist/bin/gx18-mcp.js stop     # encerra o worker graciosamente
 ```
 [OK] Worker exe: ...Gx18Mcp.SdkWorker.exe
 [OK] GX18 dir:   C:\Program Files (x86)\GeneXus\GeneXus18U6
-[OK] KB path:    C:\KBs\FoccoLojas_02
-[OK] Worker ping:  user: COMPUSOFT\lucas.karsten  sdkReady/sqlReady
+[OK] KB path:    C:\KBs\MyProject
+[OK] Worker ping:  user: DOMAIN\developer  sdkReady/sqlReady
 [OK] SQL EntityVersion rows: <n>
 ```
 
@@ -146,7 +146,7 @@ node dist/bin/gx18-mcp.js stop     # encerra o worker graciosamente
 | 37 | Table | 149 | WebComponent |
 
 > ℹ️ As descrições embutidas em algumas tools citam `43` para WebPanel/WebComponent — os valores
-> reais na KB FoccoLojas são **148/149**. Em caso de dúvida, use `gx_find` sem filtro de tipo
+> reais podem variar por KB. Em caso de dúvida, use `gx_find` sem filtro de tipo
 > (ele retorna o `entityTypeId` correto de cada resultado).
 
 ### Banco de dados
@@ -202,39 +202,39 @@ e [#12](https://github.com/lucaskarsten/genexus-ai-toolkit/issues/12).
 
 **Verificar identidade antes de qualquer escrita:**
 ```json
-// gx_whoami → { windowsUser: "COMPUSOFT\\lucas.karsten", kbUserId: 321, kbOpen, sdkReady }
+// gx_whoami → { windowsUser: "DOMAIN\\developer", kbOpen, sdkReady }
 ```
 
 **Ler o source de uma procedure:**
 ```json
 // gx_read
-{ "name": "PrcNucIncrementaContagem", "type": 34, "section": "source" }
+{ "name": "PrcMyProcedure", "type": 34, "section": "source" }
 ```
 
 **Criar uma procedure:**
 ```json
 // gx_create
-{ "type": "procedure", "name": "PrcFoccoHello", "confirm": true,
+{ "type": "procedure", "name": "PrcMyHello", "confirm": true,
   "source": "msg(\"hello from gx18-mcp\")" }
-// → { userIdOk: true, userId: 321, expectedUserId: 321, entityId, ... }
+// → { userIdOk: true, entityId, ... }
 ```
 
 **Criar um SDT:**
 ```json
 // gx_create
-{ "type": "sdt", "name": "SdtFoccoItem", "confirm": true,
+{ "type": "sdt", "name": "SdtMyItem", "confirm": true,
   "structure": [
     { "name": "Id",    "type": "Int",     "length": 9 },
-    { "name": "Nome",  "type": "VarChar", "length": 60 },
-    { "name": "Valor", "type": "Numeric", "length": 12, "decimals": 2 }
+    { "name": "Name",  "type": "VarChar", "length": 60 },
+    { "name": "Value", "type": "Numeric", "length": 12, "decimals": 2 }
   ] }
 ```
 
 **Exportar para `.xpz` (também valida):**
 ```json
 // gx_export
-{ "name": "PrcFoccoHello", "type": 34 }
-// → grava <GX_OUTPUT_PATH>\PrcFoccoHello.xpz
+{ "name": "PrcMyHello", "type": 34 }
+// → grava <GX_OUTPUT_PATH>\PrcMyHello.xpz
 ```
 
 **Consultar Oracle:**
