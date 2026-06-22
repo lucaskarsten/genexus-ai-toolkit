@@ -1,6 +1,6 @@
 {
   "name": "gx18-mcp",
-  "version": "1.4.12",
+  "version": "1.4.13",
   "description": "MCP server for GeneXus 18 — native SDK access without UserId corruption",
   "keywords": [
     "genexus",

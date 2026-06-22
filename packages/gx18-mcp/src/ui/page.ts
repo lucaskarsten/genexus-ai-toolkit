@@ -762,12 +762,14 @@ function renderConnections(clients) {
   var div = el('conn-list'); div.innerHTML = '';
   if (!clients.length) { div.innerHTML = '<p class="muted">No AI clients detected.</p>'; return; }
   clients.forEach(function(c) {
+    var cmd = c.command ? escHtml(c.command + ' ' + (c.args||[]).join(' ')) : '';
     var card = document.createElement('div'); card.className = 'client-card';
     card.innerHTML =
       '<input type="checkbox" id="cc_' + escHtml(c.id) + '" value="' + escHtml(c.id) + '">' +
       '<div style="flex:1">' +
         '<div class="cc-label">' + escHtml(c.label) + '</div>' +
         '<div class="cc-path">' + escHtml(c.path || '') + '</div>' +
+        (cmd ? '<div class="cc-path" style="margin-top:3px;opacity:.7">&#9656; ' + cmd + '</div>' : '') +
       '</div>';
     div.appendChild(card);
   });

@@ -19,10 +19,17 @@ export interface ClientTarget {
 
 // Portable server entry — resolved from PATH so it survives reinstall/relocation
 // (an absolute path to the installed dist would break on a clean machine via npx).
+// When running as a standalone pkg exe, use the exe itself so Node.js / npm are not required.
 export const SERVER_ENTRY = {
   command: 'npx',
   args: ['-y', 'gx18-mcp', 'start'],
 };
+
+export function getServerEntry(): { command: string; args: string[] } {
+  const isPkg = !!(process as NodeJS.Process & { pkg?: unknown }).pkg;
+  if (isPkg) return { command: process.execPath, args: ['start'] };
+  return SERVER_ENTRY;
+}
 
 /** The server key written under rootKey (e.g. mcpServers.gx18). */
 export const SERVER_KEY = 'gx18';
@@ -93,6 +100,6 @@ export function registerClient(id: ClientId, cwd: string = process.cwd()): strin
   const target = CLIENTS.find((c) => c.id === id);
   if (!target) throw new Error(`Unknown client: ${id}`);
   const filePath = target.path(cwd);
-  patchMcpJson(filePath, SERVER_KEY, SERVER_ENTRY, target.rootKey);
+  patchMcpJson(filePath, SERVER_KEY, getServerEntry(), target.rootKey);
   return filePath;
 }

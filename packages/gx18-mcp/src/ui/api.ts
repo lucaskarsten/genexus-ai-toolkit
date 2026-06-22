@@ -6,7 +6,7 @@ import path from 'path';
 import { loadConfig, saveConfig, readRawConfig, detectChatConfig, loadConversations, saveConversations, ConversationRecord, Config, OracleConfig, ChatConfig } from '../config';
 import { bridge } from '../sdk-bridge/bridge';
 import { callTool, isReadonly, visibleTools } from '../dispatch';
-import { CLIENTS, ClientId, registerClient } from '../clients';
+import { CLIENTS, ClientId, registerClient, getServerEntry, SERVER_KEY } from '../clients';
 
 // Transport-agnostic API handlers for the local web UI. No socket here, so these
 // are unit-testable with a mocked bridge. The http adapter (src/ui/server.ts) does
@@ -140,7 +140,18 @@ export async function handleApi(
         config: maskedConfig(loadConfig()),
         readonly: ctx.readonly,
         workerExists: workerExists(),
-        clients: CLIENTS.map((c) => ({ id: c.id, label: c.label, path: c.path() })),
+        clients: CLIENTS.map((c) => {
+          const entry = getServerEntry();
+          return {
+            id: c.id,
+            label: c.label,
+            path: c.path(),
+            command: entry.command,
+            args: entry.args,
+            serverKey: SERVER_KEY,
+            rootKey: c.rootKey,
+          };
+        }),
       },
     };
   }
