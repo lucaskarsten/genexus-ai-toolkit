@@ -16,9 +16,15 @@ Windows-only (the worker is `net48` / `x86` and loads the GeneXus 18 SDK).
 ## Quickstart
 
 ```bash
-npx gx18-mcp setup     # wizard: detect GX18 + KB + SQL Server, register in your AI client
+npx gx18-mcp setup     # terminal wizard: detect GX18 + KB + SQL Server, register in your AI client
+npx gx18-mcp ui        # same, in a local browser UI — plus a runner for all the tools
 npx gx18-mcp doctor    # health check: worker, GX18 dir, KB, ping, EntityVersion count
 ```
+
+Prefer a GUI? `gx18-mcp ui` starts a local web app on `127.0.0.1` (opens your browser) with a
+config/validate/doctor/register panel **and** a form-driven runner for every tool. It binds to
+loopback only, gates the API behind a per-session token in the URL fragment, and enforces a Host
+allowlist — but it can read **and write** your KB, so keep the URL private.
 
 `setup` writes config to `%LOCALAPPDATA%\gx18-mcp\config.json` and registers the server in the
 clients you pick (Claude Code project `.mcp.json`, Claude Desktop, Cursor, or VS Code), then runs a
@@ -32,6 +38,7 @@ the correct author on every write.
 ```bash
 gx18-mcp start     # start the MCP server on stdio (default command)
 gx18-mcp setup     # interactive wizard (config + client registration + verify)
+gx18-mcp ui        # local web UI: setup panel + tool runner (--port <n>, --no-open)
 gx18-mcp doctor    # environment health check
 gx18-mcp stop      # gracefully shut down a running worker
 ```

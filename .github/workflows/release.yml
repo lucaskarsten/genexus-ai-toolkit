@@ -1,0 +1,28 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'gx18-mcp/v*'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Install & build
+        working-directory: packages/gx18-mcp
+        run: |
+          npm ci
+          npm run build
+          npm run build:exe
+          node scripts/build-release.js
+      - name: Upload release zip
+        uses: softprops/action-gh-release@v2
+        with:
+          files: packages/gx18-mcp/release/GeneXusAIToolkit-windows.zip
+          generate_release_notes: true

@@ -25,13 +25,22 @@
   "scripts": {
     "build": "node esbuild.config.js",
     "build:worker": "powershell -File scripts/build-worker.ps1",
+    "build:exe": "node scripts/gen-icon.js && pkg dist/bin/gx18-mcp.js --target node18-win-x64 --output release/GeneXusAIToolkit.exe --icon assets/icon.ico",
+    "build:release": "npm run build && npm run build:exe && node scripts/build-release.js",
     "watch": "node esbuild.config.js --watch",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:worker": "powershell -File scripts/test-worker.ps1",
     "prepublishOnly": "npm run build && npm run build:worker"
   },
+  "pkg": {
+    "scripts": ["dist/src/**/*.js"],
+    "assets": ["dist/worker/**/*"],
+    "targets": ["node18-win-x64"],
+    "outputPath": "release"
+  },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.105.0",
     "@modelcontextprotocol/sdk": "^1.12.0",
     "chalk": "^4.1.2",
     "commander": "^12.0.0",
@@ -41,6 +50,7 @@
   "devDependencies": {
     "@types/inquirer": "^9.0.0",
     "@types/node": "^20.0.0",
+    "@yao-pkg/pkg": "^5.12.1",
     "esbuild": "^0.20.0",
     "typescript": "^5.4.0",
     "vitest": "^4.1.9"

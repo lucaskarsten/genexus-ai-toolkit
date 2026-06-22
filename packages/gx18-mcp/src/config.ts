@@ -1,6 +1,7 @@
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
+import { execSync } from 'child_process';
 
 export interface OracleConfig {
   host: string;
@@ -24,6 +25,27 @@ export interface DbConnections {
   sqlserver?: Record<string, SqlServerConfig>;
 }
 
+export interface ChatConfig {
+  /** Absolute path to the `claude` binary. Empty = use PATH. */
+  claudeCliPath?: string;
+  /** Working directory for the claude subprocess. Empty = auto-detect from project root. */
+  projectRoot?: string;
+  /** Path to the nexa skills directory passed via --add-dir. Empty string = disabled. */
+  nexaSkillsDir?: string;
+  /** Additional --add-dir paths (one per entry). */
+  addDirs?: string[];
+}
+
+export interface ChatDetection {
+  claudeCliPath: string;       // resolved binary path
+  claudeVersion: string;       // output of `claude --version`
+  claudeOk: boolean;           // binary found and responds
+  projectRoot: string;         // detected project root
+  nexaSkillsDir: string;       // detected nexa path
+  nexaExists: boolean;         // whether the nexa path actually exists
+  authInfo: string;            // heuristic auth status message
+}
+
 export interface Config {
   kbPath: string;
   kbServer: string;
@@ -33,10 +55,24 @@ export interface Config {
   workerExe: string;
   logLevel: 'debug' | 'info' | 'warn' | 'error';
   db: DbConnections;
+  chat?: ChatConfig;
 }
 
 const DEFAULT_GX18_DIR = 'C:\\Program Files (x86)\\GeneXus\\GeneXus18U6';
-const CONFIG_FILE = path.join(os.homedir(), 'AppData', 'Local', 'gx18-mcp', 'config.json');
+export const CONFIG_FILE = path.join(os.homedir(), 'AppData', 'Local', 'gx18-mcp', 'config.json');
+
+/**
+ * Read config.json verbatim, WITHOUT env merge or defaults. Used by the web UI's
+ * config save path: loadConfig() folds in env (.env / process.env) and would bake
+ * environment-specific values into the persisted file on round-trip. Saving must
+ * merge against this raw view instead.
+ */
+export function readRawConfig(): Partial<Config> {
+  if (fs.existsSync(CONFIG_FILE)) {
+    try { return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8')) as Partial<Config>; } catch { /* ignore */ }
+  }
+  return {};
+}
 
 export function loadConfig(): Config {
   // Load .env from project root
@@ -89,6 +125,7 @@ export function loadConfig(): Config {
     workerExe: process.env['GX18_WORKER_EXE'] || workerExe,
     logLevel: (process.env['GX18_LOG_LEVEL'] as Config['logLevel']) || 'info',
     db,
+    chat: saved.chat,
   };
 }
 
@@ -98,20 +135,170 @@ export function saveConfig(config: Partial<Config>): void {
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
 }
 
-function findProjectRoot(): string | null {
-  // Start from the package directory (two levels up from dist/src/__dirname at runtime,
-  // or from __dirname itself at build time)
+// ── Conversation persistence ──────────────────────────────────────────────────
+
+export interface ConversationMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  tools?: Array<{ id: string; name: string; result: string; isError: boolean }>;
+}
+
+export interface ConversationRecord {
+  id: string;
+  title: string;
+  sessionId: string | null;
+  msgs: ConversationMessage[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+const CONV_FILE = path.join(path.dirname(CONFIG_FILE), 'conversations.json');
+
+export function loadConversations(): ConversationRecord[] {
+  try { return JSON.parse(fs.readFileSync(CONV_FILE, 'utf-8')) as ConversationRecord[]; }
+  catch { return []; }
+}
+
+export function saveConversations(convs: ConversationRecord[]): void {
+  const dir = path.dirname(CONV_FILE);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(CONV_FILE, JSON.stringify(convs, null, 2));
+}
+
+export function findProjectRoot(): string | null {
   let dir = __dirname;
-  // Walk up looking for project markers
   for (let i = 0; i < 10; i++) {
     if (fs.existsSync(path.join(dir, '.mcp.json'))) return dir;
-    if (
-      fs.existsSync(path.join(dir, '.gitignore')) &&
-      fs.existsSync(path.join(dir, 'CLAUDE.md'))
-    ) return dir;
+    if (fs.existsSync(path.join(dir, '.gitignore')) && fs.existsSync(path.join(dir, 'CLAUDE.md'))) return dir;
     const parent = path.dirname(dir);
     if (parent === dir) break;
     dir = parent;
   }
   return null;
+}
+
+// ── Environment auto-detection ────────────────────────────────────────────────
+
+export interface DetectedKb {
+  kbPath: string;
+  gxwFile: string;
+  dbName: string;
+  kbServer: string;
+}
+
+export interface DetectedEnvironment {
+  kbs: DetectedKb[];
+  gx18Dirs: string[];
+}
+
+/** Scan common paths for GeneXus 18 KBs and installs. Zero side-effects — safe to call anytime. */
+export function detectEnvironment(): DetectedEnvironment {
+  const kbs: DetectedKb[] = [];
+  const gx18Dirs: string[] = [];
+
+  // KB roots to scan (one level deep)
+  const kbRoots = [
+    'C:\\KBs',
+    'C:\\GeneXus',
+    path.join(os.homedir(), 'Documents', 'GeneXus'),
+    path.join(os.homedir(), 'GeneXus'),
+  ];
+
+  for (const root of kbRoots) {
+    if (!fs.existsSync(root)) continue;
+    let entries: fs.Dirent[] = [];
+    try { entries = fs.readdirSync(root, { withFileTypes: true }); } catch { continue; }
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const kbDir = path.join(root, entry.name);
+      try {
+        const files = fs.readdirSync(kbDir);
+        const gxwFile = files.find(f => f.endsWith('.gxw'));
+        if (!gxwFile) continue;
+
+        let dbName = '';
+        let kbServer = '(localdb)\\MSSQLLocalDB';
+        const connFile = path.join(kbDir, 'knowledgebase.connection');
+        if (fs.existsSync(connFile)) {
+          try {
+            const xml = fs.readFileSync(connFile, 'utf-8');
+            const dbMatch = xml.match(/<DBName>([^<]+)<\/DBName>/);
+            const srvMatch = xml.match(/<ServerInstance>([^<]+)<\/ServerInstance>/);
+            if (dbMatch) dbName = dbMatch[1].trim();
+            if (srvMatch) kbServer = srvMatch[1].trim();
+          } catch { /* skip */ }
+        }
+
+        kbs.push({ kbPath: kbDir, gxwFile, dbName, kbServer });
+      } catch { /* skip unreadable dirs */ }
+    }
+  }
+
+  // Sort: most recently modified KB first
+  kbs.sort((a, b) => {
+    try { return fs.statSync(b.kbPath).mtimeMs - fs.statSync(a.kbPath).mtimeMs; } catch { return 0; }
+  });
+
+  // Scan for GX18 installs
+  const gx18Root = 'C:\\Program Files (x86)\\GeneXus';
+  if (fs.existsSync(gx18Root)) {
+    let entries: fs.Dirent[] = [];
+    try { entries = fs.readdirSync(gx18Root, { withFileTypes: true }); } catch { /* skip */ }
+    for (const entry of entries) {
+      if (!entry.isDirectory() || !/GeneXus18/i.test(entry.name)) continue;
+      const gxDir = path.join(gx18Root, entry.name);
+      const hasDll = fs.existsSync(path.join(gxDir, 'Artech.Common.Controls.dll')) ||
+                     fs.existsSync(path.join(gxDir, 'GeneXus.Programs.Common.dll'));
+      if (hasDll) gx18Dirs.push(gxDir);
+    }
+  }
+
+  return { kbs, gx18Dirs };
+}
+
+/** Auto-detect Claude CLI binary, project root, nexa skills dir, and auth status. */
+export function detectChatConfig(saved?: ChatConfig): ChatDetection {
+  // 1. Resolve binary path
+  let claudeCliPath = saved?.claudeCliPath?.trim() || '';
+  if (!claudeCliPath) {
+    try {
+      const found = execSync('where claude', { encoding: 'utf-8', timeout: 3000 }).trim().split('\n')[0].trim();
+      if (found) claudeCliPath = found;
+    } catch { /* not in PATH */ }
+    if (!claudeCliPath) claudeCliPath = 'claude'; // fallback, let spawn fail with a clear message
+  }
+
+  // 2. Verify binary + get version
+  let claudeVersion = '';
+  let claudeOk = false;
+  try {
+    claudeVersion = execSync(`"${claudeCliPath}" --version`, { encoding: 'utf-8', timeout: 5000 }).trim();
+    claudeOk = true;
+  } catch {
+    claudeVersion = 'not found';
+  }
+
+  // 3. Project root
+  const projectRoot = saved?.projectRoot?.trim() || findProjectRoot() || process.cwd();
+
+  // 4. Nexa skills
+  const nexaSkillsDir = saved?.nexaSkillsDir ?? path.join(projectRoot, 'skills', 'nexa', 'nexa');
+  const nexaExists = fs.existsSync(nexaSkillsDir);
+
+  // 5. Auth heuristic: check ~/.claude/ for credential files
+  let authInfo = 'unknown';
+  const claudeDir = path.join(os.homedir(), '.claude');
+  if (!fs.existsSync(claudeDir)) {
+    authInfo = 'not logged in — run: claude auth login';
+  } else {
+    try {
+      const files = fs.readdirSync(claudeDir);
+      const hasCredentials = files.some((f) => /credential|auth|account|token/i.test(f));
+      authInfo = hasCredentials ? 'credentials found' : 'logged in (settings found)';
+    } catch {
+      authInfo = '~/.claude found (cannot read)';
+    }
+  }
+
+  return { claudeCliPath, claudeVersion, claudeOk, projectRoot, nexaSkillsDir, nexaExists, authInfo };
 }

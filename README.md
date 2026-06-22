@@ -7,7 +7,47 @@
 
 **Give any LLM deep GeneXus expertise — generate correct UCs, DSOs, Web Panels, and Procedures on the first try.**
 
-Works with Claude Code, OpenAI Codex, GitHub Copilot, ChatGPT, and any LLM. Supports both GeneXus 18 (file-based) and GeneXus Next 2026+ (direct KB via MCP).
+Works with Claude Code, OpenAI Codex, GitHub Copilot, ChatGPT, and any LLM. Supports both GeneXus 18 (direct KB via MCP) and GeneXus Next 2026+.
+
+---
+
+## Download & instalação
+
+### Opção 1 — Executável (recomendado para usuários finais)
+Não requer Node.js nem Git.
+
+1. Baixe `GeneXusAIToolkit-windows.zip` da [última release](https://github.com/lucaskarsten/genexus-ai-toolkit/releases/latest)
+2. Extraia em qualquer pasta
+3. Dê duplo clique em `GeneXusAIToolkit.exe`
+4. Configure os caminhos no browser → Claude Code conecta automaticamente
+
+### Opção 2 — npm (para desenvolvedores)
+Requer Node.js 18+.
+
+```bash
+npm install -g gx18-mcp
+gx18-mcp ui
+```
+
+### Opção 3 — Clone do repositório (para contribuidores)
+```bash
+git clone https://github.com/lucaskarsten/genexus-ai-toolkit.git
+cd genexus-ai-toolkit
+Iniciar.bat
+```
+
+---
+
+## Início rápido — GeneXus 18 + MCP
+
+> **Pré-requisito:** Node.js 18+ instalado ([nodejs.org](https://nodejs.org)).
+
+1. Clone o repositório
+2. Dê duplo clique em **`Iniciar.bat`**
+3. Configure os caminhos no browser que abre (botão **Auto-detectar KBs** preenche automaticamente)
+4. Abra Claude Code nesta pasta → MCP conectado automaticamente
+
+O servidor MCP fica registrado para todas as sessões futuras. Na próxima vez, basta abrir Claude Code.
 
 ---
 
