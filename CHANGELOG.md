@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.4.0](https://github.com/lucaskarsten/genexus-ai-toolkit/compare/v1.3.0...v1.4.0) (2026-06-22)
+
+
+### Features
+
+* **gx18-mcp:** add UI server, dispatch, clients, and doctor modules ([0549f4a](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/0549f4ac38c4e83ac2d2edbc21e1b5cdb398eb64))
+* **gx18-mcp:** KB auto-detect, standalone exe with icon, and GitHub Release workflow ([97e55e5](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/97e55e5c899fd46dc4b4bc2413ee2b5a82188dfb))
+
+
+### Bug Fixes
+
+* **gx18-mcp:** prepublishOnly skip build:worker (worker binary already in dist) ([342511a](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/342511af38c41228484d27e79cf2b423f44300e7))
+
 ## [1.3.0](https://github.com/lucaskarsten/genexus-ai-toolkit/compare/v1.2.1...v1.3.0) (2026-06-22)
 
 
