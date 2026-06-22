@@ -14,6 +14,13 @@ jobs:
         with:
           node-version: '18'
           registry-url: 'https://registry.npmjs.org'
+      - name: Sync package version to tag
+        working-directory: packages/gx18-mcp
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $version = $tag -replace '^gx18-mcp/v', ''
+          npm version $version --no-git-tag-version
+          Write-Host "Version set to $version"
       - name: Install & build
         working-directory: packages/gx18-mcp
         run: |
