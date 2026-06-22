@@ -17,6 +17,7 @@ class SdkBridge {
   private readonly MAX_RESTARTS = 3;
   private lineBuffer = '';
   private starting: Promise<void> | null = null;
+  private startedAt = 0;
 
   async send<T>(method: string, params: Record<string, unknown> = {}, timeoutMs = 30000): Promise<T> {
     await this.ensureStarted();
@@ -102,6 +103,22 @@ class SdkBridge {
     // Wait for ping to confirm worker is ready (15s timeout for startup)
     await this.send('ping', {}, 15000);
     this.restarts = 0;
+    this.startedAt = Date.now();
+  }
+
+  status(): { alive: boolean; pid: number | undefined; uptimeMs: number } {
+    const alive = this.worker !== null && this.worker.exitCode === null;
+    return { alive, pid: this.worker?.pid, uptimeMs: alive && this.startedAt ? Date.now() - this.startedAt : 0 };
+  }
+
+  async restart(): Promise<void> {
+    await this.shutdown();
+    for (const [, p] of this.pending) { clearTimeout(p.timer); p.reject(new Error('Worker restart')); }
+    this.pending.clear();
+    this.worker = null;
+    this.starting = null;
+    this.restarts = 0;
+    await this.send('ping', {}, 30000);
   }
 
   async shutdown(): Promise<void> {

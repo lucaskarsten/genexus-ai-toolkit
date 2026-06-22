@@ -2,7 +2,6 @@
 import { Command } from 'commander';
 import path from 'path';
 import fs from 'fs';
-import os from 'os';
 
 // Bundled at build time by esbuild (single source of truth for the version).
 const pkg = require('../package.json') as { version: string };
@@ -33,6 +32,7 @@ program
     const chalk = require('chalk');
     const { default: inquirer } = await import('inquirer');
     const { loadConfig, saveConfig } = await import('../src/config');
+    const { CLIENTS, registerClient } = await import('../src/clients');
 
     console.log(chalk.bold('\ngx18-mcp setup wizard\n'));
 
@@ -81,12 +81,7 @@ program
         type: 'checkbox',
         name: 'clients',
         message: 'Configure which AI clients to integrate with:',
-        choices: [
-          { name: 'Claude Code (project .mcp.json)', value: 'claude-project' },
-          { name: 'Claude Desktop (claude_desktop_config.json)', value: 'claude-desktop' },
-          { name: 'Cursor (.cursor/mcp.json)', value: 'cursor' },
-          { name: 'VS Code (.vscode/mcp.json)', value: 'vscode' },
-        ],
+        choices: CLIENTS.map((c) => ({ name: c.label, value: c.id })),
       },
     ]);
 
@@ -100,34 +95,10 @@ program
     saveConfig(config);
     console.log(chalk.green('\nConfig saved to %LOCALAPPDATA%\\gx18-mcp\\config.json'));
 
-    // Portable server entry — resolved from PATH so it survives reinstall/relocation
-    // (an absolute path to the installed dist would break on a clean machine via npx).
-    const serverEntry = {
-      command: 'npx',
-      args: ['-y', 'gx18-mcp', 'start'],
-    };
-
-    for (const client of answers.clients as string[]) {
+    for (const client of answers.clients as Array<Parameters<typeof registerClient>[0]>) {
       try {
-        if (client === 'claude-project') {
-          patchMcpJson(path.join(process.cwd(), '.mcp.json'), 'gx18', serverEntry);
-          console.log(chalk.green('Patched .mcp.json in current directory'));
-        } else if (client === 'claude-desktop') {
-          const cfgPath = path.join(
-            os.homedir(), 'AppData', 'Roaming', 'Claude', 'claude_desktop_config.json'
-          );
-          patchMcpJson(cfgPath, 'gx18', serverEntry);
-          console.log(chalk.green(`Patched ${cfgPath}`));
-        } else if (client === 'cursor') {
-          const cfgPath = path.join(process.cwd(), '.cursor', 'mcp.json');
-          patchMcpJson(cfgPath, 'gx18', serverEntry);
-          console.log(chalk.green(`Patched ${cfgPath}`));
-        } else if (client === 'vscode') {
-          // VS Code uses a top-level `servers` key (not `mcpServers`).
-          const cfgPath = path.join(process.cwd(), '.vscode', 'mcp.json');
-          patchMcpJson(cfgPath, 'gx18', serverEntry, 'servers');
-          console.log(chalk.green(`Patched ${cfgPath}`));
-        }
+        const written = registerClient(client);
+        console.log(chalk.green(`Patched ${written}`));
       } catch (err) {
         console.warn(chalk.yellow(`Warning: could not patch ${client}: ${err}`));
       }
@@ -164,60 +135,43 @@ program
   .description('Health check — verify worker, SQL connection, and GX18 install')
   .action(async () => {
     const chalk = require('chalk');
-    const { loadConfig } = await import('../src/config');
+    const { runDoctor } = await import('../src/doctor');
     const { bridge } = await import('../src/sdk-bridge/bridge');
 
-    const config = loadConfig();
     console.log(chalk.bold('\ngx18-mcp doctor\n'));
-
-    // 1. Worker exe
-    if (fs.existsSync(config.workerExe)) {
-      console.log(chalk.green('  [OK] Worker exe:'), config.workerExe);
-    } else {
-      console.log(chalk.red('  [FAIL] Worker exe not found:'), config.workerExe);
-      console.log('         Run: npm run build:worker');
-    }
-
-    // 2. GX18 install dir
-    if (fs.existsSync(config.gx18Dir)) {
-      console.log(chalk.green('  [OK] GX18 dir:'), config.gx18Dir);
-    } else {
-      console.log(chalk.yellow('  [WARN] GX18 dir not found:'), config.gx18Dir);
-    }
-
-    // 3. KB path
-    if (config.kbPath && fs.existsSync(config.kbPath)) {
-      console.log(chalk.green('  [OK] KB path:'), config.kbPath);
-    } else {
-      console.log(chalk.yellow('  [WARN] KB path not set or missing:'), config.kbPath);
-    }
-
-    // 4. Ping worker
     try {
-      console.log('\n  Pinging worker...');
-      const ping = await bridge.send<{
-        ok: boolean; sdkReady: boolean; sqlReady: boolean; user: string; kbPath: string;
-      }>('ping', {}, 15000);
-      console.log(chalk.green('  [OK] Worker ping:'));
-      console.log('       user     :', ping.user);
-      console.log('       kbPath   :', ping.kbPath);
-      console.log('       sdkReady :', ping.sdkReady);
-      console.log('       sqlReady :', ping.sqlReady);
-
-      if (ping.sqlReady) {
-        const result = await bridge.send<{ rows: Array<{ cnt: number }> }>(
-          'sql_query',
-          { query: 'SELECT COUNT(*) AS cnt FROM EntityVersion', readOnly: true }
-        );
-        console.log(chalk.green('  [OK] SQL EntityVersion rows:'), result.rows[0]?.cnt);
+      const report = await runDoctor();
+      for (const c of report.checks) {
+        const color = c.status === 'ok' ? chalk.green : c.status === 'warn' ? chalk.yellow : chalk.red;
+        console.log(color(`  [${c.status.toUpperCase()}] ${c.name}:`), c.detail);
       }
-    } catch (err) {
-      console.log(chalk.red('  [FAIL] Worker ping failed:'), String(err));
     } finally {
+      // runDoctor leaves the worker warm; the CLI is a one-shot, so shut it down here.
       await bridge.shutdown();
     }
 
     console.log('');
+  });
+
+// ─── ui ───────────────────────────────────────────────────────────────────────
+
+program
+  .command('ui')
+  .description('Launch the local web UI (setup + tool runner) on 127.0.0.1')
+  .option('-p, --port <port>', 'Port to bind (default 7337)', (v) => parseInt(v, 10))
+  .option('--no-open', 'Do not open the browser automatically')
+  .action(async (opts: { port?: number; open?: boolean }) => {
+    const chalk = require('chalk');
+    const { startUi } = await import('../src/ui/server');
+    try {
+      const ui = await startUi({ port: opts.port, open: opts.open });
+      console.log(chalk.green(`\ngx18-mcp UI running at`), ui.url);
+      console.log(chalk.dim('  The page can read AND write your KB. Keep this URL private.'));
+      console.log(chalk.dim('  Press Ctrl-C to stop.\n'));
+    } catch (err) {
+      console.error(chalk.red('Failed to start UI:'), String(err));
+      process.exit(1);
+    }
   });
 
 // ─── stop ─────────────────────────────────────────────────────────────────────
@@ -235,27 +189,5 @@ program
       console.log(chalk.yellow('No running worker found or shutdown failed:', String(err)));
     }
   });
-
-// ─── helpers ──────────────────────────────────────────────────────────────────
-
-function patchMcpJson(
-  filePath: string,
-  serverKey: string,
-  entry: { command: string; args: string[] },
-  rootKey: string = 'mcpServers'
-): void {
-  let existing: Record<string, unknown> = {};
-  if (fs.existsSync(filePath)) {
-    try { existing = JSON.parse(fs.readFileSync(filePath, 'utf-8')); } catch { /* ignore */ }
-  }
-
-  const servers = (existing[rootKey] ?? {}) as Record<string, unknown>;
-  servers[serverKey] = entry;
-  existing[rootKey] = servers;
-
-  const dir = path.dirname(filePath);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(filePath, JSON.stringify(existing, null, 2));
-}
 
 program.parse(process.argv);
