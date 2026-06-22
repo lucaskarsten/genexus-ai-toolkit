@@ -99,7 +99,13 @@ export function loadConfig(): Config {
     try { saved = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8')); } catch { /* ignore */ }
   }
 
-  const workerDir = path.join(__dirname, '..', 'worker');
+  // When running as a pkg standalone exe, __dirname is the virtual snapshot
+  // filesystem (C:\snapshot\src) — unexecutable. The real worker/ folder is
+  // shipped next to the exe in the release zip, so resolve from there instead.
+  const isPkg = !!(process as NodeJS.Process & { pkg?: unknown }).pkg;
+  const workerDir = isPkg
+    ? path.join(path.dirname(process.execPath), 'worker')
+    : path.join(__dirname, '..', 'worker');
   const workerExe = path.join(workerDir, 'Gx18Mcp.SdkWorker.exe');
 
   const db: DbConnections = {};
