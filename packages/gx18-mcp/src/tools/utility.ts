@@ -1,8 +1,36 @@
 import path from 'path';
 import { bridge } from '../sdk-bridge/bridge';
-import { loadConfig } from '../config';
+import { loadConfig, saveConfig } from '../config';
 import { ValidateResult, BuildResult, SqlQueryResult } from '../sdk-bridge/protocol';
 import { ENTITY_TYPE_TO_KEY } from './writer';
+
+export async function gxSaveConfig(args: {
+  kbPath?: string;
+  kbDatabase?: string;
+  kbServer?: string;
+  gx18Dir?: string;
+}): Promise<string> {
+  const current = loadConfig();
+  const updated = {
+    kbPath: args.kbPath ?? current.kbPath,
+    kbDatabase: args.kbDatabase ?? current.kbDatabase,
+    kbServer: args.kbServer ?? current.kbServer,
+    gx18Dir: args.gx18Dir ?? current.gx18Dir,
+    outputPath: current.outputPath,
+    db: current.db,
+    chat: current.chat,
+  };
+  saveConfig(updated);
+  // Restart the worker so it picks up the new KB connection
+  try { await bridge.restart(); } catch { /* non-fatal — will reconnect on next call */ }
+  return JSON.stringify({
+    saved: true,
+    kbPath: updated.kbPath,
+    kbDatabase: updated.kbDatabase,
+    kbServer: updated.kbServer,
+    gx18Dir: updated.gx18Dir,
+  }, null, 2);
+}
 
 export async function gxValidate(args: {
   name: string;

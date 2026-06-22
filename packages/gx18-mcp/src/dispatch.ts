@@ -4,7 +4,7 @@ import { gxFind, gxList, gxGet } from './tools/discovery';
 import { gxRead, gxProperties, gxStructure } from './tools/reader';
 import { gxWhoami } from './tools/identity';
 import { gxCreate, gxModify, gxSetProperty, gxRename, gxImport } from './tools/writer';
-import { gxValidate, gxBuild, gxSql, gxExport } from './tools/utility';
+import { gxValidate, gxBuild, gxSql, gxExport, gxSaveConfig } from './tools/utility';
 import { gxDbConnections, gxDbQuery } from './tools/database';
 
 // EntityTypeId reference (included in descriptions for discoverability):
@@ -301,6 +301,23 @@ const TOOLS: Tool[] = [
     },
   },
   {
+    name: 'gx_save_config',
+    description:
+      'Update the gx18-mcp server configuration (KB path, database, SQL Server instance, GX18 install dir). ' +
+      'Changes are saved immediately and the worker restarts to pick up the new KB connection. ' +
+      'Only provide the fields you want to change — omitted fields keep their current values. ' +
+      'Use this when the user asks to switch KB, change database, or reconfigure the server.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        kbPath: { type: 'string', description: 'Path to the GeneXus KB folder (containing the .gxw file), e.g. C:\\KBs\\FoccoLojas_03' },
+        kbDatabase: { type: 'string', description: 'SQL Server database name, e.g. GX_KB_FoccoLojas_03' },
+        kbServer: { type: 'string', description: 'SQL Server instance, e.g. (localdb)\\MSSQLLocalDB' },
+        gx18Dir: { type: 'string', description: 'GeneXus 18 install directory, e.g. C:\\Program Files (x86)\\GeneXus\\GeneXus18U6' },
+      },
+    },
+  },
+  {
     name: 'gx_db_connections',
     description:
       'List all configured database connections available for gx_db_query. ' +
@@ -427,6 +444,8 @@ async function dispatch(name: string, a: Record<string, unknown>): Promise<ToolR
       return { text: await gxExport(a as Parameters<typeof gxExport>[0]), isError: false };
     case 'gx_import':
       return { text: await gxImport(a as Parameters<typeof gxImport>[0]), isError: false };
+    case 'gx_save_config':
+      return { text: await gxSaveConfig(a as Parameters<typeof gxSaveConfig>[0]), isError: false };
     case 'gx_db_connections':
       return { text: await gxDbConnections(), isError: false };
     case 'gx_db_query':

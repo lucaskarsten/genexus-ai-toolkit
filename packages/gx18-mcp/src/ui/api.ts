@@ -1,5 +1,7 @@
 import crypto from 'crypto';
 import fs from 'fs';
+import os from 'os';
+import path from 'path';
 
 import { loadConfig, saveConfig, readRawConfig, detectChatConfig, loadConversations, saveConversations, ConversationRecord, Config, OracleConfig, ChatConfig } from '../config';
 import { bridge } from '../sdk-bridge/bridge';
@@ -204,6 +206,17 @@ export async function handleApi(
   if (method === 'GET' && pathname === '/api/detect') {
     const { detectEnvironment } = await import('../config');
     return { status: 200, body: detectEnvironment() };
+  }
+
+  // POST /api/chat/image — save a pasted image to temp dir, return the file path
+  // so Claude CLI can Read() it in the next message.
+  if (method === 'POST' && pathname === '/api/chat/image') {
+    const { data, mimeType } = (body ?? {}) as { data?: string; mimeType?: string };
+    if (!data) return { status: 400, body: { error: 'data required' } };
+    const ext = (mimeType ?? 'image/png').includes('jpeg') ? '.jpg' : '.png';
+    const dest = path.join(os.tmpdir(), `gx18-img-${Date.now()}${ext}`);
+    fs.writeFileSync(dest, Buffer.from(data, 'base64'));
+    return { status: 200, body: { path: dest } };
   }
 
   // GET /api/chat/detect — auto-detect Claude CLI config

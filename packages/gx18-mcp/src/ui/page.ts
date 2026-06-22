@@ -473,15 +473,19 @@ pre.out.err{border-color:var(--fail);color:#ffb4ae;}
             <span style="font-size:11px">Claude Code CLI &nbsp;&#183;&nbsp; gx18 + gxnext tools</span>
           </div>
           <div id="chat-msgs" class="chat-msgs" style="display:none"></div>
+          <div id="chat-img-preview" style="display:none;padding:6px 0;font-size:12px;color:var(--muted)">
+            <span id="chat-img-label"></span>
+            <button onclick="clearChatImage()" style="margin-left:8px;background:none;border:none;color:var(--fail);cursor:pointer;font-size:12px">&#10005; remover</button>
+          </div>
           <div class="chat-input-row">
             <textarea id="chat-in" class="chat-input" rows="2"
-              placeholder="Ask anything about the GeneXus KB&#10;e.g. What web panels exist in the VEN module?"
-              onkeydown="chatKey(event)"></textarea>
+              placeholder="Ask anything about the GeneXus KB&#10;e.g. What web panels exist in the VEN module?&#10;Ctrl+V to paste a screenshot"
+              onkeydown="chatKey(event)" onpaste="chatPaste(event)"></textarea>
             <button class="act" id="chat-send" onclick="chatSend()">Send</button>
             <button class="act sec" id="chat-cancel" onclick="chatCancel()" style="display:none">Cancel</button>
           </div>
           <p class="muted" style="font-size:11px;margin-top:6px">
-            Shift+Enter = new line &nbsp;&#183;&nbsp; Enter = send &nbsp;&#183;&nbsp; uses local <code>claude</code> CLI
+            Shift+Enter = new line &nbsp;&#183;&nbsp; Enter = send &nbsp;&#183;&nbsp; Ctrl+V = colar imagem &nbsp;&#183;&nbsp; uses local <code>claude</code> CLI
           </p>
         </div>
       </section>
@@ -499,6 +503,7 @@ var _allTools = [];
 var _convs = [];       // [{ id, title, sessionId, msgs, createdAt, updatedAt }]
 var _convId = null;    // active conversation id
 var _dashTimer = null;
+var _pendingImagePath = null;  // path of a pasted image saved to temp (cleared after send)
 
 // ── Bootstrap ─────────────────────────────────────────────────
 (function init() {
@@ -1113,10 +1118,46 @@ function chatKey(e) {
   if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); chatSend(); }
 }
 
+function chatPaste(e) {
+  var items = e.clipboardData && e.clipboardData.items;
+  if (!items) return;
+  for (var i = 0; i < items.length; i++) {
+    if (items[i].type.indexOf('image') === -1) continue;
+    e.preventDefault();
+    var file = items[i].getAsFile();
+    if (!file) continue;
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      var dataUrl = ev.target.result;
+      var base64 = dataUrl.split(',')[1];
+      var mime = dataUrl.split(';')[0].split(':')[1];
+      api('POST', '/api/chat/image', { data: base64, mimeType: mime }).then(function(r) {
+        if (r.status !== 200) return;
+        _pendingImagePath = r.body.path;
+        el('chat-img-label').textContent = '&#128247; ' + r.body.path.split(/[/\\]/).pop();
+        el('chat-img-preview').style.display = '';
+      });
+    };
+    reader.readAsDataURL(file);
+    break;
+  }
+}
+
+function clearChatImage() {
+  _pendingImagePath = null;
+  el('chat-img-preview').style.display = 'none';
+  el('chat-img-label').textContent = '';
+}
+
 function chatSend() {
   if (_chatBusy) return;
   var text = (el('chat-in').value||'').trim();
-  if (!text) return;
+  if (!text && !_pendingImagePath) return;
+  // Append image reference so Claude can Read() it
+  if (_pendingImagePath) {
+    text = (text ? text + '\n\n' : '') + '[Imagem anexada: ' + _pendingImagePath + ']';
+    clearChatImage();
+  }
   el('chat-in').value = '';
   _chatBusy = true;
   _chatAbort = new AbortController();
