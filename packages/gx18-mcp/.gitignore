@@ -1,5 +1,8 @@
 # Build artifacts — TypeScript (esbuild) + C# worker (dotnet) outputs
 dist/
+# Worker binaries are pre-built (need GeneXus 18 SDK locally) — commit them so CI can use
+!dist/worker/
+!dist/worker/**
 
 # C# worker/test build output (NOTE: top-level bin/ holds TS source — do not ignore that)
 worker/**/bin/
