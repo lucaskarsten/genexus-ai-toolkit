@@ -638,18 +638,18 @@ function loadDashboard() {
     hw.textContent = alive ? '● Running' : (starting ? '◌ Iniciando...' : '● Stopped');
     hw.style.color = alive ? 'var(--ok)' : (starting ? 'var(--warn)' : 'var(--fail)');
     // Auto-poll every 3s while starting so the dashboard updates when ready.
-    if (starting && !(window as any)._workerPoll) {
-      (window as any)._workerPoll = setInterval(function() {
-        api('GET', '/api/worker/status').then(function(pr: any) {
+    if (starting && !window['_workerPoll']) {
+      window['_workerPoll'] = setInterval(function() {
+        api('GET', '/api/worker/status').then(function(pr) {
           if (pr.status !== 200) return;
           if (pr.body.alive || !pr.body.starting) {
-            clearInterval((window as any)._workerPoll); (window as any)._workerPoll = null;
+            clearInterval(window['_workerPoll']); window['_workerPoll'] = null;
             loadDashboard();
           }
         });
       }, 3000);
-    } else if (!starting && (window as any)._workerPoll) {
-      clearInterval((window as any)._workerPoll); (window as any)._workerPoll = null;
+    } else if (!starting && window['_workerPoll']) {
+      clearInterval(window['_workerPoll']); window['_workerPoll'] = null;
     }
   });
   api('POST', '/api/doctor').then(function(r) {
