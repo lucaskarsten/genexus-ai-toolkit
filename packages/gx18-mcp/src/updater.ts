@@ -18,6 +18,19 @@ import path from 'path';
 import os from 'os';
 import { execFile, spawn } from 'child_process';
 
+const SENTINEL = path.join(os.tmpdir(), 'gx18mcp_updated');
+const SENTINEL_TTL_MS = 90_000; // 90s grace — skip update check on fresh-after-update launch
+
+/** Returns true if the process was just launched by the auto-updater and should skip the check. */
+export function justUpdated(): boolean {
+  try {
+    const stat = fs.statSync(SENTINEL);
+    if (Date.now() - stat.mtimeMs < SENTINEL_TTL_MS) return true;
+    fs.unlinkSync(SENTINEL);
+  } catch { /* file absent — normal launch */ }
+  return false;
+}
+
 const REPO = 'lucaskarsten/genexus-ai-toolkit';
 const ASSET_NAME = 'GeneXusAIToolkit-windows.zip';
 const EXE_NAME = 'GeneXusAIToolkit.exe';
@@ -133,6 +146,9 @@ export async function checkAndUpdate(currentVersion: string, exePath: string): P
     fs.writeFileSync(ps1Path, ps1, { encoding: 'utf8' });
 
     console.log(`  Atualizacao pronta. Reiniciando em ${latestTag}...\n`);
+
+    // Write sentinel so the freshly-launched exe skips its own update check.
+    try { fs.writeFileSync(SENTINEL, String(Date.now())); } catch { /* non-fatal */ }
 
     spawn('powershell', [
       '-WindowStyle', 'Hidden',

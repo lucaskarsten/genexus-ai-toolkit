@@ -5,7 +5,7 @@
  * The main gx18-mcp.js CLI still exists unchanged for npm/stdio usage.
  */
 import { startUi } from '../src/ui/server';
-import { checkAndUpdate } from '../src/updater';
+import { checkAndUpdate, justUpdated } from '../src/updater';
 
 const SEP = '  ' + '='.repeat(44);
 const LINE = (s: string) => '  ' + s;
@@ -33,9 +33,11 @@ startUi({ open: true })
     console.log(SEP);
     console.log('');
 
-    // Check for updates in background — non-blocking, non-fatal.
-    // process.execPath is the .exe path when running as a pkg bundle.
-    checkAndUpdate(pkg.version, process.execPath).catch(() => {});
+    // Check for updates in background — skip if just launched by the updater
+    // to prevent a loop when the downloaded exe has a stale bundled version.
+    if (!justUpdated()) {
+      checkAndUpdate(pkg.version, process.execPath).catch(() => {});
+    }
   })
   .catch((err: unknown) => {
     const msg = err instanceof Error ? err.message : String(err);
