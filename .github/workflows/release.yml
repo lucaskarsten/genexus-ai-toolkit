@@ -17,9 +17,10 @@ jobs:
       - name: Install & build
         working-directory: packages/gx18-mcp
         run: |
-          npm ci
+          npm install
+          npm rebuild
           npm run build
-          npm run build:exe
+          npx pkg dist/bin/gx18-mcp.js --target node18-win-x64 --output release/GeneXusAIToolkit.exe --icon assets/icon.ico
           node scripts/build-release.js
       - name: Upload release zip
         uses: softprops/action-gh-release@v2
