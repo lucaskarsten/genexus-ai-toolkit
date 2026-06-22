@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/lucaskarsten/genexus-ai-toolkit/compare/v1.2.1...v1.3.0) (2026-06-22)
+
+
+### Features
+
+* **gx18-mcp:** MCP server + C# worker, npm packaging, and gx_import ([#22](https://github.com/lucaskarsten/genexus-ai-toolkit/issues/22)) ([3d0e9ca](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/3d0e9ca87a18d7a27a3663529efa831e7e352990))
+
 ## [1.2.1](https://github.com/lucaskarsten/genexus-ai-toolkit/compare/v1.2.0...v1.2.1) (2026-06-19)
 
 
