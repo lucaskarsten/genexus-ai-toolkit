@@ -31,7 +31,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:worker": "powershell -File scripts/test-worker.ps1",
-    "prepublishOnly": "npm run build && npm run build:worker"
+    "prepublishOnly": "npm run build"
   },
   "pkg": {
     "scripts": ["dist/src/**/*.js"],
