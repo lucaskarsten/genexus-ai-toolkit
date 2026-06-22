@@ -582,24 +582,43 @@ namespace Gx18Mcp.SdkWorker.Sdk
             try { Console.SetOut(Console.Error); ok = (bool)importFile.Invoke(km, new object[] { xpzFile, model, options }); }
             finally { Console.SetOut(savedOut); }
 
-            // Inspect the imported object's newest revisions by name (avoids the webpanel 43/148 hint mismatch).
+            // Verify the imported object's author by name (avoids the webpanel 43/148 hint mismatch:
+            // the object's own versions carry its name; its parts have different names like "Procedure, Rules").
             var safeName = (name ?? "").Replace("'", "''");
             var sql = $"SELECT TOP 5 EntityTypeId, EntityId, EntityVersionId, UserId FROM EntityVersion WHERE EntityVersionName='{safeName}' ORDER BY EntityVersionId DESC";
             var res = _sql.Query(sql, true);
             var rows = GetProp(res, "rows") as List<object>;
-            var info = _session.GetUserInfo();
-            var expected = GetProp(info, "id");
 
+            int? userId = null;
+            int entityTypeId = 0, entityId = 0;
+            if (rows != null && rows.Count > 0 && rows[0] is Dictionary<string, object> first)
+            {
+                if (first.TryGetValue("UserId", out var u) && u != null) userId = Convert.ToInt32(u);
+                if (first.TryGetValue("EntityTypeId", out var et) && et != null) entityTypeId = Convert.ToInt32(et);
+                if (first.TryGetValue("EntityId", out var eid) && eid != null) entityId = Convert.ToInt32(eid);
+            }
+            var info = _session.GetUserInfo();
+            var infoId = GetProp(info, "id");
+            int expected = infoId == null ? 0 : Convert.ToInt32(infoId);
+
+            // WriteResult-compatible shape (op/name/entityId/userId/expectedUserId/kbUserName/userIdOk)
+            // so the TS guard (assertWriteOk) treats import exactly like create/modify, plus import-specific fields.
             return new
             {
+                op = "import",
                 ok,
                 xpzFile,
+                fullOverwrite,
                 type = typeKey,
                 name,
-                fullOverwrite,
-                expectedUserId = expected == null ? 0 : Convert.ToInt32(expected),
+                entityTypeId,
+                entityId,
+                userId,
+                expectedUserId = expected,
                 kbUserName = Convert.ToString(GetProp(info, "name")),
-                recentVersions = rows
+                userIdOk = expected <= 0 || userId == expected,
+                recentVersions = rows == null ? 0 : rows.Count,
+                versions = rows
             };
         }
 

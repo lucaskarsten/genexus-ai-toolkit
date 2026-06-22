@@ -21,6 +21,7 @@ escrita via SDK GX18 com o **usuário Windows correto** (autor = você, não uma
 | **Criação** de SDT (estrutura) | ✅ |
 | **`gx_modify`** — substituir uma section de objeto existente | ✅ |
 | **`gx_export`** — exportar `.xpz` real (Knowledge Manager) + valida o objeto | ✅ |
+| **`gx_import`** — importar `.xpz` (Knowledge Manager nativo), autor verificado; round-trip alcança scripts de UC | ✅ validado no clone (22/06) |
 | **Criação** de transaction | ⚠️ bloqueado — [issue #9](https://github.com/lucaskarsten/genexus-ai-toolkit/issues/9) |
 | Export `.xpz` de SDT recém-criado na mesma sessão | ⚠️ retorna false — [issue #10](https://github.com/lucaskarsten/genexus-ai-toolkit/issues/10) |
 | `gx_set_property`, `gx_rename`, `gx_validate`, `gx_build` | ⛔ stubs ([#11](https://github.com/lucaskarsten/genexus-ai-toolkit/issues/11), [#12](https://github.com/lucaskarsten/genexus-ai-toolkit/issues/12)) |
@@ -164,6 +165,7 @@ node dist/bin/gx18-mcp.js stop     # encerra o worker graciosamente
 | `gx_create` | `type`, `name`, `confirm`, + sections | Cria objeto novo |
 | `gx_modify` | `name`, `type`, `section`, `content`, `confirm` | Substitui uma section |
 | `gx_export` | `name`, `type`, `outputDir?` | Exporta `.xpz` real + valida |
+| `gx_import` | `xpzFile`, `type`, `name`, `fullOverwrite?`, `confirm` | Importa `.xpz` via Knowledge Manager nativo (autor verificado). Round-trip export→editar→import alcança scripts de UC (`AfterShow`/`Methods`) que o `gx_modify` não toca |
 
 Toda escrita exige **`confirm: true`**. O resultado inclui `userIdOk`, `userId`, `expectedUserId` —
 se o autor não bater, a tool falha em vez de gravar lixo no Team Development.

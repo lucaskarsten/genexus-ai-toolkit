@@ -107,6 +107,7 @@ namespace Gx18Mcp.SdkWorker
                 }
                 case "modify":   return EnsureSdk().ModifyByKey(S(p, "name"), S(p, "type"), S(p, "section"), S(p, "content"));
                 case "export_xpz": return EnsureSdk().ExportXpz(S(p, "type"), S(p, "name"), S(p, "outputFile"));
+                case "import": return EnsureSdk().ImportXpz(S(p, "xpzFile"), S(p, "type"), S(p, "name"), B(p, "fullOverwrite", true));
                 case "set_property": return EnsureSdk().SetProperty(S(p, "name"), N(p, "type"), S(p, "property"), S(p, "value"));
                 case "rename":   return EnsureSdk().Rename(S(p, "name"), N(p, "type"), S(p, "newName"));
                 case "validate": return EnsureSdk().Validate(S(p, "name"), N(p, "type"));

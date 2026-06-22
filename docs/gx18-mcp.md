@@ -91,6 +91,7 @@ Opening a GX18 KB from a process **outside** the install dir requires, in order:
 | `gx_create` | Create an object (see type matrix below). Requires `confirm:true` |
 | `gx_modify` | Replace a source section of an object. Requires `confirm:true` |
 | `gx_export` | Export an object to a real `.xpz` (Knowledge Manager) — also validates it |
+| `gx_import` | Import a `.xpz` via the native Knowledge Manager (`ImportFile`). Requires `confirm:true`. UserId-verified. The export→edit→import round-trip reaches sections the SDK write path can't (e.g. UC `AfterShow`/`Methods` scripts in CDATA) |
 | `gx_set_property` / `gx_rename` / `gx_validate` / `gx_build` | Not yet implemented (stubs) |
 
 ---

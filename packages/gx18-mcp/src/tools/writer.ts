@@ -1,5 +1,5 @@
 import { bridge } from '../sdk-bridge/bridge';
-import { CreateResult, ModifyResult, SetPropertyResult, RenameResult, WriteResult } from '../sdk-bridge/protocol';
+import { CreateResult, ModifyResult, SetPropertyResult, RenameResult, WriteResult, ImportResult } from '../sdk-bridge/protocol';
 import { SUPPORTED_WRITE_TYPES, SECTION_FIELDS, ENTITY_TYPE_TO_KEY } from '../domain/entity-types';
 
 // Re-exported for backward compatibility and the contract tests; defined in domain/entity-types.
@@ -85,6 +85,33 @@ export async function gxModify(args: {
     content: args.content,
   });
 
+  assertWriteOk(result);
+  return JSON.stringify(result, null, 2);
+}
+
+export async function gxImport(args: {
+  xpzFile: string;
+  type: string;
+  name: string;
+  fullOverwrite?: boolean;
+  confirm?: boolean;
+}): Promise<string> {
+  requireConfirm(args.confirm, 'gx_import');
+
+  if (!args.xpzFile) throw new Error('gx_import requires xpzFile (path to the .xpz to import).');
+  if (!args.name) throw new Error('gx_import requires name (the primary object, for post-import UserId verification).');
+
+  // Import is often the first write in a fresh worker → it pays the SDK cold-start (~10-15s)
+  // on top of the import itself. Give it a generous timeout (the default 30s is not enough cold).
+  const result = await bridge.send<ImportResult>('import', {
+    xpzFile: args.xpzFile,
+    type: (args.type ?? '').toLowerCase(),
+    name: args.name,
+    fullOverwrite: args.fullOverwrite !== false,
+  }, 180000);
+
+  // Same authoritative guard as create/modify — the native GX18 import stamps the Windows user;
+  // if a foreign UserId landed on the object, fail loudly before it pollutes Team Development.
   assertWriteOk(result);
   return JSON.stringify(result, null, 2);
 }

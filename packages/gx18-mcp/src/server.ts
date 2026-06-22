@@ -10,7 +10,7 @@ import { bridge } from './sdk-bridge/bridge';
 import { gxFind, gxList, gxGet } from './tools/discovery';
 import { gxRead, gxProperties, gxStructure } from './tools/reader';
 import { gxWhoami } from './tools/identity';
-import { gxCreate, gxModify, gxSetProperty, gxRename } from './tools/writer';
+import { gxCreate, gxModify, gxSetProperty, gxRename, gxImport } from './tools/writer';
 import { gxValidate, gxBuild, gxSql, gxExport } from './tools/utility';
 import { gxDbConnections, gxDbQuery } from './tools/database';
 
@@ -279,6 +279,31 @@ const TOOLS: Tool[] = [
     },
   },
   {
+    name: 'gx_import',
+    description:
+      'Import a .xpz archive into the GeneXus KB via the native Knowledge Manager service. Requires confirm:true. ' +
+      'This is the safe GX18-native import (NOT the gxnext mass-import that corrupts Team Development): the author ' +
+      '(UserId) is the Windows user running the worker, verified after import. Footprint = the object + its parts only. ' +
+      'Use the export → edit the .xpz → import round-trip to change sections the SDK write path cannot reach ' +
+      '(e.g. UserControl AfterShow/Methods scripts, stored as CDATA in the .xpz). ' +
+      'Pass name + type of the primary object so the post-import UserId guard can verify it.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        xpzFile: { type: 'string', description: 'Absolute path to the .xpz file to import' },
+        type: {
+          type: 'string',
+          enum: ['procedure', 'webpanel', 'webcomponent', 'api', 'usercontrol', 'dso', 'sdt', 'dataselector', 'transaction'],
+          description: 'Type of the primary object in the archive (for the result echo)',
+        },
+        name: { type: 'string', description: 'Name of the primary object (used for post-import UserId verification)' },
+        fullOverwrite: { type: 'boolean', description: 'Overwrite existing objects (default true). false = ImportOptions.Default.' },
+        confirm: { type: 'boolean', description: 'Must be true to execute the import' },
+      },
+      required: ['xpzFile', 'type', 'name', 'confirm'],
+    },
+  },
+  {
     name: 'gx_db_connections',
     description:
       'List all configured database connections available for gx_db_query. ' +
@@ -322,7 +347,7 @@ const TOOLS: Tool[] = [
 // The pieces below are pure/exported so they can be unit-tested without env load order.
 
 /** KB-mutating tools — removed from the tool list and blocked in read-only mode. */
-export const WRITE_TOOLS = new Set(['gx_create', 'gx_modify', 'gx_set_property', 'gx_rename', 'gx_build']);
+export const WRITE_TOOLS = new Set(['gx_create', 'gx_modify', 'gx_set_property', 'gx_rename', 'gx_build', 'gx_import']);
 
 /** Tools that can write when readOnly:false — forced to read-only in read-only mode. */
 export const SQL_TOOLS = new Set(['gx_sql', 'gx_db_query']);
@@ -421,6 +446,9 @@ export async function run(): Promise<void> {
           break;
         case 'gx_export':
           text = await gxExport(a as Parameters<typeof gxExport>[0]);
+          break;
+        case 'gx_import':
+          text = await gxImport(a as Parameters<typeof gxImport>[0]);
           break;
         case 'gx_db_connections':
           text = await gxDbConnections();

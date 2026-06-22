@@ -62,12 +62,17 @@ Read from a project `.env` and/or `%LOCALAPPDATA%\gx18-mcp\config.json`.
 |---|---|
 | **Read** (SQL, zero revisions) | `gx_find`, `gx_list`, `gx_get`, `gx_read`, `gx_properties`, `gx_structure`, `gx_whoami`, `gx_sql` |
 | **Database** | `gx_db_connections`, `gx_db_query` (`kb` = SQL Server / Win auth; `oracle` = ODP.NET Managed) |
-| **Write** (SDK, UserId-verified) | `gx_create`, `gx_modify`, `gx_export` — all writes require `confirm: true` |
+| **Write** (SDK, UserId-verified) | `gx_create`, `gx_modify`, `gx_export`, `gx_import` — all writes require `confirm: true` |
 | **Stubs** (registered, not yet implemented) | `gx_set_property`, `gx_rename`, `gx_validate`, `gx_build` |
 
 `gx_create` supports `procedure`, `webpanel`, `webcomponent`, `api`, `usercontrol`, `dso`, `sdt`,
 `dataselector`, and `transaction` (experimental). Full argument reference, the write-support matrix,
 and examples live in the docs below.
+
+`gx_import` imports a `.xpz` via the native GeneXus Knowledge Manager (the safe GX18 path — **not** the
+gxnext mass-import). The author is the Windows user, verified after import. Use the **export → edit the
+`.xpz` → import** round-trip to change sections the SDK write path can't reach — notably UserControl
+`AfterShow`/`Methods` scripts (stored as CDATA in the archive).
 
 ---
 

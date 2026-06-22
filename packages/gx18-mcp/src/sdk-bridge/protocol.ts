@@ -147,6 +147,22 @@ export interface ModifyParams {
 
 export type ModifyResult = WriteResult;
 
+// import (.xpz via Knowledge Manager) — WriteResult-compatible so the UserId guard applies
+export interface ImportParams {
+  xpzFile: string;
+  type: string;
+  name: string;
+  fullOverwrite?: boolean;
+}
+
+export interface ImportResult extends WriteResult {
+  ok: boolean;
+  xpzFile: string;
+  fullOverwrite: boolean;
+  /** The named object's recent EntityVersion rows (diagnostics) */
+  versions?: Array<{ EntityTypeId: number; EntityId: number; EntityVersionId: number; UserId: number }>;
+}
+
 // set_property
 export interface SetPropertyParams {
   name: string;
