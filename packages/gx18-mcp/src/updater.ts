@@ -118,24 +118,30 @@ export async function checkAndUpdate(currentVersion: string, exePath: string): P
     await download(asset.browser_download_url, zipPath);
     await extractExe(zipPath, newExe);
 
-    // Batch script: wait for this PID, swap exe, relaunch, self-delete.
-    const batPath = path.join(tmpDir, '_update.bat');
-    const bat = [
-      '@echo off',
-      ':wait',
-      `tasklist /fi "PID eq ${process.pid}" 2>nul | find "${process.pid}" >nul`,
-      'if not errorlevel 1 (timeout /t 1 /nobreak >nul & goto wait)',
-      `copy /y "${newExe}" "${exePath}" >nul`,
-      `start "" "${exePath}"`,
-      'del "%~f0"',
+    // PowerShell script: sleep 3s (process exits in ~1.5s), swap, relaunch, self-delete.
+    // Runs hidden — no visible cmd windows.
+    const ps1Path = path.join(tmpDir, '_update.ps1');
+    const newExeQ = newExe.replace(/'/g, "''");
+    const exePathQ = exePath.replace(/'/g, "''");
+    const ps1 = [
+      'Start-Sleep -Seconds 3',
+      `Copy-Item -Force '${newExeQ}' '${exePathQ}'`,
+      `Start-Process '${exePathQ}'`,
+      "Remove-Item -Force $PSCommandPath",
     ].join('\r\n');
 
-    fs.writeFileSync(batPath, bat, { encoding: 'utf8' });
+    fs.writeFileSync(ps1Path, ps1, { encoding: 'utf8' });
 
     console.log(`  Atualizacao pronta. Reiniciando em ${latestTag}...\n`);
 
-    spawn('cmd', ['/c', batPath], { detached: true, stdio: 'ignore' }).unref();
-    // Give the bat a moment to be seen, then exit so it can swap the file.
+    spawn('powershell', [
+      '-WindowStyle', 'Hidden',
+      '-NonInteractive',
+      '-ExecutionPolicy', 'Bypass',
+      '-File', ps1Path,
+    ], { detached: true, stdio: 'ignore' }).unref();
+
+    // Exit after 1.5s so PowerShell can copy the file.
     setTimeout(() => process.exit(0), 1500);
   } catch {
     // Non-fatal — network errors, 404, parse failures, etc.
