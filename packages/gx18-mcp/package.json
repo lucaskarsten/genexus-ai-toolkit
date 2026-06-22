@@ -25,7 +25,7 @@
   "scripts": {
     "build": "node esbuild.config.js",
     "build:worker": "powershell -File scripts/build-worker.ps1",
-    "build:exe": "node scripts/gen-icon.js && pkg dist/bin/gx18-mcp.js --target node18-win-x64 --output release/GeneXusAIToolkit.exe --icon assets/icon.ico",
+    "build:exe": "node scripts/gen-icon.js && pkg dist/bin/launcher.js --target node18-win-x64 --output release/GeneXusAIToolkit.exe --icon assets/icon.ico",
     "build:release": "npm run build && npm run build:exe && node scripts/build-release.js",
     "watch": "node esbuild.config.js --watch",
     "test": "vitest run",

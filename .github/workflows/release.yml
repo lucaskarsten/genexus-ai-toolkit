@@ -20,7 +20,7 @@ jobs:
           npm install
           npm rebuild
           npm run build
-          npx pkg dist/bin/gx18-mcp.js --target node18-win-x64 --output release/GeneXusAIToolkit.exe --icon assets/icon.ico
+          npx pkg dist/bin/launcher.js --target node18-win-x64 --output release/GeneXusAIToolkit.exe --icon assets/icon.ico
           node scripts/build-release.js
       - name: Upload release zip
         uses: softprops/action-gh-release@v2

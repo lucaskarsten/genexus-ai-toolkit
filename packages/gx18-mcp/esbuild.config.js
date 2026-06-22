@@ -14,6 +14,7 @@ const shared = {
 
 const entries = [
   { entryPoints: ['bin/gx18-mcp.ts'], outfile: 'dist/bin/gx18-mcp.js' },
+  { entryPoints: ['bin/launcher.ts'], outfile: 'dist/bin/launcher.js' },
   { entryPoints: ['src/server.ts'], outfile: 'dist/src/server.js' },
   // Local web UI server (lazy-imported by the `ui` command). page.ts/api.ts and the
   // dispatch/clients/doctor modules are pulled in transitively.
