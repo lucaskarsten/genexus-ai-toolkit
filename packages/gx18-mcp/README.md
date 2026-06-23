@@ -13,22 +13,79 @@ Windows-only (the worker is `net48` / `x86` and loads the GeneXus 18 SDK).
 
 ---
 
-## Quickstart
+## Setup — Claude Desktop / Claude Code
+
+### Step 1 — Install globally (one time)
 
 ```bash
-npx gx18-mcp setup     # terminal wizard: detect GX18 + KB + SQL Server, register in your AI client
-npx gx18-mcp ui        # same, in a local browser UI — plus a runner for all the tools
-npx gx18-mcp doctor    # health check: worker, GX18 dir, KB, ping, EntityVersion count
+npm install -g gx18-mcp
 ```
 
-Prefer a GUI? `gx18-mcp ui` starts a local web app on `127.0.0.1` (opens your browser) with a
-config/validate/doctor/register panel **and** a form-driven runner for every tool. It binds to
-loopback only, gates the API behind a per-session token in the URL fragment, and enforces a Host
-allowlist — but it can read **and write** your KB, so keep the URL private.
+Global install starts instantly — no download on each connect, no silent update that causes a
+timeout. To update later: `npm update -g gx18-mcp`.
 
-`setup` writes config to `%LOCALAPPDATA%\gx18-mcp\config.json` and registers the server in the
-clients you pick (Claude Code project `.mcp.json`, Claude Desktop, Cursor, or VS Code), then runs a
-quick verification. In Claude Code, confirm with `/mcp` → `gx18 ✅ connected`.
+### Step 2 — Add to your AI client config
+
+Pass the KB connection values as **env vars directly in the MCP config**. No browser, no wizard.
+
+**Claude Desktop** (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "gx18": {
+      "command": "gx18-mcp",
+      "args": ["start"],
+      "env": {
+        "GX_KB_PATH":       "C:\\KBs\\MyKB",
+        "GX_KB_SERVER":     "(localdb)\\MSSQLLocalDB",
+        "GX_KB_DATABASE":   "GX_KB_MyKB",
+        "GX18_INSTALL_DIR": "C:\\Program Files (x86)\\GeneXus\\GeneXus18U6"
+      }
+    }
+  }
+}
+```
+
+**Claude Code** (`.mcp.json` at project root):
+
+```json
+{
+  "mcpServers": {
+    "gx18": {
+      "command": "gx18-mcp",
+      "args": ["start"],
+      "env": {
+        "GX_KB_PATH":       "C:\\KBs\\MyKB",
+        "GX_KB_SERVER":     "(localdb)\\MSSQLLocalDB",
+        "GX_KB_DATABASE":   "GX_KB_MyKB",
+        "GX18_INSTALL_DIR": "C:\\Program Files (x86)\\GeneXus\\GeneXus18U6"
+      }
+    }
+  }
+}
+```
+
+Fill in your values, save, then verify in Claude Code with `/mcp` → `gx18 ✅ connected`.
+
+> **No global install?** Use `npx -y gx18-mcp start` as the command. First run downloads the
+> package (~30 s) and the connection will time out once — reload Claude Code after that and it
+> will connect immediately from cache.
+
+> ⚠️ **`GX_KB_PATH`** is the folder that contains the `.gxw` file, **not** the `.gxw` itself.
+> **`GX_KB_SERVER`** must keep the parentheses: `(localdb)\MSSQLLocalDB` — without them the SQL
+> client treats it as a named instance and times out (~30 s).
+> **`(localdb)\MSSQLLocalDB`** is a per-Windows-user instance. Each developer must point to their
+> own SQL Server instance where the KB was restored/attached.
+
+---
+
+## Quickstart (CLI)
+
+```bash
+npx gx18-mcp doctor    # health check: worker, GX18 dir, KB, ping, EntityVersion count
+npx gx18-mcp setup     # optional terminal wizard to write %LOCALAPPDATA%\gx18-mcp\config.json
+```
 
 The server inherits the Windows identity of the shell that launches it — that is what guarantees
 the correct author on every write.
@@ -38,9 +95,7 @@ the correct author on every write.
 ```bash
 gx18-mcp start     # start the MCP server on stdio (default command)
 gx18-mcp setup     # interactive wizard (config + client registration + verify)
-gx18-mcp ui        # local web UI: setup panel + tool runner (--port <n>, --no-open)
 gx18-mcp doctor    # environment health check
-gx18-mcp stop      # gracefully shut down a running worker
 ```
 
 ---
@@ -91,9 +146,6 @@ Read from a project `.env` and/or `%LOCALAPPDATA%\gx18-mcp\config.json`.
 | `GX18_INSTALL_DIR` | no | `C:\Program Files (x86)\GeneXus\GeneXus18U6` | GX18 install dir |
 | `GX_OUTPUT_PATH` | no | `.\output` | Default target for `gx_export` |
 | `ORACLE_HOST` / `ORACLE_PORT` / `ORACLE_SERVICE` / `ORACLE_USER` / `ORACLE_PASSWORD` | no | — | Enables the `oracle` connection in `gx_db_query` (ODP.NET Managed, supports NNE) |
-
-> ⚠️ **`GX_KB_SERVER` must keep the parentheses**: `(localdb)\MSSQLLocalDB`. Without them the SQL
-> client treats it as a named instance and times out (~30 s).
 
 ---
 

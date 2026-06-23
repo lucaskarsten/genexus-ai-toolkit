@@ -13,6 +13,8 @@
   <ItemGroup>
     <!-- System.Web.Extensions is not included by default in the SDK implicit set for net48 -->
     <Reference Include="System.Web.Extensions" />
+    <!-- Required for 'dynamic' keyword in SDK-style net48 projects -->
+    <Reference Include="Microsoft.CSharp" />
   </ItemGroup>
   <ItemGroup>
     <!-- ODP.NET Managed: fully managed Oracle driver, supports NNE, no Oracle Client needed -->

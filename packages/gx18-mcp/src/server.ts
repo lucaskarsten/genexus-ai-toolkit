@@ -19,7 +19,7 @@ export async function run(): Promise<void> {
   const readonly = isReadonly();
 
   const server = new Server(
-    { name: 'gx18-mcp', version: '1.0.0' },
+    { name: 'gx18-mcp', version: '1.5.0' },
     { capabilities: { tools: {}, resources: {} } }
   );
 
