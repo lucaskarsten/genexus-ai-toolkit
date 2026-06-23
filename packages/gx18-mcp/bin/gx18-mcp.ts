@@ -33,8 +33,19 @@ program
     const { default: inquirer } = await import('inquirer');
     const { loadConfig, saveConfig } = await import('../src/config');
     const { CLIENTS, registerClient } = await import('../src/clients');
+    const { execSync } = require('child_process');
 
-    console.log(chalk.bold('\ngx18-mcp setup wizard\n'));
+    console.log(chalk.bold(`\ngx18-mcp setup wizard  v${pkg.version}\n`));
+
+    // Step 0 — ensure global install so the AI client can call `gx18-mcp start` directly
+    // (no npx, no download delay, no update loop on each connect).
+    console.log(chalk.dim('Installing gx18-mcp globally...'));
+    try {
+      execSync('npm install -g gx18-mcp@latest', { stdio: 'inherit' });
+      console.log(chalk.green('  [OK] Global install complete.\n'));
+    } catch {
+      console.warn(chalk.yellow('  [WARN] Global install failed — you can run it manually: npm install -g gx18-mcp\n'));
+    }
 
     const existing = loadConfig();
 
@@ -138,7 +149,7 @@ program
     const { runDoctor } = await import('../src/doctor');
     const { bridge } = await import('../src/sdk-bridge/bridge');
 
-    console.log(chalk.bold('\ngx18-mcp doctor\n'));
+    console.log(chalk.bold(`\ngx18-mcp doctor  v${pkg.version}\n`));
     try {
       const report = await runDoctor();
       for (const c of report.checks) {
@@ -165,7 +176,8 @@ program
     const { startUi } = await import('../src/ui/server');
     try {
       const ui = await startUi({ port: opts.port, open: opts.open });
-      console.log(chalk.green(`\ngx18-mcp UI running at`), ui.url);
+      console.log(chalk.green(`\ngx18-mcp UI  v${pkg.version}  running at`), ui.url);
+      console.log(chalk.dim(`  Token: ${ui.token}  (paste this if the browser did not open)`));
       console.log(chalk.dim('  The page can read AND write your KB. Keep this URL private.'));
       console.log(chalk.dim('  Press Ctrl-C to stop.\n'));
     } catch (err) {

@@ -238,10 +238,10 @@ pre.out.err{border-color:var(--fail);color:#ffb4ae;}
 <div id="gx-login">
   <div class="lbox">
     <div class="lbox-logo">gx18&#8209;mcp</div>
-    <p class="lbox-sub">Paste the token printed in your terminal to continue.</p>
+    <p class="lbox-sub">Open the URL from your terminal in this browser — or paste the token (or the full URL) below.</p>
     <label style="margin-top:0">Token</label>
     <input type="text" id="tok-in" autocomplete="off" spellcheck="false"
-           placeholder="32-character hex token" />
+           placeholder="Token or full URL from terminal" />
     <div class="btns" style="margin-top:14px">
       <button class="act" onclick="doLogin()">Connect</button>
     </div>
@@ -544,6 +544,11 @@ function api(method, path, body) {
     headers: { 'x-gx18-token': TOKEN, 'content-type': 'application/json' },
     body: (body !== undefined) ? JSON.stringify(body) : undefined
   }).then(function(r) {
+    if (r.status === 401) {
+      try { sessionStorage.removeItem('gx18-token'); } catch(e) {}
+      showLogin();
+      return { status: 401, body: {} };
+    }
     return r.json().then(function(j) { return { status: r.status, body: j }; });
   });
 }
@@ -558,7 +563,10 @@ function outBox(container, text, isErr) {
 // ── Login ──────────────────────────────────────────────────────
 el('tok-in').addEventListener('keydown', function(e) { if (e.key === 'Enter') doLogin(); });
 function doLogin() {
-  var tok = (el('tok-in').value || '').trim();
+  var raw = (el('tok-in').value || '').trim();
+  var tok = raw;
+  var fragIdx = raw.indexOf('#token=');
+  if (fragIdx !== -1) tok = raw.slice(fragIdx + 7).split('&')[0];
   if (!tok) return;
   fetch('/api/config', { headers: { 'x-gx18-token': tok } })
     .then(function(r) {
@@ -568,7 +576,7 @@ function doLogin() {
         el('login-err').innerHTML = '';
         showApp();
       } else {
-        el('login-err').innerHTML = '<div class="banner fail">Invalid token. Check your terminal for the correct token.</div>';
+        el('login-err').innerHTML = '<div class="banner fail">Invalid token. Open the URL your terminal printed — it contains the token as <code>#token=…</code>.</div>';
       }
     })
     .catch(function() {
