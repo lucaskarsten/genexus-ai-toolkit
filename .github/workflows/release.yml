@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'gx18-mcp/v*'
+      - 'gx18-mcp-v*'
 
 jobs:
   build-windows:
@@ -18,7 +18,7 @@ jobs:
         working-directory: packages/gx18-mcp
         run: |
           $tag = "${{ github.ref_name }}"
-          $version = $tag -replace '^gx18-mcp/v', ''
+          $version = $tag -replace '^gx18-mcp-v', ''
           npm version $version --no-git-tag-version --allow-same-version
           Write-Host "Version set to $version"
       - name: Install & build
@@ -33,4 +33,3 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: packages/gx18-mcp/release/GeneXusAIToolkit-windows.zip
-          generate_release_notes: true
