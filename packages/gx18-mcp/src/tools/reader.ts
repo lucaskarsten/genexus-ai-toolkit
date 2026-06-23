@@ -58,3 +58,8 @@ export async function gxStructure(args: {
   });
   return JSON.stringify(result, null, 2);
 }
+
+export async function gxAttribute(args: { pattern?: string; limit?: number }): Promise<string> {
+  const r = await bridge.send('attribute_list', { pattern: args.pattern, limit: args.limit ?? 100 });
+  return JSON.stringify(r, null, 2);
+}

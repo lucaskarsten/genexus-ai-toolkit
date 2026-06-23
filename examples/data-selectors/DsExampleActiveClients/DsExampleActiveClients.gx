@@ -1,0 +1,18 @@
+/*
+  DataSelector: ActiveClients
+  Filtra clientes ativos com saldo positivo.
+  EntityTypeId: 88 (DataSelector)
+
+  NOTA: o SDK gx18-mcp suporta apenas criação name-only para dataselector.
+  A lógica interna (defined by, where, order) deve ser editada via IDE GX18
+  ou via export XPZ → editar CDATA → re-importar.
+
+  Para criar name-only via MCP:
+    gx_create(type:"dataselector", name:"DsExampleActiveClients")
+*/
+
+defined by ClientId
+
+Where ClientActive = True
+Where ClientBalance > 0
+Order by ClientName

@@ -126,17 +126,35 @@ namespace Gx18Mcp.SdkWorker.Sdk
 
         public object ModifyByKey(string name, string typeKey, string section, string content)
         {
+            if (string.IsNullOrEmpty(name))    throw new Exception("name is required");
+            if (string.IsNullOrEmpty(section)) throw new Exception("section is required");
+            if (content == null)               throw new Exception("content is required (pass empty string to clear a section)");
+
             var spec = Spec(typeKey);
             var concrete = Resolve(spec);
             var kb = _session.KnowledgeBase;
+            if (kb == null) throw new Exception("KB not open — SDK may not have initialized");
             var model = _session.KbType.GetProperty("DesignModel").GetValue(kb);
+            if (model == null) throw new Exception("DesignModel is null — KB may not be fully loaded");
 
             var obj = ResolveByName(concrete, model, name);
-            if (obj == null) throw new Exception($"Object not found: {name}");
+            if (obj == null) throw new Exception(
+                $"Object '{name}' not found (type '{typeKey}'). Names are case-insensitive. Use gx_find to locate the exact name.");
 
             var sections = new Dictionary<string, object> { { section, content } };
-            ApplySections(obj, spec, sections);
-            InvokeSave(obj);
+            try
+            {
+                ApplySections(obj, spec, sections);
+                InvokeSave(obj);
+            }
+            catch (Exception ex)
+            {
+                var inner = ex is System.Reflection.TargetInvocationException tie && tie.InnerException != null
+                    ? tie.InnerException : ex;
+                throw new Exception(
+                    $"Failed to save '{name}' (type '{typeKey}', section '{section}'): {inner.GetType().Name}: {inner.Message}",
+                    inner);
+            }
 
             int id = Convert.ToInt32(GetProp(obj, "Id"));
             return VerifyUserId(spec.EntityTypeId, id, name, "modify");
@@ -868,6 +886,44 @@ namespace Gx18Mcp.SdkWorker.Sdk
             int id = Convert.ToInt32(GetProp(obj, "Id"));
             var writeResult = VerifyUserId(spec.EntityTypeId, id, name, "variable_delete");
             return new { op = "variable_delete", objectName = name, varName, deleted = true, writeResult };
+        }
+
+        // --- Clone ---
+        public object Clone(string typeKey, string sourceName, string targetName, string module)
+        {
+            if (string.IsNullOrEmpty(sourceName)) throw new Exception("sourceName is required");
+            if (string.IsNullOrEmpty(targetName)) throw new Exception("targetName is required");
+
+            var spec = Spec(typeKey);
+            var concrete = Resolve(spec);
+            var kb = _session.KnowledgeBase;
+            if (kb == null) throw new Exception("KB not open");
+            var model = _session.KbType.GetProperty("DesignModel").GetValue(kb);
+
+            var source = ResolveByName(concrete, model, sourceName);
+            if (source == null) throw new Exception($"Source object not found: {sourceName} ({typeKey})");
+
+            // Extract sections from the source object
+            var sections = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+            foreach (var kv in spec.Sections)
+            {
+                var part = GetProp(source, kv.Value.PartProp);
+                if (part == null) continue;
+                switch (kv.Value.Kind)
+                {
+                    case PartKind.Source:
+                        var src = GetProp(part, "Source") as string;
+                        if (!string.IsNullOrEmpty(src)) sections[kv.Key] = src;
+                        break;
+                    case PartKind.Editable:
+                        var ec = GetProp(part, "EditableContent") as string;
+                        if (!string.IsNullOrEmpty(ec)) sections[kv.Key] = ec;
+                        break;
+                    // Structure (SDT/TRN) cloning not supported — skip
+                }
+            }
+
+            return CreateByKey(typeKey, targetName, module, sections);
         }
 
         // ---- helpers (private) ----

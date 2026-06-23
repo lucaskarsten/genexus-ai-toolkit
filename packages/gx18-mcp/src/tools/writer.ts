@@ -71,6 +71,10 @@ export async function gxModify(args: {
 }): Promise<string> {
   requireConfirm(args.confirm, 'gx_modify');
 
+  if (!args.name) throw new Error('gx_modify: name is required.');
+  if (!args.section) throw new Error('gx_modify: section is required.');
+  if (args.content == null) throw new Error('gx_modify: content is required (pass empty string to clear a section).');
+
   const typeKey = ENTITY_TYPE_TO_KEY[args.type];
   if (!typeKey || !SUPPORTED_WRITE_TYPES.includes(typeKey)) {
     throw new Error(
@@ -249,4 +253,54 @@ export async function gxVariable(args: {
   }
 
   throw new Error(`gx_variable: unknown action '${args.action}'. Use list, add, or delete.`);
+}
+
+export async function gxClone(args: {
+  type: string;
+  name: string;
+  newName: string;
+  module?: string;
+  confirm: boolean;
+}): Promise<string> {
+  requireConfirm(args.confirm, 'gx_clone');
+  const r = await bridge.send<WriteResult>('clone', {
+    typeKey: args.type,
+    sourceName: args.name,
+    targetName: args.newName,
+    module: args.module,
+  }, 180_000);
+  assertWriteOk(r);
+  return JSON.stringify(r, null, 2);
+}
+
+export async function gxBulkModify(args: {
+  type: string;
+  names: string[];
+  section: string;
+  content: string;
+  confirm: boolean;
+}): Promise<string> {
+  requireConfirm(args.confirm, 'gx_bulk_modify');
+  if (!Array.isArray(args.names) || args.names.length === 0)
+    throw new Error('names must be a non-empty array');
+
+  const results: Array<{ name: string; ok: boolean; error?: string }> = [];
+  for (const name of args.names) {
+    try {
+      const r = await bridge.send<WriteResult>('modify', {
+        name,
+        type: args.type,
+        section: args.section,
+        content: args.content,
+      }, 180_000);
+      assertWriteOk(r);
+      results.push({ name, ok: true });
+    } catch (e: unknown) {
+      results.push({ name, ok: false, error: e instanceof Error ? e.message : String(e) });
+    }
+  }
+
+  const succeeded = results.filter((r) => r.ok).length;
+  const failed = results.filter((r) => !r.ok).length;
+  return JSON.stringify({ results, succeeded, failed }, null, 2);
 }

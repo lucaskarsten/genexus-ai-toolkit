@@ -1,0 +1,6 @@
+[
+  { "name": "PersonId",    "type": "numeric",     "length": 9,   "decimals": 0 },
+  { "name": "PersonName",  "type": "varchar",     "length": 60,  "decimals": 0 },
+  { "name": "PersonEmail", "type": "varchar",     "length": 100, "decimals": 0 },
+  { "name": "Active",      "type": "boolean" }
+]

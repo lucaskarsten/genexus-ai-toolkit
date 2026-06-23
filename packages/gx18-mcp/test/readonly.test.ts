@@ -5,7 +5,7 @@ import {
   readonlyBlock,
   WRITE_TOOLS,
   SQL_TOOLS,
-} from '../src/server';
+} from '../src/dispatch';
 
 describe('GX18_READONLY mode', () => {
   it('isReadonly reads the env flag (1 / true, case-insensitive)', () => {

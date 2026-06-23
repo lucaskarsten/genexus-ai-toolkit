@@ -1,8 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import fs from 'fs';
 
-const { send, shutdown } = vi.hoisted(() => ({ send: vi.fn(), shutdown: vi.fn() }));
-vi.mock('../src/sdk-bridge/bridge', () => ({ bridge: { send, shutdown } }));
+const { send, shutdown, status } = vi.hoisted(() => ({
+  send: vi.fn(),
+  shutdown: vi.fn(),
+  status: vi.fn(() => ({ alive: true, starting: false, pid: 1234, uptimeMs: 1000 })),
+}));
+vi.mock('../src/sdk-bridge/bridge', () => ({ bridge: { send, shutdown, status } }));
 vi.mock('../src/config', () => ({
   loadConfig: () => ({
     kbPath: 'C:\\KBs\\X', kbServer: '(localdb)\\MSSQLLocalDB', kbDatabase: 'GX_KB_X',

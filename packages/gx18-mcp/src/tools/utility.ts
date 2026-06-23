@@ -103,6 +103,15 @@ export async function gxSql(args: {
   return JSON.stringify(result, null, 2);
 }
 
+export async function gxReload(): Promise<string> {
+  try {
+    await bridge.restart();
+    return JSON.stringify({ ok: true, message: 'Worker restarted. KB reopened fresh.' });
+  } catch (e) {
+    return JSON.stringify({ ok: false, error: String(e) });
+  }
+}
+
 export async function gxExport(args: {
   name: string;
   type: number;

@@ -1,4 +1,4 @@
-// Single self-contained page served by the UI server. Embedded as a string so it
+﻿// Single self-contained page served by the UI server. Embedded as a string so it
 // is bundled by esbuild (no asset folder, no `files` change, no runtime path lookup).
 // The token is read from the URL fragment (location.hash) — never sent to the server
 // as a query (no log leakage) — and echoed on every /api call as x-gx18-token.
@@ -529,7 +529,7 @@ function showApp()  { el('gx-login').style.display = 'none'; el('gx-app').style.
 function el(id) { return document.getElementById(id); }
 function setVal(id, v) { var e = el(id); if (e) e.value = (v == null ? '' : String(v)); }
 function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(s).replace(/&/g,'&amp;').replace(/\u003c/g,'&lt;').replace(/>/g,'&gt;');
 }
 function fmtUptime(ms) {
   var s = Math.floor(ms / 1000);

@@ -147,6 +147,64 @@ namespace Gx18Mcp.SdkWorker
                 case "probe_sdk": return SdkProbe.Run(
                     Environment.GetEnvironmentVariable("GX18_INSTALL_DIR") ?? @"C:\Program Files (x86)\GeneXus\GeneXus18U6",
                     S(p, "assembly"), S(p, "type"), S(p, "filter"));
+                case "stats":
+                    return _sql.Stats(S(p, "module"));
+
+                case "modules":
+                    return _sql.Modules();
+
+                case "diff":
+                    return _sql.Diff(
+                        S(p, "name"),
+                        N(p, "entityTypeId"),
+                        S(p, "section"),
+                        N(p, "versionA"),
+                        N(p, "versionB")
+                    );
+
+                case "dead_code":
+                    return _sql.DeadCode(
+                        N(p, "entityTypeId"),
+                        S(p, "module"),
+                        N(p, "limit", 50)
+                    );
+
+                case "impact":
+                    return _sql.Impact(
+                        S(p, "name"),
+                        N(p, "entityTypeId"),
+                        N(p, "depth", 2)
+                    );
+
+                case "attribute_list":
+                    return _sql.AttributeList(
+                        S(p, "pattern"),
+                        N(p, "limit", 100)
+                    );
+
+                case "compare":
+                    return _sql.Compare(
+                        S(p, "name"),
+                        N(p, "entityTypeId"),
+                        S(p, "targetDb"),
+                        S(p, "section")
+                    );
+
+                case "lint":
+                    return _sql.Lint(
+                        N(p, "entityTypeId"),
+                        S(p, "module"),
+                        S(p, "severity")
+                    );
+
+                case "clone":
+                    return EnsureSdk().Clone(
+                        S(p, "typeKey"),
+                        S(p, "sourceName"),
+                        S(p, "targetName"),
+                        S(p, "module")
+                    );
+
                 case "shutdown":
                     _exitPending = true;
                     return new { ok = true };
@@ -248,6 +306,10 @@ namespace Gx18Mcp.SdkWorker
             int depth = 0;
             while (e != null && depth < 6)
             {
+                // TargetInvocationException only wraps — skip to InnerException to avoid the
+                // uninformative "Exception has been thrown by the target of an invocation." prefix.
+                if (e is System.Reflection.TargetInvocationException && e.InnerException != null)
+                { e = e.InnerException; continue; }
                 if (sb.Length > 0) sb.Append(" -> ");
                 sb.Append(e.GetType().Name).Append(": ").Append(e.Message);
                 e = e.InnerException;

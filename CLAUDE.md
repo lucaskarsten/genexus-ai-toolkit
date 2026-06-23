@@ -42,6 +42,7 @@ Use sempre a ferramenta mais direta. A coluna "NUNCA usar" indica o caminho long
 | Editar AfterShow / Methods de UC | `gx_export` → patch CDATA → `gx_import` | `gx_modify` (não alcança scripts de UC) |
 | Query ad-hoc na KB (SQL Server) | `gx_sql` | `gx_db_query connection=kb` (redundante) |
 | Query no Oracle | `gx_db_query connection=oracle` | `gx_sql` (não alcança Oracle) |
+| Recarregar KB após SQL write direto | `gx_reload` | Assumir que o worker já viu a mudança (modelo SDK fica em cache) |
 
 **EntityTypeIds** (param `type` em `gx_read`, `gx_modify`, `gx_export`, `gx_import`, `gx_list`):
 `34`=Procedure · `36`=SDT · `39`=Transaction · `43`=WebPanel/WebComponent · `147`=UserControl · `161`=DSO
@@ -55,6 +56,7 @@ Use sempre a ferramenta mais direta. A coluna "NUNCA usar" indica o caminho long
 - Para ler scripts de UC (AfterShow/Methods) → `gx_export` → abrir .xpz (NÃO `gx_read`)
 - Para editar objeto existente → `gx_modify` (NÃO `gx_import`)
 - Para editar scripts de UC → `gx_export` → patch CDATA → `gx_import` (NÃO `gx_modify`)
+- Após `gx_sql readOnly:false` que altera metadados da KB (INSERT/UPDATE em tabelas como EntityVersion, ModelEntityVersion, propriedades) → `gx_reload` para que o worker SDK releia a KB do banco; sem isso, operações SDK subsequentes usam o modelo em cache e não enxergam as mudanças
 
 ## Before generating any code
 

@@ -1,0 +1,7 @@
+[
+  { "name": "ProductId",          "type": "numeric",     "length": 9,   "decimals": 0, "key": true },
+  { "name": "ProductName",        "type": "varchar",     "length": 100, "decimals": 0 },
+  { "name": "ProductDescription", "type": "longvarchar" },
+  { "name": "ProductPrice",       "type": "numeric",     "length": 12,  "decimals": 2 },
+  { "name": "ProductActive",      "type": "boolean" }
+]

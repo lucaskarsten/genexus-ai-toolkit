@@ -1,11 +1,12 @@
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 
 import { gxFind, gxList, gxGet, gxAnalyze, gxHistory } from './tools/discovery';
-import { gxRead, gxProperties, gxStructure } from './tools/reader';
+import { gxRead, gxProperties, gxStructure, gxAttribute } from './tools/reader';
 import { gxWhoami } from './tools/identity';
-import { gxCreate, gxModify, gxSetProperty, gxRename, gxImport, gxDelete, gxVariable } from './tools/writer';
-import { gxValidate, gxBuild, gxSql, gxExport, gxSaveConfig, gxSearch, gxDoctor } from './tools/utility';
+import { gxCreate, gxModify, gxSetProperty, gxRename, gxImport, gxDelete, gxVariable, gxClone, gxBulkModify } from './tools/writer';
+import { gxValidate, gxBuild, gxSql, gxExport, gxSaveConfig, gxSearch, gxDoctor, gxReload } from './tools/utility';
 import { gxDbConnections, gxDbQuery, gxMove } from './tools/database';
+import { gxStats, gxModules, gxDiff, gxDeadCode, gxImpact, gxCompare, gxLint } from './tools/analysis';
 
 // EntityTypeId reference (included in descriptions for discoverability):
 // Procedure=34, SDT=36, Transaction=39, WebPanel/WebComponent=43, UserControl=147, DSO=161
@@ -494,6 +495,145 @@ const TOOLS: Tool[] = [
       properties: {},
     },
   },
+  {
+    name: 'gx_reload',
+    description:
+      'Restart the SDK worker, forcing the KB to be reopened fresh. ' +
+      'Use this after any direct SQL write (gx_sql readOnly:false) that modifies KB schema or metadata ' +
+      '(e.g. INSERTing properties, updating EntityVersion). ' +
+      'The worker restarts in ~30s (cold-start). No arguments required.',
+    inputSchema: { type: 'object' as const, properties: {} },
+  },
+  {
+    name: 'gx_stats',
+    description: 'KB statistics: object counts by type and module, recently modified objects.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        module: { type: 'string', description: 'Filter by module name (optional).' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'gx_modules',
+    description: 'List all modules in the KB with their hierarchy (id, name, parentId).',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {},
+      required: [],
+    },
+  },
+  {
+    name: 'gx_diff',
+    description: 'Diff between two EntityVersion revisions of an object. Omit versionA/versionB to diff the two most recent versions.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        name: { type: 'string', description: 'Object name.' },
+        type: { type: 'number', description: 'EntityTypeId (34=Proc, 43=WBP, 147=UC, 161=DSO…).' },
+        section: { type: 'string', description: 'Section name (default: source).' },
+        versionA: { type: 'number', description: 'EntityVersionId A (older). Omit for auto.' },
+        versionB: { type: 'number', description: 'EntityVersionId B (newer). Omit for auto.' },
+      },
+      required: ['name', 'type'],
+    },
+  },
+  {
+    name: 'gx_dead_code',
+    description: 'Find objects of a given type that have no inbound references in the KB source blobs.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        type: { type: 'number', description: 'EntityTypeId to scan (default: 34=Procedure).' },
+        module: { type: 'string', description: 'Restrict to objects in this module (optional).' },
+        limit: { type: 'number', description: 'Max candidates to check (default: 50).' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'gx_impact',
+    description: 'Transitive impact analysis: which objects would be affected if the given object changes. Traverses the usedby graph up to `depth` levels.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        name: { type: 'string', description: 'Object name.' },
+        type: { type: 'number', description: 'EntityTypeId (optional, improves accuracy).' },
+        depth: { type: 'number', description: 'Max traversal depth (default: 2, max: 5).' },
+      },
+      required: ['name'],
+    },
+  },
+  {
+    name: 'gx_attribute',
+    description: 'List KB attributes (EntityTypeId=24) with their type, length, decimals, domain, and description.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        pattern: { type: 'string', description: 'SQL LIKE pattern to filter by name (e.g. "Client%").' },
+        limit: { type: 'number', description: 'Max results (default: 100).' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'gx_compare',
+    description: 'Compare an object\'s source between the current KB and another KB on the same SQL Server instance.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        name: { type: 'string', description: 'Object name.' },
+        type: { type: 'number', description: 'EntityTypeId.' },
+        targetDb: { type: 'string', description: 'Target SQL Server database name (e.g. "GX_KB_FoccoLojas_03").' },
+        section: { type: 'string', description: 'Section to compare (default: source).' },
+      },
+      required: ['name', 'type', 'targetDb'],
+    },
+  },
+  {
+    name: 'gx_lint',
+    description: 'Scan GeneXus object sources for known bad patterns (jQuery reflow, missing guards, hard-coded user IDs, etc.).',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        type: { type: 'number', description: 'EntityTypeId to scan (default: 147=UserControl).' },
+        module: { type: 'string', description: 'Restrict to objects in this module (optional).' },
+        severity: { type: 'string', enum: ['error', 'warn', 'info'], description: 'Filter by minimum severity (optional).' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'gx_clone',
+    description: 'Clone an existing GeneXus object to a new name, copying all source sections. Requires confirm:true.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        type: { type: 'string', description: 'Object type key (procedure, webpanel, dso, usercontrol, etc.).' },
+        name: { type: 'string', description: 'Source object name.' },
+        newName: { type: 'string', description: 'New object name.' },
+        module: { type: 'string', description: 'Target module (optional, defaults to root).' },
+        confirm: { type: 'boolean', description: 'Must be true to execute the clone.' },
+      },
+      required: ['type', 'name', 'newName', 'confirm'],
+    },
+  },
+  {
+    name: 'gx_bulk_modify',
+    description: 'Apply the same section modification to multiple GeneXus objects. Requires confirm:true.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        type: { type: 'string', description: 'Object type key (procedure, webpanel, dso, etc.).' },
+        names: { type: 'array', items: { type: 'string' }, description: 'List of object names to modify.' },
+        section: { type: 'string', description: 'Section to replace (source, events, rules, styles, etc.).' },
+        content: { type: 'string', description: 'New content for the section.' },
+        confirm: { type: 'boolean', description: 'Must be true to execute.' },
+      },
+      required: ['type', 'names', 'section', 'content', 'confirm'],
+    },
+  },
 ];
 
 // ── Read-only mode ───────────────────────────────────────────────────────────
@@ -505,7 +645,7 @@ const TOOLS: Tool[] = [
 /** KB-mutating tools — removed from the tool list and blocked in read-only mode. */
 export const WRITE_TOOLS = new Set([
   'gx_create', 'gx_modify', 'gx_set_property', 'gx_rename', 'gx_build', 'gx_import',
-  'gx_delete', 'gx_variable', 'gx_move',
+  'gx_delete', 'gx_variable', 'gx_move', 'gx_clone', 'gx_bulk_modify',
 ]);
 
 /** Tools that can write when readOnly:false — forced to read-only in read-only mode. */
@@ -609,6 +749,28 @@ async function dispatch(name: string, a: Record<string, unknown>): Promise<ToolR
       return { text: await gxMove(a as Parameters<typeof gxMove>[0]), isError: false };
     case 'gx_doctor':
       return { text: await gxDoctor(), isError: false };
+    case 'gx_reload':
+      return { text: await gxReload(), isError: false };
+    case 'gx_stats':
+      return { text: await gxStats(a as Parameters<typeof gxStats>[0]), isError: false };
+    case 'gx_modules':
+      return { text: await gxModules({} as never), isError: false };
+    case 'gx_diff':
+      return { text: await gxDiff(a as Parameters<typeof gxDiff>[0]), isError: false };
+    case 'gx_dead_code':
+      return { text: await gxDeadCode(a as Parameters<typeof gxDeadCode>[0]), isError: false };
+    case 'gx_impact':
+      return { text: await gxImpact(a as Parameters<typeof gxImpact>[0]), isError: false };
+    case 'gx_attribute':
+      return { text: await gxAttribute(a as Parameters<typeof gxAttribute>[0]), isError: false };
+    case 'gx_compare':
+      return { text: await gxCompare(a as Parameters<typeof gxCompare>[0]), isError: false };
+    case 'gx_lint':
+      return { text: await gxLint(a as Parameters<typeof gxLint>[0]), isError: false };
+    case 'gx_clone':
+      return { text: await gxClone(a as Parameters<typeof gxClone>[0]), isError: false };
+    case 'gx_bulk_modify':
+      return { text: await gxBulkModify(a as Parameters<typeof gxBulkModify>[0]), isError: false };
     default:
       return { text: `Unknown tool: ${name}`, isError: true };
   }

@@ -551,5 +551,392 @@ namespace Gx18Mcp.SdkWorker.Sql
             File.WriteAllText(path, $"// Exported: {name}\n// Type: {TypeName(type)}\n", Encoding.UTF8);
             return new { path };
         }
+
+        // --- Stats ---
+        public object Stats(string module)
+        {
+            var byTypeSql = @"
+                SELECT et.EntityTypeName, ev.EntityTypeId, COUNT(*) as Total
+                FROM EntityVersion ev
+                JOIN EntityType et ON et.EntityTypeId = ev.EntityTypeId
+                WHERE ev.EntityTypeId IN (34,36,39,43,86,88,147,161)
+                GROUP BY et.EntityTypeName, ev.EntityTypeId
+                ORDER BY Total DESC";
+            var byTypeResult = Query(byTypeSql, true);
+
+            var recentSql = @"
+                SELECT TOP 10 ev.EntityVersionName, et.EntityTypeName, CONVERT(varchar,ev.EntityVersionTimestamp,120) as ts
+                FROM EntityVersion ev
+                JOIN EntityType et ON et.EntityTypeId = ev.EntityTypeId
+                WHERE ev.EntityTypeId IN (34,36,39,43,86,88,147,161)
+                ORDER BY ev.EntityVersionTimestamp DESC";
+            var recentResult = Query(recentSql, true);
+
+            long total = ScalarLong("SELECT COUNT(*) FROM EntityVersion WHERE EntityTypeId IN (34,36,39,43,86,88,147,161)");
+
+            return new { byType = GetResultRows(byTypeResult), recentlyModified = GetResultRows(recentResult), totalObjects = total };
+        }
+
+        private List<object> GetResultRows(object result)
+        {
+            var p = result.GetType().GetProperty("rows");
+            return p?.GetValue(result) as List<object> ?? new List<object>();
+        }
+
+        // --- Modules ---
+        public object Modules()
+        {
+            var sql = @"
+                SELECT ev.EntityId as Id, ev.EntityVersionName as Name,
+                       mev.ModelParentEntityId as ParentId
+                FROM EntityVersion ev
+                JOIN ModelEntityVersion mev
+                    ON mev.EntityTypeId = ev.EntityTypeId AND mev.EntityId = ev.EntityId
+                    AND mev.EntityVersionId = ev.EntityVersionId
+                WHERE ev.EntityTypeId = 100
+                ORDER BY ev.EntityVersionName";
+            var result = Query(sql, true);
+            var rows = GetResultRows(result);
+            return new { modules = rows, total = rows.Count };
+        }
+
+        // --- Diff ---
+        public object Diff(string name, int entityTypeId, string section, int versionA, int versionB)
+        {
+            if (string.IsNullOrEmpty(name)) throw new Exception("name is required");
+            if (entityTypeId <= 0) throw new Exception("entityTypeId is required");
+
+            if (versionA <= 0 || versionB <= 0)
+            {
+                var safeName = name.Replace("'", "''");
+                var versionsSql = $@"
+                    SELECT TOP 2 ev.EntityVersionId, CONVERT(varchar,ev.EntityVersionTimestamp,120) as ts
+                    FROM EntityVersion ev
+                    WHERE ev.EntityTypeId = {entityTypeId}
+                      AND ev.EntityVersionName = '{safeName}'
+                    ORDER BY ev.EntityVersionId DESC";
+                var vRes = Query(versionsSql, true);
+                var vRows = GetResultRows(vRes);
+                if (vRows.Count < 2)
+                    throw new Exception($"Object '{name}' has fewer than 2 versions — diff requires at least 2.");
+                var v0 = vRows[0] as Dictionary<string, object>;
+                var v1 = vRows[1] as Dictionary<string, object>;
+                versionA = v0 != null && v0.ContainsKey("EntityVersionId") ? Convert.ToInt32(v0["EntityVersionId"]) : 0;
+                versionB = v1 != null && v1.ContainsKey("EntityVersionId") ? Convert.ToInt32(v1["EntityVersionId"]) : 0;
+            }
+
+            var textA = ReadVersionText(entityTypeId, name, versionA);
+            var textB = ReadVersionText(entityTypeId, name, versionB);
+            var diff = GenerateUnifiedDiff(textA, textB, $"v{versionA}", $"v{versionB}");
+            var diffLines = diff.Split('\n');
+            int added = 0, removed = 0;
+            foreach (var l in diffLines)
+            {
+                if (l.StartsWith("+") && !l.StartsWith("+++")) added++;
+                else if (l.StartsWith("-") && !l.StartsWith("---")) removed++;
+            }
+
+            return new { name, entityTypeId, section = section ?? "source", versionA, versionB, diff, linesAdded = added, linesRemoved = removed };
+        }
+
+        private string ReadVersionText(int entityTypeId, string name, int versionId)
+        {
+            var safeName = name.Replace("'", "''");
+            var sql = $@"SELECT EntityVersionData FROM EntityVersion
+                         WHERE EntityTypeId = {entityTypeId}
+                           AND EntityVersionName = '{safeName}'
+                           AND EntityVersionId = {versionId}";
+            using (var conn = Open())
+            using (var cmd = new SqlCommand(sql, conn))
+            using (var r = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
+            {
+                if (!r.Read() || r.IsDBNull(0)) return "";
+                long size = r.GetBytes(0, 0, null, 0, 0);
+                var buffer = new byte[size];
+                r.GetBytes(0, 0, buffer, 0, (int)size);
+                if (buffer.Length <= 11) return "";
+                return Decompress(buffer);
+            }
+        }
+
+        private static string GenerateUnifiedDiff(string textA, string textB, string labelA, string labelB)
+        {
+            var linesA = textA.Split('\n');
+            var linesB = textB.Split('\n');
+            var sb = new StringBuilder();
+            sb.AppendLine($"--- {labelA}");
+            sb.AppendLine($"+++ {labelB}");
+            int i = 0, j = 0;
+            while (i < linesA.Length || j < linesB.Length)
+            {
+                if (i < linesA.Length && j < linesB.Length && linesA[i] == linesB[j])
+                {
+                    sb.AppendLine(" " + linesA[i]); i++; j++;
+                }
+                else
+                {
+                    while (i < linesA.Length && (j >= linesB.Length || linesA[i] != linesB[j]))
+                    { sb.AppendLine("-" + linesA[i]); i++; }
+                    while (j < linesB.Length && (i >= linesA.Length || linesA[i] != linesB[j]))
+                    { sb.AppendLine("+" + linesB[j]); j++; }
+                }
+            }
+            return sb.ToString();
+        }
+
+        // --- DeadCode ---
+        public object DeadCode(int entityTypeId, string module, int limit)
+        {
+            if (entityTypeId <= 0) entityTypeId = 34;
+            if (limit <= 0) limit = 50;
+
+            var moduleFilter = string.IsNullOrEmpty(module) ? "" :
+                $@"AND ev.EntityId IN (
+                       SELECT mev.EntityId FROM ModelEntityVersion mev
+                       JOIN EntityVersion mn ON mn.EntityTypeId=100 AND mn.EntityId=mev.ModelParentEntityId
+                       AND mn.EntityVersionId=(SELECT MAX(v2.EntityVersionId) FROM EntityVersion v2 WHERE v2.EntityTypeId=100 AND v2.EntityId=mn.EntityId)
+                       WHERE mev.EntityTypeId={entityTypeId} AND mn.EntityVersionName='{module.Replace("'", "''")}'
+                   )";
+
+            // Collect candidate objects, then check if any other object's source references them by name
+            var candidatesSql = $@"
+                SELECT TOP {limit} ev.EntityId, ev.EntityVersionName as Name
+                FROM EntityVersion ev
+                WHERE ev.EntityTypeId = {entityTypeId}
+                  AND ev.EntityVersionId = (SELECT MAX(v2.EntityVersionId) FROM EntityVersion v2 WHERE v2.EntityTypeId={entityTypeId} AND v2.EntityId=ev.EntityId)
+                {moduleFilter}
+                ORDER BY ev.EntityVersionName";
+
+            var candidates = new List<(int EntityId, string Name)>();
+            using (var conn = Open())
+            using (var cmd = new SqlCommand(candidatesSql, conn))
+            using (var r = cmd.ExecuteReader())
+                while (r.Read())
+                    candidates.Add((r.GetInt32(0), r.IsDBNull(1) ? "" : r.GetString(1)));
+
+            var unreferenced = new List<object>();
+            foreach (var c in candidates)
+            {
+                if (string.IsNullOrEmpty(c.Name)) continue;
+                var searchResult = Search(c.Name, 0, null, 5);
+                var matches = searchResult.GetType().GetProperty("matches")?.GetValue(searchResult) as List<object> ?? new List<object>();
+                // Filter out self-references
+                bool referenced = false;
+                foreach (var m in matches)
+                {
+                    var d = m as Dictionary<string, object>;
+                    if (d == null) continue;
+                    var mName = d.ContainsKey("name") ? Convert.ToString(d["name"]) : "";
+                    var mEntityId = d.ContainsKey("entityId") ? Convert.ToInt32(d["entityId"]) : 0;
+                    if (mEntityId != c.EntityId || !string.Equals(mName, c.Name, StringComparison.OrdinalIgnoreCase))
+                    { referenced = true; break; }
+                }
+                if (!referenced) unreferenced.Add(new { name = c.Name, entityId = c.EntityId, entityTypeId });
+            }
+
+            return new { entityTypeId, module, candidates = unreferenced, total = unreferenced.Count };
+        }
+
+        // --- Impact ---
+        public object Impact(string name, int entityTypeId, int depth)
+        {
+            if (string.IsNullOrEmpty(name)) throw new Exception("name is required");
+            if (depth <= 0) depth = 2;
+            if (depth > 5) depth = 5;
+            if (entityTypeId <= 0) entityTypeId = 34;
+
+            var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var all = new List<object>();
+
+            void Traverse(string objName, int level, string path)
+            {
+                if (level > depth || visited.Contains(objName)) return;
+                visited.Add(objName);
+                object result;
+                try { result = Analyze(objName, entityTypeId, "usedby", 50); }
+                catch { return; }
+                var resultRows = result.GetType().GetProperty("results")?.GetValue(result) as List<object>;
+                if (resultRows == null) return;
+                foreach (var row in resultRows)
+                {
+                    var d = row as Dictionary<string, object>;
+                    if (d == null) continue;
+                    var depName = d.ContainsKey("name") ? Convert.ToString(d["name"]) : "";
+                    if (string.IsNullOrEmpty(depName) || visited.Contains(depName)) continue;
+                    var newPath = path + " -> " + depName;
+                    all.Add(new { name = depName, level, path = newPath });
+                    Traverse(depName, level + 1, newPath);
+                }
+            }
+
+            Traverse(name, 1, name);
+            return new { root = name, entityTypeId, depth, impacted = all, total = all.Count };
+        }
+
+        // --- AttributeList ---
+        public object AttributeList(string pattern, int limit)
+        {
+            if (limit <= 0) limit = 100;
+            var patternFilter = string.IsNullOrEmpty(pattern) ? "" :
+                $"AND ev.EntityVersionName LIKE '{pattern.Replace("'", "''")}'";
+
+            var sql = $@"
+                SELECT TOP {limit}
+                       ev.EntityVersionName as Name,
+                       ev.EntityVersionProperties as PropertiesXml
+                FROM EntityVersion ev
+                WHERE ev.EntityTypeId = 24
+                {patternFilter}
+                ORDER BY ev.EntityVersionName";
+
+            var attrs = new List<object>();
+            using (var conn = Open())
+            using (var cmd = new SqlCommand(sql, conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                while (reader.Read())
+                {
+                    var attrName = reader.IsDBNull(0) ? "" : reader.GetString(0);
+                    var propsXml = reader.IsDBNull(1) ? "" : reader.GetString(1);
+                    var props = ParseAttributeProperties(propsXml);
+                    string propVal(string k) => props.ContainsKey(k) ? props[k] : null;
+                    attrs.Add(new { name = attrName, type = propVal("Type"), length = propVal("Length"), decimals = propVal("Decimals"), domain = propVal("Domain"), description = propVal("Description") });
+                }
+            }
+            return new { attributes = attrs, total = attrs.Count };
+        }
+
+        private Dictionary<string, string> ParseAttributeProperties(string xml)
+        {
+            var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            if (string.IsNullOrEmpty(xml)) return result;
+            try
+            {
+                var doc = new XmlDocument();
+                doc.LoadXml(xml);
+                if (doc.DocumentElement == null) return result;
+                foreach (XmlNode node in doc.DocumentElement.ChildNodes)
+                    if (node is XmlElement el) result[el.Name] = el.InnerText;
+            }
+            catch { }
+            return result;
+        }
+
+        // --- Compare ---
+        public object Compare(string name, int entityTypeId, string targetDb, string section)
+        {
+            if (string.IsNullOrEmpty(name)) throw new Exception("name is required");
+            if (entityTypeId <= 0) throw new Exception("entityTypeId is required");
+            if (string.IsNullOrEmpty(targetDb)) throw new Exception("targetDb is required");
+
+            var builder = new SqlConnectionStringBuilder(_connectionString);
+            var sourceDb = builder.InitialCatalog;
+            var targetConnStr = new SqlConnectionStringBuilder
+            {
+                DataSource = builder.DataSource,
+                InitialCatalog = targetDb,
+                IntegratedSecurity = true,
+                ConnectTimeout = 30  // SqlConnectionStringBuilder uses ConnectTimeout
+            }.ConnectionString;
+
+            byte[] ReadBlobFromConn(string connStr)
+            {
+                var safeName = name.Replace("'", "''");
+                var sql = $@"SELECT TOP 1 ev.EntityVersionData FROM EntityVersion ev
+                             WHERE ev.EntityTypeId={entityTypeId} AND ev.EntityVersionName='{safeName}'
+                             ORDER BY ev.EntityVersionId DESC";
+                using (var conn = new SqlConnection(connStr))
+                {
+                    conn.Open();
+                    using (var cmd = new SqlCommand(sql, conn))
+                    using (var r = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
+                    {
+                        if (!r.Read() || r.IsDBNull(0)) return null;
+                        long size = r.GetBytes(0, 0, null, 0, 0);
+                        var buf = new byte[size];
+                        r.GetBytes(0, 0, buf, 0, (int)size);
+                        return buf;
+                    }
+                }
+            }
+
+            string DecompressBlob(byte[] raw)
+            {
+                if (raw == null || raw.Length <= 11) return "";
+                return Decompress(raw);
+            }
+
+            var textA = DecompressBlob(ReadBlobFromConn(_connectionString));
+            var textB = DecompressBlob(ReadBlobFromConn(targetConnStr));
+            bool identical = textA == textB;
+            var diff = identical ? "" : GenerateUnifiedDiff(textA, textB, sourceDb, targetDb);
+            var diffLines = diff.Split('\n');
+            int added = 0, removed = 0;
+            foreach (var l in diffLines)
+            {
+                if (l.StartsWith("+") && !l.StartsWith("+++")) added++;
+                else if (l.StartsWith("-") && !l.StartsWith("---")) removed++;
+            }
+
+            return new { name, entityTypeId, section = section ?? "source", sourceKb = sourceDb, targetKb = targetDb, identical, diff, linesAdded = added, linesRemoved = removed };
+        }
+
+        // --- Lint ---
+        public object Lint(int entityTypeId, string module, string severity)
+        {
+            if (entityTypeId <= 0) entityTypeId = 147;
+
+            var rules = new[]
+            {
+                new { Key = "jquery-reflow", Pattern = @":\s*(hidden|visible)", Severity = "warn", Desc = "jQuery :hidden/:visible forces layout reflow — use offsetWidth or CSS class instead" },
+                new { Key = "getall-no-filter", Pattern = @"\.GetAll\s*\(\s*\w+Model\s*\)", Severity = "warn", Desc = "GetAll() without filter scans all objects — use FindByName() or a filtered query" },
+                new { Key = "hardcoded-userid", Pattern = @"UserId\s*=\s*\d+", Severity = "error", Desc = "Hard-coded UserId will break with different KB users" },
+                new { Key = "aftershow-no-guard", Pattern = @"gx\.onload|grid\.onafterrender", Severity = "warn", Desc = "Observer registered per-instance without a window.__ guard causes O(N^2) re-scans" },
+            };
+
+            var moduleFilter = string.IsNullOrEmpty(module) ? "" :
+                $@"AND ev.EntityId IN (
+                       SELECT mev.EntityId FROM ModelEntityVersion mev
+                       JOIN EntityVersion mn ON mn.EntityTypeId=100 AND mn.EntityId=mev.ModelParentEntityId
+                       AND mn.EntityVersionId=(SELECT MAX(v2.EntityVersionId) FROM EntityVersion v2 WHERE v2.EntityTypeId=100 AND v2.EntityId=mn.EntityId)
+                       WHERE mev.EntityTypeId={entityTypeId} AND mn.EntityVersionName='{(module ?? "").Replace("'", "''")}'
+                   )";
+
+            var objSql = $@"
+                SELECT ev.EntityVersionName, ev.EntityId
+                FROM EntityVersion ev
+                WHERE ev.EntityTypeId = {entityTypeId}
+                  AND ev.EntityVersionId = (SELECT MAX(v2.EntityVersionId) FROM EntityVersion v2 WHERE v2.EntityTypeId={entityTypeId} AND v2.EntityId=ev.EntityId)
+                {moduleFilter}
+                ORDER BY ev.EntityVersionName";
+
+            var objects = new List<(string Name, int Id)>();
+            using (var conn = Open())
+            using (var cmd = new SqlCommand(objSql, conn))
+            using (var r = cmd.ExecuteReader())
+                while (r.Read()) objects.Add((r.IsDBNull(0) ? "" : r.GetString(0), r.GetInt32(1)));
+
+            var findings = new List<object>();
+            foreach (var (objName, objId) in objects)
+            {
+                var sourceObj = ReadSource(entityTypeId, objId);
+                var sourceText = sourceObj?.GetType().GetProperty("text")?.GetValue(sourceObj) as string ?? "";
+                if (string.IsNullOrEmpty(sourceText)) continue;
+
+                var lines = sourceText.Split('\n');
+                foreach (var rule in rules)
+                {
+                    if (!string.IsNullOrEmpty(severity) && rule.Severity != severity.ToLower()) continue;
+                    var rx = new System.Text.RegularExpressions.Regex(rule.Pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                    for (int li = 0; li < lines.Length; li++)
+                    {
+                        if (rx.IsMatch(lines[li]))
+                            findings.Add(new { name = objName, entityTypeId, rule = rule.Key, severity = rule.Severity, line = li + 1, snippet = lines[li].Trim(), description = rule.Desc });
+                    }
+                }
+            }
+
+            return new { entityTypeId, module, findings, total = findings.Count };
+        }
     }
 }

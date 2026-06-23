@@ -1,0 +1,29 @@
+/*
+  API REST: Products
+  Expõe endpoints GET para listar e buscar produtos por ID.
+  EntityTypeId: 86 (API object)
+
+  Para criar via MCP:
+    gx_create(type:"api", name:"ApiExampleProducts", sections:{source:"..."})
+
+  Para ler de volta:
+    gx_read(type:86, name:"ApiExampleProducts", section:"source")
+*/
+
+Service 'GetProducts'
+  Verb: Get
+  Path: '/products'
+
+  &Products.FromJson(GetProducts())
+
+  RestAttribute: 'application/json'
+EndService
+
+Service 'GetProductById'
+  Verb: Get
+  Path: '/products/{id}'
+
+  &Product = Product.Get(&id)
+
+  RestAttribute: 'application/json'
+EndService

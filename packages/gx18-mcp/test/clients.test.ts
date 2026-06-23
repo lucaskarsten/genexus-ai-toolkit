@@ -23,7 +23,7 @@ describe('client registration', () => {
     expect(p).toMatch(/\.vscode[\\/]mcp\.json$/);
     const json = JSON.parse(written);
     expect(json.servers.gx18).toEqual(SERVER_ENTRY);
-    expect(SERVER_ENTRY.command).toBe('npx');
+    expect(SERVER_ENTRY.command).toBe('gx18-mcp');
   });
 
   it('uses mcpServers for Claude project config', () => {

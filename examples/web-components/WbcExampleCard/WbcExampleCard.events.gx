@@ -1,0 +1,8 @@
+Event Start
+    &Titulo    = "Card de Exemplo"
+    &Descricao = "Componente reutilizável"
+EndEvent
+
+Event Refresh
+    //
+EndEvent

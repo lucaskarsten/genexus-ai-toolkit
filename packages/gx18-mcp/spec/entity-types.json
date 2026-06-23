@@ -136,6 +136,7 @@
     }
   ],
   "entityTypeNames": {
+    "24": "Attribute",
     "34": "Procedure",
     "35": "Report",
     "36": "SDT",
@@ -179,7 +180,10 @@
     },
     "defaultSectionByType": {
       "34": "source",
+      "35": "source",
+      "38": "source",
       "43": "events",
+      "44": "events",
       "147": "source"
     },
     "fallbackSection": "source"

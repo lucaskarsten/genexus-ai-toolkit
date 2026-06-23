@@ -92,12 +92,19 @@ Opening a GX18 KB from a process **outside** the install dir requires, in order:
 | `gx_modify` | Replace a source section of an object. Requires `confirm:true` |
 | `gx_export` | Export an object to a real `.xpz` (Knowledge Manager) — also validates it |
 | `gx_import` | Import a `.xpz` via the native Knowledge Manager (`ImportFile`). Requires `confirm:true`. UserId-verified. The export→edit→import round-trip reaches sections the SDK write path can't (e.g. UC `AfterShow`/`Methods` scripts in CDATA) |
-| `gx_set_property` / `gx_rename` / `gx_validate` / `gx_build` | Not yet implemented (stubs) |
+| `gx_set_property` | Set a named property on an object (e.g. `Description`). Requires `confirm:true`. UserId-verified. |
+| `gx_rename` | Rename an object. Requires `confirm:true`. UserId-verified. |
+| `gx_delete` | Delete an object. Supports `dryRun:true` for a no-op preview. Requires `confirm:true`. |
+| `gx_move` | Move an object to a different module (SQL UPDATE on `ModelEntityVersion`). |
+| `gx_variable` | List, add, or delete variables on an object (`action:"list"\|"add"\|"delete"`). |
+| `gx_validate` | Stub — confirms object exists in the KB (headless syntax validation is incompatible with the GX18 SDK). |
+| `gx_build` | Stub — always returns error. Build must be performed from the GX18 IDE (F5 / Build All). |
 
 ### Config
 | Tool | Purpose |
 |---|---|
 | `gx_save_config` | Update KB paths (`GX_KB_PATH`, `GX_KB_DATABASE`, etc.) and restart the worker — usable from chat without opening the browser UI |
+| `gx_reload` | Force-restart the worker and reopen the KB fresh — use after `gx_sql readOnly:false` writes that modify KB schema or metadata (e.g. INSERT into properties tables). Takes ~30s cold-start. |
 
 ---
 
@@ -137,6 +144,57 @@ IEnumerable<EntityKey>, file, ExportOptions)`. A successful export proves the ob
 well-formed in the KB. The `.xpz` is a ZIP containing the object XML
 (`<ExportFile>… username="DOMAIN\user" …`), importable into any GX18 KB via
 **Knowledge Manager → Import**.
+
+---
+
+## Object type support matrix
+
+| Type | EntityTypeId | Create | Modify | Export | Import | Delete | Rename | set_property | Notes |
+|---|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---|
+| `procedure` | 34 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Sections: `source`, `rules`, `conditions` |
+| `webpanel` | 43 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Sections: `events`, `rules`, `conditions`, `layout` |
+| `webcomponent` | 43 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Same as webpanel + `IsWebComponent` flag |
+| `api` | 86 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Sections: `source` (ServiceGroupSource), `events` |
+| `usercontrol` | 147 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Sections: `template`, `properties`. AfterShow/Methods → XPZ round-trip |
+| `dso` | 161 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Sections: `tokens`, `styles`, `elements`. `@import` must use friendly name, not GUID |
+| `sdt` | 36 | ✅ | ✅ | ⚠️ | ✅ | ✅ | ✅ | ✅ | Section: `structure` (JSON array). Export of same-session fresh SDT may return false |
+| `dataselector` | 88 | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ | Name-only create. Logic (`defined by`, `where`) → IDE or XPZ |
+| `transaction` | 39 | ⚠️ | ✅ | — | ✅ | ✅ | ✅ | ✅ | `structure` JSON + `rules`/`events`. WinForm auto-gen may throw `ValidationException` |
+
+**Legend:** ✅ validated · ⚠️ experimental/known limitation · — not supported
+
+---
+
+## Integration tests
+
+Tests that run the **real C# worker** against a KB clone (`FoccoLojas_SPIKE`):
+
+```
+cd packages/gx18-mcp
+npm run test               # unit tests only (CI-safe, no KB needed)
+npm run test:integration   # integration tests (requires SPIKE KB)
+npm run test:all           # both suites
+```
+
+Test files live in `test/integration/`:
+- `crud/<type>.test.ts` — full CRUD cycle (create → find → read → modify → export → delete) for each of the 9 types
+- `tools/variable.test.ts` — `gx_variable` list/add/delete round-trip
+- `tools/rename.test.ts` — rename → find new name → not find old name
+- `tools/set-property.test.ts` — `gx_set_property` persists and stamps correct UserId
+- `tools/move.test.ts` — `gx_move` between modules
+- `tools/analyze.test.ts` — `gx_analyze` dependency graph
+- `tools/history.test.ts` — `gx_history` grows after modify
+- `tools/export-import.test.ts` — export → import round-trip
+
+All integration suites are guarded by `describe.skipIf(!SPIKE_AVAILABLE)` — they skip automatically if `GX_KB_DATABASE` does not contain `SPIKE`, making them safe to run in CI without the KB.
+
+Configure the spike KB in `test/integration/.env.spike`:
+```
+GX_KB_SERVER=(localdb)\MSSQLLocalDB
+GX_KB_DATABASE=GX_KB_FoccoLojas_SPIKE
+GX_KB_PATH=C:\KBs\FoccoLojas_SPIKE
+GX18_DIR=C:\Program Files (x86)\GeneXus\GeneXus18U6
+```
 
 ---
 
@@ -182,5 +240,6 @@ named instance and times out (30 s).
 - **transaction**: WinForm auto-generation validator collision on save — pending.
 - **sdt**: export of a same-session freshly-created SDT returns false (object is valid and
   persisted; export works from a fresh session).
-- `gx_set_property`, `gx_rename`, `gx_validate`, `gx_build`: stubs.
+- `gx_validate`: existence-check only (headless SDK incompatible with diagnostics compiler).
+- `gx_build`: stub — always errors. Use IDE (F5 / Build All) after writing via MCP.
 - Nested SDT levels / transaction sub-levels: only the root level is built so far.
