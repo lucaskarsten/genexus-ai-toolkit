@@ -274,13 +274,16 @@ namespace Gx18Mcp.SdkWorker.Sql
         {
             if (string.IsNullOrEmpty(pattern)) throw new Exception("pattern is required");
 
-            // Determine which part EntityTypeIds to search in based on section
-            // source/rules → 69, events → 64, (any) → both
+            // Part EntityTypeIds for code sections (confirmed from EntityVersionComposition):
+            //   67 = Procedure source (EntityTypeId 34 compounds)
+            //   69 = Rules (procedures + web components)
+            //   64 = Events (web components / web panels)
             var partTypes = new List<int>();
             var sectionLower = (section ?? "").ToLowerInvariant();
             if (sectionLower == "events") partTypes.Add(64);
-            else if (sectionLower == "source" || sectionLower == "rules") partTypes.Add(69);
-            else { partTypes.Add(69); partTypes.Add(64); }  // search all
+            else if (sectionLower == "rules") partTypes.Add(69);
+            else if (sectionLower == "source") { partTypes.Add(67); partTypes.Add(69); }
+            else { partTypes.Add(67); partTypes.Add(69); partTypes.Add(64); }  // all code sections
 
             // Get parent objects (parts belong to compound objects via EntityVersionComposition)
             var partTypeIn = string.Join(",", partTypes);
@@ -335,7 +338,7 @@ namespace Gx18Mcp.SdkWorker.Sql
                     entityTypeId = c.compoundType,
                     typeName = TypeName(c.compoundType),
                     entityId = c.compoundId,
-                    section = c.partTypeId == 64 ? "events" : "source",
+                    section = c.partTypeId == 64 ? "events" : c.partTypeId == 69 ? "rules" : "source",
                     matchCount = matchLines.Count,
                     matchLines
                 });
@@ -376,7 +379,7 @@ namespace Gx18Mcp.SdkWorker.Sql
                 var compSql = $@"SELECT c.ComponentEntityTypeId, c.ComponentEntityId
                     FROM EntityVersionComposition c
                     JOIN EntityVersion ev ON ev.EntityTypeId=c.CompoundEntityTypeId AND ev.EntityId=c.CompoundEntityId AND ev.EntityVersionId=c.CompoundEntityVersionId
-                    WHERE c.CompoundEntityTypeId=@type AND c.CompoundEntityId=@entityId AND c.ComponentEntityTypeId IN (69,64)
+                    WHERE c.CompoundEntityTypeId=@type AND c.CompoundEntityId=@entityId AND c.ComponentEntityTypeId IN (67,69,64)
                       AND c.CompoundEntityVersionId=(SELECT MAX(v.EntityVersionId) FROM EntityVersion v WHERE v.EntityTypeId=@type AND v.EntityId=@entityId)";
                 var ownSource = new StringBuilder();
                 using (var conn2 = Open())
