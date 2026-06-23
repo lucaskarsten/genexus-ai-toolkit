@@ -45,6 +45,40 @@ gx18-mcp stop      # gracefully shut down a running worker
 
 ---
 
+## VS Code — mcp.json
+
+Add to `%APPDATA%\Code\User\mcp.json` (global) or `.vscode/mcp.json` (project):
+
+```json
+"gx18-mcp": {
+  "type": "stdio",
+  "command": "npx",
+  "args": ["gx18-mcp@latest", "start"],
+  "env": {
+    "GX_KB_PATH": "${input:gx_kb_path}",
+    "GX_KB_SERVER": "(localdb)\\MSSQLLocalDB",
+    "GX_KB_DATABASE": "${input:gx_kb_database}",
+    "GX18_INSTALL_DIR": "${input:gx_install_dir}",
+    "GX_OUTPUT_PATH": "${input:gx_output_path}"
+  }
+}
+```
+
+Add the corresponding `inputs` block to the same file so VS Code prompts for the values on first use:
+
+```json
+"inputs": [
+  { "id": "gx_kb_path",      "type": "promptString", "description": "Knowledge Base Path" },
+  { "id": "gx_kb_database",  "type": "promptString", "description": "Knowledge Base Database Name" },
+  { "id": "gx_install_dir",  "type": "promptString", "description": "GeneXus 18 Installation Directory" },
+  { "id": "gx_output_path",  "type": "promptString", "description": "Output Path" }
+]
+```
+
+Alternatively, run `npx gx18-mcp setup` and choose **VS Code** — it writes both blocks automatically.
+
+---
+
 ## Configuration
 
 Read from a project `.env` and/or `%LOCALAPPDATA%\gx18-mcp\config.json`.

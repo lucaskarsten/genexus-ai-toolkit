@@ -245,7 +245,85 @@ e [#12](https://github.com/lucaskarsten/genexus-ai-toolkit/issues/12).
 
 ---
 
-## 8. Regras de segurança
+## 8. Decisões de ferramenta — caminho certo vs caminho longo
+
+Quando em dúvida, use a ferramenta mais direta. Esta seção lista os erros mais comuns.
+
+### Anti-padrões frequentes
+
+| ❌ Caminho longo (errado) | ✅ Ferramenta certa | Motivo |
+|---|---|---|
+| Ler `javaoracle/web/src/main/java/<proc>.java` | `gx_read name=X type=34 section=source` | O Java é gerado — pode estar desatualizado; o source na KB é canônico |
+| Ler `static/UserControls/<uc>/<uc>render.js` | `gx_read name=X type=147 section=source` | O render.js é gerado no build — qualquer edição é sobrescrita |
+| SQL manual em `EntityVersion WHERE EntityVersionName LIKE '%X%'` | `gx_find pattern=X` | gx_find retorna id, tipo e nome já formatados |
+| SQL manual em `EntityVersionComposition` para estrutura de TRN | `gx_structure name=X` | gx_structure decodifica o blob e retorna campos formatados |
+| `gx_read type=147 section=events` para scripts AfterShow/Methods de UC | `gx_export` → abrir .xpz | gx_read não captura as partes de script de UC; só o export as inclui |
+| `gx_import` para editar source de objeto existente | `gx_modify name=X type=N section=source content=... confirm:true` | gx_import não sobrescreve objeto existente (silencioso) |
+| `gx_modify` para editar AfterShow/Methods de UC | `gx_export` → patch CDATA → `gx_import` | gx_modify não alcança as partes de script do UserControl |
+| `gx_read section=properties` para saber o valor de uma propriedade | `gx_properties name=X type=N` | gx_read retorna definições XML de property; gx_properties retorna o valor real |
+| `gx_db_query connection=kb` para query na KB | `gx_sql query=...` | gx_sql já aponta para a KB — gx_db_query com kb é redundante |
+| Gerar código em `output/` quando a intenção é criar na KB | `gx_create type=X name=Y confirm:true` | output/ é rascunho para revisão humana; gx_create escreve diretamente na KB |
+| Assumir que o UserId está correto e escrever direto | `gx_whoami` antes de qualquer write | gx_whoami confirma identidade Windows; author errado corrompe Team Development |
+
+### Workflows completos
+
+**Ler source de qualquer objeto:**
+```
+gx_find pattern=<nome>           → confirma entityTypeId real
+gx_read name=<nome> type=<id> section=source
+```
+
+**Criar procedure nova:**
+```
+gx_whoami                        → confirma UserId
+gx_find pattern=<nome>           → garante que não existe
+gx_create type=procedure name=X source="..." confirm:true
+gx_export name=X type=34         → valida e gera .xpz de backup
+```
+
+**Editar source de objeto existente:**
+```
+gx_whoami                        → confirma UserId
+gx_read name=X type=N section=source   → lê conteúdo atual
+gx_modify name=X type=N section=source content="..." confirm:true
+```
+
+**Editar scripts AfterShow/Methods de UserControl:**
+```
+gx_whoami                        → confirma UserId
+gx_export name=X type=147        → gera output/X.xpz
+# Abrir .xpz (ZIP), editar CDATA dentro de <Script Name="AfterShow">
+# Bumpar lastUpdate + recalcular checksum md5
+gx_import xpzFile=output/X.xpz type=usercontrol name=X fullOverwrite:true confirm:true
+gx_export name=X type=147        → re-exporta para verificar que o script entrou
+```
+
+**Editar DSO (tokens/styles):**
+```
+gx_whoami
+gx_read name=X type=161 section=styles   → lê CSS atual
+gx_modify name=X type=161 section=styles content="@import DsoBase;\n..." confirm:true
+# Nota: usar @import DsoBase; (nome amigável), NÃO o GUID que aparece no blob
+```
+
+**Query ad-hoc para exploração:**
+```
+gx_sql query="SELECT ev.EntityVersionName, ev.EntityTypeId FROM EntityVersion ev WHERE ev.EntityVersionName LIKE '%X%'"
+# Para Oracle:
+gx_db_query connection=oracle query="SELECT COUNT(*) FROM USER_TABLES"
+```
+
+**Round-trip export → editar → import (técnica geral):**
+```
+gx_export name=X type=N outputDir=output/
+# Editar output/X.xpz: é ZIP com um único *.xml; scripts em CDATA
+# Bumpar lastUpdate no <Object> + novo checksum md5
+gx_import xpzFile=output/X.xpz type=<tipo-string> name=X fullOverwrite:true confirm:true
+```
+
+---
+
+## 9. Regras de segurança
 
 - **Teste de escrita só no clone**, nunca na KB live. Procedimento de clone em
   [`gx18-mcp.md`](gx18-mcp.md#testing-safely--the-kb-clone).

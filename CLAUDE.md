@@ -23,6 +23,39 @@ The toolkit docs and skills are **tactical supplements** — they cover GeneXus 
 | Conflict between nexa and toolkit | **nexa prevails** |
 | Writing/modifying any skill or doc | `docs/llm-engineering.md` — checklist first |
 
+## Ferramenta certa para cada tarefa
+
+Use sempre a ferramenta mais direta. A coluna "NUNCA usar" indica o caminho longo que Claude tende a tomar por engano.
+
+| Tarefa | Ferramenta | NUNCA usar |
+|--------|-----------|-----------|
+| Buscar objeto por nome | `gx_find` | SQL manual em EntityVersion |
+| Listar objetos de um módulo | `gx_list` | `gx_find` sem filtro de módulo |
+| Ler source de procedure / WBP | `gx_read type=34/148 section=source` | Ler Java gerado em `javaoracle/` |
+| Ler template de UC | `gx_read type=147 section=source` | Ler `render.js` em `static/` (gerado, sobrescrito no build) |
+| Ler scripts AfterShow / Methods de UC | `gx_export` → abrir .xpz | `gx_read` (não captura essas partes) |
+| Ler propriedades de objeto | `gx_properties` | `gx_read section=properties` (retorna definições, não valores) |
+| Ver estrutura de Transaction | `gx_structure` | SQL manual em EntityVersionComposition |
+| Verificar usuário antes de escrever | `gx_whoami` | Assumir UserId correto sem checar |
+| Criar objeto novo na KB | `gx_create confirm:true` | Gerar para `output/` quando a intenção é escrever na KB |
+| Editar source / events de objeto existente | `gx_modify confirm:true` | `gx_import` (não sobrescreve objeto existente) |
+| Editar AfterShow / Methods de UC | `gx_export` → patch CDATA → `gx_import` | `gx_modify` (não alcança scripts de UC) |
+| Query ad-hoc na KB (SQL Server) | `gx_sql` | `gx_db_query connection=kb` (redundante) |
+| Query no Oracle | `gx_db_query connection=oracle` | `gx_sql` (não alcança Oracle) |
+
+**EntityTypeIds** (param `type` em `gx_read`, `gx_modify`, `gx_export`, `gx_import`, `gx_list`):
+`34`=Procedure · `36`=SDT · `39`=Transaction · `147`=UserControl · `148`=WebPanel · `149`=WebComponent · `161`=DSO
+
+**Sections** (param `section` em `gx_read` e `gx_modify`):
+`source` · `events` · `rules` · `layout` · `variables` · `properties`
+
+**Sequências obrigatórias:**
+- Antes de qualquer write → `gx_whoami` primeiro (confirma UserId correto)
+- Antes de criar objeto → `gx_find <name>` (confirma que não existe)
+- Para ler scripts de UC (AfterShow/Methods) → `gx_export` → abrir .xpz (NÃO `gx_read`)
+- Para editar objeto existente → `gx_modify` (NÃO `gx_import`)
+- Para editar scripts de UC → `gx_export` → patch CDATA → `gx_import` (NÃO `gx_modify`)
+
 ## Before generating any code
 
 Consult sources in this order:
