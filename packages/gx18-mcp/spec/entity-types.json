@@ -162,6 +162,8 @@
       "36": "sdt",
       "39": "transaction",
       "43": "webpanel",
+      "86": "api",
+      "88": "dataselector",
       "147": "usercontrol",
       "161": "dso"
     }

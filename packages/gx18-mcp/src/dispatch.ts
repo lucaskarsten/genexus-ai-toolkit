@@ -1,11 +1,11 @@
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 
-import { gxFind, gxList, gxGet } from './tools/discovery';
+import { gxFind, gxList, gxGet, gxAnalyze, gxHistory } from './tools/discovery';
 import { gxRead, gxProperties, gxStructure } from './tools/reader';
 import { gxWhoami } from './tools/identity';
-import { gxCreate, gxModify, gxSetProperty, gxRename, gxImport } from './tools/writer';
-import { gxValidate, gxBuild, gxSql, gxExport, gxSaveConfig } from './tools/utility';
-import { gxDbConnections, gxDbQuery } from './tools/database';
+import { gxCreate, gxModify, gxSetProperty, gxRename, gxImport, gxDelete, gxVariable } from './tools/writer';
+import { gxValidate, gxBuild, gxSql, gxExport, gxSaveConfig, gxSearch, gxDoctor } from './tools/utility';
+import { gxDbConnections, gxDbQuery, gxMove } from './tools/database';
 
 // EntityTypeId reference (included in descriptions for discoverability):
 // Procedure=34, SDT=36, Transaction=39, WebPanel/WebComponent=43, UserControl=147, DSO=161
@@ -245,8 +245,9 @@ const TOOLS: Tool[] = [
   {
     name: 'gx_build',
     description:
-      'Build (compile) a single GeneXus KB object. Requires confirm:true. ' +
-      'This is a write operation — it saves the object and generates code.',
+      'Attempt to build (compile) a GeneXus KB object. Requires confirm:true. ' +
+      'NOTE: Headless compilation is NOT supported — this tool always returns a descriptive error. ' +
+      'Use GX18 IDE (F5 / Build All) to compile. gx_modify saves source to the KB; build from IDE generates the code.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -371,6 +372,128 @@ const TOOLS: Tool[] = [
       required: ['connection', 'query'],
     },
   },
+  {
+    name: 'gx_delete',
+    description:
+      'Delete a GeneXus KB object. Irreversible — requires confirm:true. ' +
+      'Use dryRun:true first to preview what would be deleted without making changes.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Exact object name' },
+        type: {
+          type: 'string',
+          enum: ['procedure', 'webpanel', 'webcomponent', 'api', 'usercontrol', 'dso', 'sdt', 'dataselector', 'transaction'],
+          description: 'Object type key',
+        },
+        dryRun: { type: 'boolean', description: 'Preview the delete without executing (default false)' },
+        confirm: { type: 'boolean', description: 'Must be true to execute the delete (not required for dryRun)' },
+      },
+      required: ['name', 'type'],
+    },
+  },
+  {
+    name: 'gx_variable',
+    description:
+      'Manage variables on a GeneXus KB object. action=list returns current variables; ' +
+      'add/delete require confirm:true.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['list', 'add', 'delete'], description: 'Operation to perform' },
+        name: { type: 'string', description: 'Exact object name' },
+        type: {
+          type: 'string',
+          enum: ['procedure', 'webpanel', 'webcomponent', 'api', 'usercontrol', 'dso', 'sdt', 'dataselector', 'transaction'],
+          description: 'Object type key',
+        },
+        varName: { type: 'string', description: 'Variable name (required for add/delete)' },
+        dataType: { type: 'string', description: 'Data type for add: Character, VarChar, Numeric, Int, Date, DateTime, Boolean, GUID (default Character)' },
+        length: { type: 'number', description: 'Length for add (optional)' },
+        decimals: { type: 'number', description: 'Decimals for add (optional)' },
+        isCollection: { type: 'boolean', description: 'Mark as collection for add (optional)' },
+        confirm: { type: 'boolean', description: 'Must be true for add/delete' },
+      },
+      required: ['action', 'name', 'type'],
+    },
+  },
+  {
+    name: 'gx_search',
+    description:
+      'Search for a text pattern across GeneXus KB object sources (procedures, events, rules). ' +
+      'Returns matching objects with line-level context. ' +
+      'Use this to find where a procedure, attribute, or constant is referenced.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        pattern: { type: 'string', description: 'Text pattern to search for (case-insensitive substring)' },
+        type: { type: 'number', description: 'Filter by EntityTypeId (optional, 0 = all)' },
+        section: { type: 'string', description: 'Section to search: source, events (default: all)' },
+        limit: { type: 'number', description: 'Max matching objects to return (default 20)' },
+      },
+      required: ['pattern'],
+    },
+  },
+  {
+    name: 'gx_analyze',
+    description:
+      'Analyze cross-object impact and dependencies. ' +
+      'action=usedby: find objects that reference this object by name. ' +
+      'action=uses: find objects referenced from this object\'s source. ' +
+      'action=dependencies: alias for uses.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Exact object name' },
+        type: { type: 'number', description: 'EntityTypeId of the object' },
+        action: { type: 'string', enum: ['usedby', 'uses', 'dependencies'], description: 'Analysis direction (default usedby)' },
+        limit: { type: 'number', description: 'Max results (default 50)' },
+      },
+      required: ['name', 'type'],
+    },
+  },
+  {
+    name: 'gx_history',
+    description:
+      'Get the revision history of a GeneXus KB object — all EntityVersion rows with author, timestamp, and description. ' +
+      'Useful for auditing who changed what and when.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Exact object name' },
+        type: { type: 'number', description: 'EntityTypeId' },
+        limit: { type: 'number', description: 'Max revisions to return (default 10)' },
+      },
+      required: ['name', 'type'],
+    },
+  },
+  {
+    name: 'gx_move',
+    description:
+      'Move a GeneXus KB object to a different module. Requires confirm:true. ' +
+      'Updates ModelEntityVersion — the change is reflected in GX18 IDE after reload. ' +
+      'To list available modules: gx_sql with "SELECT ev.EntityVersionName FROM EntityVersion ev WHERE ev.EntityTypeId=100 ORDER BY ev.EntityVersionName".',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Exact object name' },
+        type: { type: 'number', description: 'EntityTypeId (e.g. 34=Procedure, 147=UserControl, 43=WebPanel)' },
+        targetModule: { type: 'string', description: 'Target module name (e.g. "Nuc", "VEN", "UserControls")' },
+        confirm: { type: 'boolean', description: 'Must be true to execute the move' },
+      },
+      required: ['name', 'type', 'targetModule', 'confirm'],
+    },
+  },
+  {
+    name: 'gx_doctor',
+    description:
+      'Health check for the gx18-mcp server: verifies worker exe, GX18 install dir, KB path, worker ping, and SQL connectivity. ' +
+      'Run this when the server is not responding or when diagnosing connection issues.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
 ];
 
 // ── Read-only mode ───────────────────────────────────────────────────────────
@@ -380,7 +503,10 @@ const TOOLS: Tool[] = [
 // The pieces below are pure/exported so they can be unit-tested without env load order.
 
 /** KB-mutating tools — removed from the tool list and blocked in read-only mode. */
-export const WRITE_TOOLS = new Set(['gx_create', 'gx_modify', 'gx_set_property', 'gx_rename', 'gx_build', 'gx_import']);
+export const WRITE_TOOLS = new Set([
+  'gx_create', 'gx_modify', 'gx_set_property', 'gx_rename', 'gx_build', 'gx_import',
+  'gx_delete', 'gx_variable', 'gx_move',
+]);
 
 /** Tools that can write when readOnly:false — forced to read-only in read-only mode. */
 export const SQL_TOOLS = new Set(['gx_sql', 'gx_db_query']);
@@ -469,6 +595,20 @@ async function dispatch(name: string, a: Record<string, unknown>): Promise<ToolR
       return { text: await gxDbConnections(), isError: false };
     case 'gx_db_query':
       return { text: await gxDbQuery(a as Parameters<typeof gxDbQuery>[0]), isError: false };
+    case 'gx_delete':
+      return { text: await gxDelete(a as Parameters<typeof gxDelete>[0]), isError: false };
+    case 'gx_variable':
+      return { text: await gxVariable(a as Parameters<typeof gxVariable>[0]), isError: false };
+    case 'gx_search':
+      return { text: await gxSearch(a as Parameters<typeof gxSearch>[0]), isError: false };
+    case 'gx_analyze':
+      return { text: await gxAnalyze(a as Parameters<typeof gxAnalyze>[0]), isError: false };
+    case 'gx_history':
+      return { text: await gxHistory(a as Parameters<typeof gxHistory>[0]), isError: false };
+    case 'gx_move':
+      return { text: await gxMove(a as Parameters<typeof gxMove>[0]), isError: false };
+    case 'gx_doctor':
+      return { text: await gxDoctor(), isError: false };
     default:
       return { text: `Unknown tool: ${name}`, isError: true };
   }

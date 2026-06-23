@@ -1,5 +1,6 @@
 import { loadConfig } from '../config';
 import { bridge } from '../sdk-bridge/bridge';
+import { MoveResult } from '../sdk-bridge/protocol';
 
 export async function gxDbConnections(): Promise<string> {
   const config = loadConfig();
@@ -77,4 +78,23 @@ export async function gxDbQuery(args: {
   const config = loadConfig();
   const available = ['kb', ...(config.db.oracle ? ['oracle'] : [])];
   throw new Error(`Unknown connection: "${connection}". Available: ${available.join(', ')}`);
+}
+
+export async function gxMove(args: {
+  name: string;
+  type: number;
+  targetModule: string;
+  confirm?: boolean;
+}): Promise<string> {
+  if (!args.name) throw new Error('gx_move requires name.');
+  if (!args.targetModule) throw new Error('gx_move requires targetModule.');
+  if (args.confirm !== true) {
+    throw new Error('gx_move requires confirm: true. This operation modifies ModelEntityVersion in the KB database.');
+  }
+  const result = await bridge.send<MoveResult>('move', {
+    name: args.name,
+    type: args.type,
+    targetModule: args.targetModule,
+  });
+  return JSON.stringify(result, null, 2);
 }

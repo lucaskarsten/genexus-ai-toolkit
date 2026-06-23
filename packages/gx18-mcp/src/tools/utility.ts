@@ -1,8 +1,9 @@
 import path from 'path';
 import { bridge } from '../sdk-bridge/bridge';
 import { loadConfig, saveConfig } from '../config';
-import { ValidateResult, BuildResult, SqlQueryResult } from '../sdk-bridge/protocol';
+import { ValidateResult, BuildResult, SqlQueryResult, SearchResult } from '../sdk-bridge/protocol';
 import { ENTITY_TYPE_TO_KEY } from './writer';
+import { runDoctor } from '../doctor';
 
 export async function gxSaveConfig(args: {
   kbPath?: string;
@@ -36,9 +37,15 @@ export async function gxValidate(args: {
   name: string;
   type: number;
 }): Promise<string> {
+  const typeKey = ENTITY_TYPE_TO_KEY[args.type];
+  if (!typeKey) {
+    throw new Error(
+      `gx_validate: unknown EntityTypeId ${args.type}. Known: ${Object.keys(ENTITY_TYPE_TO_KEY).join(', ')}.`
+    );
+  }
   const result = await bridge.send<ValidateResult>('validate', {
     name: args.name,
-    type: args.type,
+    type: typeKey,
   }, 60000);
   return JSON.stringify(result, null, 2);
 }
@@ -51,11 +58,33 @@ export async function gxBuild(args: {
   if (args.confirm !== true) {
     throw new Error('gx_build requires confirm: true. This operation compiles an object in the GeneXus KB.');
   }
+  const typeKey = ENTITY_TYPE_TO_KEY[args.type] ?? String(args.type);
   const result = await bridge.send<BuildResult>('build', {
     name: args.name,
-    type: args.type,
+    type: typeKey,
   }, 120000);
   return JSON.stringify(result, null, 2);
+}
+
+export async function gxSearch(args: {
+  pattern: string;
+  type?: number;
+  section?: string;
+  limit?: number;
+}): Promise<string> {
+  if (!args.pattern) throw new Error('gx_search requires pattern.');
+  const result = await bridge.send<SearchResult>('search', {
+    pattern: args.pattern,
+    type: args.type ?? 0,
+    section: args.section ?? '',
+    limit: args.limit ?? 20,
+  }, 60000);
+  return JSON.stringify(result, null, 2);
+}
+
+export async function gxDoctor(): Promise<string> {
+  const report = await runDoctor();
+  return JSON.stringify(report, null, 2);
 }
 
 export async function gxSql(args: {

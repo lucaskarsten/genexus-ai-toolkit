@@ -268,6 +268,276 @@ namespace Gx18Mcp.SdkWorker.Sql
             return new { rows, count = rows.Count };
         }
 
+        // Search object sources for a text/regex pattern.
+        // Reads and decompresses part blobs in memory — limited by `limit` to avoid timeouts.
+        public object Search(string pattern, int type, string section, int limit)
+        {
+            if (string.IsNullOrEmpty(pattern)) throw new Exception("pattern is required");
+
+            // Determine which part EntityTypeIds to search in based on section
+            // source/rules → 69, events → 64, (any) → both
+            var partTypes = new List<int>();
+            var sectionLower = (section ?? "").ToLowerInvariant();
+            if (sectionLower == "events") partTypes.Add(64);
+            else if (sectionLower == "source" || sectionLower == "rules") partTypes.Add(69);
+            else { partTypes.Add(69); partTypes.Add(64); }  // search all
+
+            // Get parent objects (parts belong to compound objects via EntityVersionComposition)
+            var partTypeIn = string.Join(",", partTypes);
+            var typeFilter = type > 0 ? $" AND c.CompoundEntityTypeId={type}" : "";
+            var sql = $@"SELECT TOP {limit * 5}
+                    c.CompoundEntityTypeId, c.CompoundEntityId,
+                    p.EntityTypeId AS PartTypeId, p.EntityId AS PartEntityId,
+                    pn.EntityVersionName AS PartName, pn.EntityVersionTimestamp
+                FROM EntityVersionComposition c
+                JOIN EntityVersion p ON p.EntityTypeId=c.ComponentEntityTypeId AND p.EntityId=c.ComponentEntityId
+                    AND p.EntityVersionId=(SELECT MAX(v2.EntityVersionId) FROM EntityVersion v2 WHERE v2.EntityTypeId=p.EntityTypeId AND v2.EntityId=p.EntityId)
+                JOIN EntityVersion pn ON pn.EntityTypeId=c.CompoundEntityTypeId AND pn.EntityId=c.CompoundEntityId
+                    AND pn.EntityVersionId=c.CompoundEntityVersionId
+                WHERE c.ComponentEntityTypeId IN ({partTypeIn}){typeFilter}
+                    AND c.CompoundEntityVersionId=(SELECT MAX(v3.EntityVersionId) FROM EntityVersion v3 WHERE v3.EntityTypeId=c.CompoundEntityTypeId AND v3.EntityId=c.CompoundEntityId)";
+
+            var candidates = new List<(int compoundType, int compoundId, int partTypeId, int partEntityId, string parentName)>();
+            using (var conn = Open())
+            using (var cmd = new SqlCommand(sql, conn))
+            using (var r = cmd.ExecuteReader())
+                while (r.Read())
+                    candidates.Add((r.GetInt32(0), r.GetInt32(1), r.GetInt32(2), r.GetInt32(3), r.IsDBNull(4) ? "" : r.GetString(4)));
+
+            var matches = new List<object>();
+            var seen = new HashSet<string>();
+            foreach (var c in candidates)
+            {
+                if (matches.Count >= limit) break;
+                var key = $"{c.compoundType}:{c.compoundId}";
+                if (seen.Contains(key)) continue;
+
+                var blob = ReadBlob(c.partTypeId, c.partEntityId);
+                if (blob == null || blob.Length <= 11) continue;
+                string text;
+                try { text = TokensToText(Decompress(blob)); } catch { continue; }
+                if (string.IsNullOrEmpty(text)) continue;
+
+                // Case-insensitive substring match (simple, reliable)
+                if (text.IndexOf(pattern, StringComparison.OrdinalIgnoreCase) < 0) continue;
+
+                seen.Add(key);
+                // Find matching lines
+                var lines = text.Split('\n');
+                var matchLines = new List<object>();
+                for (int i = 0; i < lines.Length && matchLines.Count < 5; i++)
+                    if (lines[i].IndexOf(pattern, StringComparison.OrdinalIgnoreCase) >= 0)
+                        matchLines.Add(new { line = i + 1, text = lines[i].TrimEnd() });
+
+                matches.Add(new
+                {
+                    name = c.parentName,
+                    entityTypeId = c.compoundType,
+                    typeName = TypeName(c.compoundType),
+                    entityId = c.compoundId,
+                    section = c.partTypeId == 64 ? "events" : "source",
+                    matchCount = matchLines.Count,
+                    matchLines
+                });
+            }
+            return new { pattern, matches, total = matches.Count };
+        }
+
+        // Impact/dependency analysis. action: "usedby" | "uses" | "dependencies"
+        public object Analyze(string name, int type, string action, int limit)
+        {
+            if (string.IsNullOrEmpty(name)) throw new Exception("name is required");
+
+            // Resolve the object's EntityId
+            int entityId = -1;
+            using (var conn = Open())
+            using (var cmd = new SqlCommand(
+                "SELECT TOP 1 e.EntityId FROM Entity e JOIN EntityVersion ev ON e.EntityTypeId=ev.EntityTypeId AND e.EntityId=ev.EntityId WHERE e.EntityTypeId=@type AND ev.EntityVersionName=@name", conn))
+            {
+                cmd.Parameters.AddWithValue("@type", type);
+                cmd.Parameters.AddWithValue("@name", name);
+                var val = cmd.ExecuteScalar();
+                if (val == null) throw new Exception($"Object not found: {name} (type {type})");
+                entityId = Convert.ToInt32(val);
+            }
+
+            var actionLower = (action ?? "usedby").ToLowerInvariant();
+
+            if (actionLower == "usedby")
+            {
+                // Objects that contain the name in their source — text search across all types
+                var searchResult = Search(name, 0, null, limit) as dynamic;
+                return new { name, entityTypeId = type, entityId, action, results = searchResult.matches };
+            }
+            else if (actionLower == "uses" || actionLower == "dependencies")
+            {
+                // Read this object's source and look for known object names
+                // Find all source parts of this object
+                var compSql = $@"SELECT c.ComponentEntityTypeId, c.ComponentEntityId
+                    FROM EntityVersionComposition c
+                    JOIN EntityVersion ev ON ev.EntityTypeId=c.CompoundEntityTypeId AND ev.EntityId=c.CompoundEntityId AND ev.EntityVersionId=c.CompoundEntityVersionId
+                    WHERE c.CompoundEntityTypeId=@type AND c.CompoundEntityId=@entityId AND c.ComponentEntityTypeId IN (69,64)
+                      AND c.CompoundEntityVersionId=(SELECT MAX(v.EntityVersionId) FROM EntityVersion v WHERE v.EntityTypeId=@type AND v.EntityId=@entityId)";
+                var ownSource = new StringBuilder();
+                using (var conn2 = Open())
+                using (var cmd2 = new SqlCommand(compSql, conn2))
+                {
+                    cmd2.Parameters.AddWithValue("@type", type);
+                    cmd2.Parameters.AddWithValue("@entityId", entityId);
+                    using (var r2 = cmd2.ExecuteReader())
+                        while (r2.Read())
+                        {
+                            var blob = ReadBlob(r2.GetInt32(0), r2.GetInt32(1));
+                            if (blob != null && blob.Length > 11)
+                                try { ownSource.AppendLine(TokensToText(Decompress(blob))); } catch { }
+                        }
+                }
+                var src = ownSource.ToString();
+                // Find object names referenced in the source (simple: look for known KB names)
+                var referencedNames = new List<object>();
+                var allNamesResult = Query($"SELECT TOP 200 ev.EntityVersionName, e.EntityTypeId FROM Entity e JOIN EntityVersion ev ON e.EntityTypeId=ev.EntityTypeId AND e.EntityId=ev.EntityId WHERE e.EntityTypeId IN (34,36,39,43,147,161) AND ev.EntityVersionId=(SELECT MAX(v.EntityVersionId) FROM EntityVersion v WHERE v.EntityTypeId=e.EntityTypeId AND v.EntityId=e.EntityId) ORDER BY ev.EntityVersionName", true) as dynamic;
+                var rows = allNamesResult.rows as List<object>;
+                foreach (var row in rows ?? new List<object>())
+                {
+                    var d = row as Dictionary<string, object>;
+                    if (d == null) continue;
+                    var refName = Convert.ToString(d["EntityVersionName"]);
+                    if (string.Equals(refName, name, StringComparison.OrdinalIgnoreCase)) continue;
+                    if (src.IndexOf(refName, StringComparison.OrdinalIgnoreCase) >= 0)
+                        referencedNames.Add(new { name = refName, entityTypeId = Convert.ToInt32(d["EntityTypeId"]), typeName = TypeName(Convert.ToInt32(d["EntityTypeId"])) });
+                }
+                return new { name, entityTypeId = type, entityId, action, results = referencedNames };
+            }
+            return new { name, entityTypeId = type, entityId, action, results = new List<object>(), note = $"Unknown action: {action}. Use usedby, uses, or dependencies." };
+        }
+
+        // Revision history of an object (all EntityVersion entries, not just the latest).
+        public object GetHistory(string name, int type, int limit)
+        {
+            if (string.IsNullOrEmpty(name)) throw new Exception("name is required");
+
+            int entityId = -1;
+            using (var conn = Open())
+            using (var cmd = new SqlCommand(
+                "SELECT TOP 1 EntityId FROM EntityVersion WHERE EntityTypeId=@type AND EntityVersionName=@name AND EntityVersionId=(SELECT MAX(v2.EntityVersionId) FROM EntityVersion v2 WHERE v2.EntityTypeId=@type AND v2.EntityVersionName=@name)", conn))
+            {
+                cmd.Parameters.AddWithValue("@type", type);
+                cmd.Parameters.AddWithValue("@name", name);
+                var val = cmd.ExecuteScalar();
+                if (val == null) throw new Exception($"Object not found: {name} (type {type})");
+                entityId = Convert.ToInt32(val);
+            }
+
+            var versions = new List<object>();
+            var histSql = $@"SELECT TOP {limit}
+                ev.EntityVersionId,
+                ev.UserId,
+                ISNULL(u.EntityVersionName, CAST(ev.UserId AS varchar)) AS userName,
+                CONVERT(varchar, ev.EntityVersionTimestamp, 120) AS ts,
+                ISNULL(ev.EntityVersionDescription, '') AS description
+            FROM EntityVersion ev
+            LEFT JOIN EntityVersion u ON u.EntityTypeId=7 AND u.EntityId=ev.UserId
+                AND u.EntityVersionId=(SELECT MAX(v2.EntityVersionId) FROM EntityVersion v2 WHERE v2.EntityTypeId=7 AND v2.EntityId=ev.UserId)
+            WHERE ev.EntityTypeId=@type AND ev.EntityId=@entityId
+            ORDER BY ev.EntityVersionId DESC";
+
+            using (var conn = Open())
+            using (var cmd = new SqlCommand(histSql, conn))
+            {
+                cmd.Parameters.AddWithValue("@type", type);
+                cmd.Parameters.AddWithValue("@entityId", entityId);
+                using (var r = cmd.ExecuteReader())
+                    while (r.Read())
+                        versions.Add(new
+                        {
+                            versionId = r.GetInt32(0),
+                            userId = r.GetInt32(1),
+                            userName = r.GetString(2),
+                            timestamp = r.GetString(3),
+                            description = r.GetString(4)
+                        });
+            }
+            return new { name, entityTypeId = type, typeName = TypeName(type), entityId, versions, count = versions.Count };
+        }
+
+        // Move an object to a different module by updating ModelEntityVersion.
+        public object MoveToModule(string name, int type, string targetModule)
+        {
+            if (string.IsNullOrEmpty(name)) throw new Exception("name is required");
+            if (string.IsNullOrEmpty(targetModule)) throw new Exception("targetModule is required");
+
+            // Resolve object
+            int entityId = -1;
+            int entityVersionId = -1;
+            using (var conn = Open())
+            using (var cmd = new SqlCommand(
+                "SELECT EntityId, EntityVersionId FROM EntityVersion WHERE EntityTypeId=@type AND EntityVersionName=@name AND EntityVersionId=(SELECT MAX(v2.EntityVersionId) FROM EntityVersion v2 WHERE v2.EntityTypeId=@type AND v2.EntityVersionName=@name)", conn))
+            {
+                cmd.Parameters.AddWithValue("@type", type);
+                cmd.Parameters.AddWithValue("@name", name);
+                using (var r = cmd.ExecuteReader())
+                {
+                    if (!r.Read()) throw new Exception($"Object not found: {name} (type {type})");
+                    entityId = r.GetInt32(0);
+                    entityVersionId = r.GetInt32(1);
+                }
+            }
+
+            // Get the ModelId from the current ModelEntityVersion row
+            int modelId = -1;
+            string fromModule = null;
+            using (var conn = Open())
+            using (var cmd = new SqlCommand(
+                "SELECT TOP 1 mev.ModelId, mev.ModelParentEntityId FROM ModelEntityVersion mev WHERE mev.EntityTypeId=@type AND mev.EntityId=@entityId AND mev.EntityVersionId=@evid", conn))
+            {
+                cmd.Parameters.AddWithValue("@type", type);
+                cmd.Parameters.AddWithValue("@entityId", entityId);
+                cmd.Parameters.AddWithValue("@evid", entityVersionId);
+                using (var r = cmd.ExecuteReader())
+                {
+                    if (!r.Read()) throw new Exception($"No ModelEntityVersion row for {name}. Object may not be in a model.");
+                    modelId = r.GetInt32(0);
+                    int fromId = r.GetInt32(1);
+                    // Resolve from-module name
+                    using (var conn2 = Open())
+                    using (var cmd2 = new SqlCommand($"SELECT TOP 1 ev.EntityVersionName FROM EntityVersion ev WHERE ev.EntityTypeId=100 AND ev.EntityId=@mid AND ev.EntityVersionId=(SELECT MAX(v2.EntityVersionId) FROM EntityVersion v2 WHERE v2.EntityTypeId=100 AND v2.EntityId=@mid)", conn2))
+                    {
+                        cmd2.Parameters.AddWithValue("@mid", fromId);
+                        var fn = cmd2.ExecuteScalar();
+                        fromModule = fn == null || fn == DBNull.Value ? fromId.ToString() : fn.ToString();
+                    }
+                }
+            }
+
+            // Resolve target module EntityId
+            int targetModuleId = -1;
+            using (var conn = Open())
+            using (var cmd = new SqlCommand(
+                "SELECT TOP 1 ev.EntityId FROM EntityVersion ev WHERE ev.EntityTypeId=100 AND ev.EntityVersionName=@mod AND ev.EntityVersionId=(SELECT MAX(v2.EntityVersionId) FROM EntityVersion v2 WHERE v2.EntityTypeId=100 AND v2.EntityId=ev.EntityId)", conn))
+            {
+                cmd.Parameters.AddWithValue("@mod", targetModule);
+                var val = cmd.ExecuteScalar();
+                if (val == null) throw new Exception($"Module not found: '{targetModule}'. List modules with: SELECT ev.EntityVersionName FROM EntityVersion ev WHERE ev.EntityTypeId=100 ORDER BY ev.EntityVersionName");
+                targetModuleId = Convert.ToInt32(val);
+            }
+
+            // Execute the move
+            int updated;
+            using (var conn = Open())
+            using (var cmd = new SqlCommand(
+                "UPDATE ModelEntityVersion SET ModelParentEntityId=@targetId WHERE ModelId=@modelId AND EntityTypeId=@type AND EntityId=@entityId AND EntityVersionId=@evid", conn))
+            {
+                cmd.Parameters.AddWithValue("@targetId", targetModuleId);
+                cmd.Parameters.AddWithValue("@modelId", modelId);
+                cmd.Parameters.AddWithValue("@type", type);
+                cmd.Parameters.AddWithValue("@entityId", entityId);
+                cmd.Parameters.AddWithValue("@evid", entityVersionId);
+                updated = cmd.ExecuteNonQuery();
+            }
+
+            return new { op = "move", name, entityTypeId = type, entityId, fromModule, toModule = targetModule, rowsUpdated = updated };
+        }
+
         public object Export(string name, int type, string outputDir)
         {
             var ext = type == 34 ? "prc" : type == 39 ? "trn" : type == 36 ? "sdt" : "view";

@@ -622,10 +622,266 @@ namespace Gx18Mcp.SdkWorker.Sdk
             };
         }
 
-        // Legacy stubs
-        public object SetProperty(string name, int type, string property, string value) => throw new NotImplementedException("SetProperty: pending");
-        public object Rename(string name, int type, string newName) => throw new NotImplementedException("Rename: pending");
-        public object Validate(string name, int type) => throw new NotImplementedException("Validate: pending");
-        public object Build(string name, int type) => throw new NotImplementedException("Build: pending");
+        // ---- set_property, rename, validate, build ----
+
+        public object SetProperty(string name, string typeKey, string property, string value)
+        {
+            var spec = Spec(typeKey);
+            var concrete = Resolve(spec);
+            var kb = _session.KnowledgeBase;
+            if (kb == null) throw new Exception("KB not open");
+            var model = _session.KbType.GetProperty("DesignModel").GetValue(kb);
+
+            var obj = ResolveByName(concrete, model, name);
+            if (obj == null) throw new Exception($"Object not found: {name} ({typeKey})");
+
+            bool set = TrySetProp(obj, property, value);
+            if (!set)
+            {
+                var setMeth = FindMethodByParams(obj.GetType(), "SetPropertyValue", typeof(string), typeof(string))
+                    ?? FindMethodByParams(obj.GetType(), "SetPropertyValue", typeof(string), typeof(object));
+                if (setMeth != null) { setMeth.Invoke(obj, new object[] { property, value }); set = true; }
+            }
+            if (!set) throw new Exception(
+                $"Property '{property}' not found or not settable on {obj.GetType().Name}. " +
+                "For source/events/rules/layout use gx_modify; for Description use 'Description'.");
+
+            InvokeSave(obj);
+            int id = Convert.ToInt32(GetProp(obj, "Id"));
+            var writeResult = VerifyUserId(spec.EntityTypeId, id, name, "set_property");
+            // Augment the WriteResult-compatible shape with property-specific fields
+            var wr = writeResult as dynamic;
+            return new {
+                op = "set_property",
+                name,
+                property,
+                value,
+                entityTypeId = spec.EntityTypeId,
+                entityId = (int)id,
+                userId = (object)wr.userId,
+                expectedUserId = (int)wr.expectedUserId,
+                kbUserName = (string)wr.kbUserName,
+                userIdOk = (bool)wr.userIdOk,
+                recentVersions = (int)wr.recentVersions,
+            };
+        }
+
+        public object Rename(string name, string typeKey, string newName)
+        {
+            var spec = Spec(typeKey);
+            var concrete = Resolve(spec);
+            var kb = _session.KnowledgeBase;
+            if (kb == null) throw new Exception("KB not open");
+            var model = _session.KbType.GetProperty("DesignModel").GetValue(kb);
+
+            var obj = ResolveByName(concrete, model, name);
+            if (obj == null) throw new Exception($"Object not found: {name} ({typeKey})");
+
+            SetProp(obj, "Name", newName);
+            InvokeSave(obj);
+
+            int id = Convert.ToInt32(GetProp(obj, "Id"));
+            return VerifyUserId(spec.EntityTypeId, id, newName, "rename");
+        }
+
+        public object Validate(string name, string typeKey)
+        {
+            // SDK Validate() invokes GeneXus diagnostics that crash headless (no message loop / COM pump).
+            // Instead, we confirm the object exists via SQL — callers can tell if the name is wrong.
+            var sql = $"SELECT TOP 1 ev.EntityId FROM EntityVersion ev WHERE ev.EntityVersionName = '{name.Replace("'", "''")}' ORDER BY ev.EntityVersionId DESC";
+            var res = _sql.Query(sql, true);
+            var rows = GetProp(res, "rows") as System.Collections.Generic.List<object>;
+            bool exists = rows != null && rows.Count > 0;
+            if (!exists) throw new Exception($"Object not found: {name} ({typeKey})");
+
+            return new
+            {
+                errors = new string[0],
+                warnings = new string[0],
+                name,
+                typeKey,
+                note = "Full syntax validation requires the GX18 IDE (Build All). gx_validate only confirms the object exists in the KB."
+            };
+        }
+
+        public object Build(string name, string typeKey)
+        {
+            return new
+            {
+                success = false,
+                output = new string[0],
+                errors = new[] { "Build must be performed from GX18 IDE (F5 / Build All). Headless compilation is not supported in gx18-mcp." },
+                note = "gx_modify writes source to the KB but does not compile. Use IDE Build All to generate code from the changes."
+            };
+        }
+
+        // ---- delete ----
+
+        public object DeleteObject(string name, string typeKey, bool dryRun)
+        {
+            var spec = Spec(typeKey);
+            var concrete = Resolve(spec);
+            var kb = _session.KnowledgeBase;
+            if (kb == null) throw new Exception("KB not open");
+            var model = _session.KbType.GetProperty("DesignModel").GetValue(kb);
+
+            var obj = ResolveByName(concrete, model, name);
+            if (obj == null) throw new Exception($"Object not found: {name} ({typeKey})");
+
+            int id = Convert.ToInt32(GetProp(obj, "Id"));
+            if (dryRun)
+                return new { op = "delete_dry_run", name, typeKey, entityTypeId = spec.EntityTypeId, entityId = id, deleted = false, note = "dryRun=true — no change made." };
+
+            var deleteMethod = obj.GetType().GetMethod("Delete", Type.EmptyTypes);
+            if (deleteMethod != null)
+            {
+                var savedOut = Console.Out;
+                try { Console.SetOut(Console.Error); deleteMethod.Invoke(obj, null); }
+                finally { Console.SetOut(savedOut); }
+            }
+            else
+            {
+                // Fallback: call Save() after marking as deleted if Delete() doesn't exist
+                var deletedProp = FindProp(obj.GetType(), "IsDeleted") ?? FindProp(obj.GetType(), "Deleted");
+                if (deletedProp != null && deletedProp.CanWrite) deletedProp.SetValue(obj, true);
+                InvokeSave(obj);
+            }
+
+            // Verify removal: object should no longer appear in EntityVersion as latest
+            var safeName = (name ?? "").Replace("'", "''");
+            var sql = $"SELECT COUNT(*) FROM EntityVersion WHERE EntityTypeId={spec.EntityTypeId} AND EntityId={id} AND EntityVersionName='{safeName}'";
+            long remaining = _sql.ScalarLong(sql);
+
+            return new { op = "delete", name, typeKey, entityTypeId = spec.EntityTypeId, entityId = id, deleted = true, remainingVersions = remaining };
+        }
+
+        // ---- variable CRUD ----
+
+        public object VariableList(string name, string typeKey)
+        {
+            var spec = Spec(typeKey);
+            var concrete = Resolve(spec);
+            var kb = _session.KnowledgeBase;
+            if (kb == null) throw new Exception("KB not open");
+            var model = _session.KbType.GetProperty("DesignModel").GetValue(kb);
+
+            var obj = ResolveByName(concrete, model, name);
+            if (obj == null) throw new Exception($"Object not found: {name} ({typeKey})");
+
+            var varsPart = GetProp(obj, "Variables");
+            if (varsPart == null) throw new Exception($"Object type '{typeKey}' does not have a Variables part.");
+
+            var varList = GetProp(varsPart, "Variables") ?? GetProp(varsPart, "VariablesList");
+            if (varList == null) throw new Exception("Variables collection not found.");
+
+            var results = new List<object>();
+            foreach (var v in (System.Collections.IEnumerable)varList)
+            {
+                var vname = Convert.ToString(GetProp(v, "Name"));
+                var isCollection = GetProp(v, "IsCollection");
+                results.Add(new { name = vname, isCollection = isCollection != null && (bool)isCollection });
+            }
+            return new { name, typeKey, variables = results, count = results.Count };
+        }
+
+        public object VariableAdd(string name, string typeKey, string varName, string dataType, int length, int decimals, bool isCollection)
+        {
+            var spec = Spec(typeKey);
+            var concrete = Resolve(spec);
+            var kb = _session.KnowledgeBase;
+            if (kb == null) throw new Exception("KB not open");
+            var model = _session.KbType.GetProperty("DesignModel").GetValue(kb);
+
+            var obj = ResolveByName(concrete, model, name);
+            if (obj == null) throw new Exception($"Object not found: {name} ({typeKey})");
+
+            var varsPart = GetProp(obj, "Variables");
+            if (varsPart == null) throw new Exception($"Object type '{typeKey}' does not have a Variables part.");
+
+            // Add variable via Variables.New() or similar
+            var newMethod = varsPart.GetType().GetMethod("New", Type.EmptyTypes)
+                ?? varsPart.GetType().GetMethod("AddNew", Type.EmptyTypes)
+                ?? varsPart.GetType().GetMethod("Add", Type.EmptyTypes);
+            if (newMethod == null) throw new Exception("Cannot add variable: New()/AddNew()/Add() not found on Variables part.");
+
+            var newVar = newMethod.Invoke(varsPart, null);
+            if (newVar == null) throw new Exception("Variable creation returned null.");
+
+            SetProp(newVar, "Name", varName);
+
+            if (!string.IsNullOrEmpty(dataType))
+            {
+                var edbType = ToEDBType(null, dataType);
+                TrySetProp(newVar, "Type", edbType);
+            }
+            if (length > 0) TrySetProp(newVar, "Length", length);
+            if (decimals > 0) TrySetProp(newVar, "Decimals", decimals);
+            if (isCollection) TrySetProp(newVar, "IsCollection", true);
+
+            InvokeSave(obj);
+
+            int id = Convert.ToInt32(GetProp(obj, "Id"));
+            var writeResult = VerifyUserId(spec.EntityTypeId, id, name, "variable_add");
+            return new { op = "variable_add", objectName = name, varName, dataType, length, decimals, isCollection, writeResult };
+        }
+
+        public object VariableDelete(string name, string typeKey, string varName)
+        {
+            var spec = Spec(typeKey);
+            var concrete = Resolve(spec);
+            var kb = _session.KnowledgeBase;
+            if (kb == null) throw new Exception("KB not open");
+            var model = _session.KbType.GetProperty("DesignModel").GetValue(kb);
+
+            var obj = ResolveByName(concrete, model, name);
+            if (obj == null) throw new Exception($"Object not found: {name} ({typeKey})");
+
+            var varsPart = GetProp(obj, "Variables");
+            if (varsPart == null) throw new Exception($"Object type '{typeKey}' does not have a Variables part.");
+
+            var varList = GetProp(varsPart, "Variables") ?? GetProp(varsPart, "VariablesList");
+            if (varList == null) throw new Exception("Variables collection not found.");
+
+            object target = null;
+            foreach (var v in (System.Collections.IEnumerable)varList)
+                if (string.Equals(Convert.ToString(GetProp(v, "Name")), varName, StringComparison.OrdinalIgnoreCase)) { target = v; break; }
+
+            if (target == null) return new { op = "variable_delete", objectName = name, varName, deleted = false, note = "Variable not found (idempotent)." };
+
+            var removeMethod = varsPart.GetType().GetMethod("Remove", new[] { target.GetType() })
+                ?? varsPart.GetType().GetMethod("Delete", new[] { target.GetType() });
+            if (removeMethod != null)
+            {
+                var savedOut = Console.Out;
+                try { Console.SetOut(Console.Error); removeMethod.Invoke(varsPart, new[] { target }); }
+                finally { Console.SetOut(savedOut); }
+            }
+            else
+            {
+                var delMethod = target.GetType().GetMethod("Delete", Type.EmptyTypes);
+                if (delMethod != null) { var so = Console.Out; try { Console.SetOut(Console.Error); delMethod.Invoke(target, null); } finally { Console.SetOut(so); } }
+                else throw new Exception("Cannot delete variable: Remove()/Delete() not found.");
+            }
+
+            InvokeSave(obj);
+
+            int id = Convert.ToInt32(GetProp(obj, "Id"));
+            var writeResult = VerifyUserId(spec.EntityTypeId, id, name, "variable_delete");
+            return new { op = "variable_delete", objectName = name, varName, deleted = true, writeResult };
+        }
+
+        // ---- helpers (private) ----
+
+        private static bool TrySetProp(object obj, string name, object value)
+        {
+            var p = FindProp(obj.GetType(), name);
+            if (p == null || !p.CanWrite) return false;
+            try { p.SetValue(obj, value); return true; } catch { return false; }
+        }
+
+        private static MethodInfo FindMethodByParams(Type t, string name, params Type[] paramTypes)
+        {
+            return t.GetMethod(name, BindingFlags.Public | BindingFlags.Instance, null, paramTypes, null);
+        }
     }
 }

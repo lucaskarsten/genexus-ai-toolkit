@@ -163,7 +163,7 @@ export interface ImportResult extends WriteResult {
   versions?: Array<{ EntityTypeId: number; EntityId: number; EntityVersionId: number; UserId: number }>;
 }
 
-// set_property
+// set_property — C# returns WriteResult-compatible shape + property/value
 export interface SetPropertyParams {
   name: string;
   type: number;
@@ -171,20 +171,16 @@ export interface SetPropertyParams {
   value: string;
 }
 
-export interface SetPropertyResult {
-  ok: boolean;
-}
+export type SetPropertyResult = WriteResult & { property: string; value: string };
 
-// rename
+// rename — C# returns WriteResult (VerifyUserId shape)
 export interface RenameParams {
   name: string;
   type: number;
   newName: string;
 }
 
-export interface RenameResult {
-  ok: boolean;
-}
+export type RenameResult = WriteResult;
 
 // validate
 export interface ValidateParams {
@@ -195,6 +191,8 @@ export interface ValidateParams {
 export interface ValidateResult {
   errors: string[];
   warnings: string[];
+  name?: string;
+  typeKey?: string;
 }
 
 // build
@@ -207,6 +205,102 @@ export interface BuildResult {
   success: boolean;
   output: string[];
   errors: string[];
+  note?: string;
+}
+
+// delete
+export interface DeleteResult {
+  op: string;
+  name: string;
+  typeKey: string;
+  entityTypeId: number;
+  entityId: number;
+  deleted: boolean;
+  dryRun?: boolean;
+  note?: string;
+}
+
+// variable
+export interface VariableInfo {
+  name: string;
+  isCollection: boolean;
+}
+
+export interface VariableListResult {
+  name: string;
+  typeKey: string;
+  variables: VariableInfo[];
+  count: number;
+}
+
+export interface VariableMutateResult {
+  op: string;
+  objectName: string;
+  varName: string;
+  deleted?: boolean;
+  note?: string;
+  writeResult?: WriteResult;
+}
+
+// search
+export interface SearchMatch {
+  name: string;
+  entityTypeId: number;
+  typeName: string;
+  entityId: number;
+  section: string;
+  matchCount: number;
+  matchLines: Array<{ line: number; text: string }>;
+}
+
+export interface SearchResult {
+  pattern: string;
+  matches: SearchMatch[];
+  total: number;
+}
+
+// analyze
+export interface AnalyzeRef {
+  name: string;
+  entityTypeId: number;
+  typeName?: string;
+}
+
+export interface AnalyzeResult {
+  name: string;
+  entityTypeId: number;
+  entityId: number;
+  action: string;
+  results: AnalyzeRef[];
+}
+
+// history
+export interface VersionInfo {
+  versionId: number;
+  userId: number;
+  userName: string;
+  timestamp: string;
+  description: string;
+}
+
+export interface HistoryResult {
+  name: string;
+  entityTypeId: number;
+  typeName: string;
+  entityId: number;
+  versions: VersionInfo[];
+  count: number;
+}
+
+// move
+export interface MoveResult {
+  op: string;
+  name: string;
+  entityTypeId: number;
+  entityId: number;
+  fromModule: string;
+  toModule: string;
+  rowsUpdated: number;
 }
 
 // sql_query

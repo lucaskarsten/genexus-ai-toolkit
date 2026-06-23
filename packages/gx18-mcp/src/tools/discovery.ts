@@ -1,5 +1,5 @@
 import { bridge } from '../sdk-bridge/bridge';
-import { EntityInfo, EntityDetail } from '../sdk-bridge/protocol';
+import { EntityInfo, EntityDetail, AnalyzeResult, HistoryResult } from '../sdk-bridge/protocol';
 
 export async function gxFind(args: {
   pattern: string;
@@ -36,6 +36,36 @@ export async function gxGet(args: {
   const result = await bridge.send<EntityDetail>('get', {
     name: args.name,
     type: args.type,
+  });
+  return JSON.stringify(result, null, 2);
+}
+
+export async function gxAnalyze(args: {
+  name: string;
+  type: number;
+  action?: 'usedby' | 'uses' | 'dependencies';
+  limit?: number;
+}): Promise<string> {
+  if (!args.name) throw new Error('gx_analyze requires name.');
+  const result = await bridge.send<AnalyzeResult>('analyze', {
+    name: args.name,
+    type: args.type,
+    action: args.action ?? 'usedby',
+    limit: args.limit ?? 50,
+  }, 60000);
+  return JSON.stringify(result, null, 2);
+}
+
+export async function gxHistory(args: {
+  name: string;
+  type: number;
+  limit?: number;
+}): Promise<string> {
+  if (!args.name) throw new Error('gx_history requires name.');
+  const result = await bridge.send<HistoryResult>('history', {
+    name: args.name,
+    type: args.type,
+    limit: args.limit ?? 10,
   });
   return JSON.stringify(result, null, 2);
 }

@@ -108,10 +108,18 @@ namespace Gx18Mcp.SdkWorker
                 case "modify":   return EnsureSdk().ModifyByKey(S(p, "name"), S(p, "type"), S(p, "section"), S(p, "content"));
                 case "export_xpz": return EnsureSdk().ExportXpz(S(p, "type"), S(p, "name"), S(p, "outputFile"));
                 case "import": return EnsureSdk().ImportXpz(S(p, "xpzFile"), S(p, "type"), S(p, "name"), B(p, "fullOverwrite", true));
-                case "set_property": return EnsureSdk().SetProperty(S(p, "name"), N(p, "type"), S(p, "property"), S(p, "value"));
-                case "rename":   return EnsureSdk().Rename(S(p, "name"), N(p, "type"), S(p, "newName"));
-                case "validate": return EnsureSdk().Validate(S(p, "name"), N(p, "type"));
-                case "build":    return EnsureSdk().Build(S(p, "name"), N(p, "type"));
+                case "set_property": return EnsureSdk().SetProperty(S(p, "name"), S(p, "type"), S(p, "property"), S(p, "value"));
+                case "rename":   return EnsureSdk().Rename(S(p, "name"), S(p, "type"), S(p, "newName"));
+                case "validate": return EnsureSdk().Validate(S(p, "name"), S(p, "type"));
+                case "build":    return EnsureSdk().Build(S(p, "name"), S(p, "type"));
+                case "delete":   return EnsureSdk().DeleteObject(S(p, "name"), S(p, "type"), B(p, "dryRun", false));
+                case "variable_list":   return EnsureSdk().VariableList(S(p, "name"), S(p, "type"));
+                case "variable_add":    return EnsureSdk().VariableAdd(S(p, "name"), S(p, "type"), S(p, "varName"), S(p, "dataType"), N(p, "length"), N(p, "decimals"), B(p, "isCollection", false));
+                case "variable_delete": return EnsureSdk().VariableDelete(S(p, "name"), S(p, "type"), S(p, "varName"));
+                case "search":   return _sql.Search(S(p, "pattern"), N(p, "type"), S(p, "section"), N(p, "limit", 20));
+                case "analyze":  return _sql.Analyze(S(p, "name"), N(p, "type"), S(p, "action", "usedby"), N(p, "limit", 50));
+                case "history":  return _sql.GetHistory(S(p, "name"), N(p, "type"), N(p, "limit", 10));
+                case "move":     return _sql.MoveToModule(S(p, "name"), N(p, "type"), S(p, "targetModule"));
                 case "open_spike": return OpenSpike();
                 case "import_spike": return ImportSpike(S(p, "xpzFile"), S(p, "type"), S(p, "name"), B(p, "fullOverwrite", true));
                 case "probe_sdk": return SdkProbe.Run(

@@ -83,7 +83,7 @@ export async function gxModify(args: {
     type: typeKey,
     section: args.section,
     content: args.content,
-  });
+  }, 180000);
 
   assertWriteOk(result);
   return JSON.stringify(result, null, 2);
@@ -125,13 +125,21 @@ export async function gxSetProperty(args: {
 }): Promise<string> {
   requireConfirm(args.confirm, 'gx_set_property');
 
+  const typeKey = ENTITY_TYPE_TO_KEY[args.type];
+  if (!typeKey) {
+    throw new Error(
+      `gx_set_property: unknown EntityTypeId ${args.type}. Known: ${Object.keys(ENTITY_TYPE_TO_KEY).join(', ')}.`
+    );
+  }
+
   const result = await bridge.send<SetPropertyResult>('set_property', {
     name: args.name,
-    type: args.type,
+    type: typeKey,
     property: args.property,
     value: args.value,
-  });
+  }, 180000);
 
+  assertWriteOk(result);
   return JSON.stringify(result, null, 2);
 }
 
@@ -143,11 +151,102 @@ export async function gxRename(args: {
 }): Promise<string> {
   requireConfirm(args.confirm, 'gx_rename');
 
+  const typeKey = ENTITY_TYPE_TO_KEY[args.type];
+  if (!typeKey) {
+    throw new Error(
+      `gx_rename: unknown EntityTypeId ${args.type}. Known: ${Object.keys(ENTITY_TYPE_TO_KEY).join(', ')}.`
+    );
+  }
+
   const result = await bridge.send<RenameResult>('rename', {
     name: args.name,
-    type: args.type,
+    type: typeKey,
     newName: args.newName,
-  });
+  }, 180000);
+
+  assertWriteOk(result);
+  return JSON.stringify(result, null, 2);
+}
+
+export async function gxDelete(args: {
+  name: string;
+  type: string;
+  dryRun?: boolean;
+  confirm?: boolean;
+}): Promise<string> {
+  if (!args.dryRun) {
+    requireConfirm(args.confirm, 'gx_delete');
+  }
+
+  const typeKey = args.type.toLowerCase();
+  if (!SUPPORTED_WRITE_TYPES.includes(typeKey)) {
+    throw new Error(
+      `gx_delete: unsupported type '${args.type}'. Supported: ${SUPPORTED_WRITE_TYPES.join(', ')}.`
+    );
+  }
+
+  const result = await bridge.send<import('../sdk-bridge/protocol').DeleteResult>('delete', {
+    name: args.name,
+    type: typeKey,
+    dryRun: args.dryRun === true,
+  }, 180000);
 
   return JSON.stringify(result, null, 2);
+}
+
+export async function gxVariable(args: {
+  action: 'list' | 'add' | 'delete';
+  name: string;
+  type: string;
+  varName?: string;
+  dataType?: string;
+  length?: number;
+  decimals?: number;
+  isCollection?: boolean;
+  confirm?: boolean;
+}): Promise<string> {
+  const typeKey = args.type.toLowerCase();
+  if (!SUPPORTED_WRITE_TYPES.includes(typeKey)) {
+    throw new Error(
+      `gx_variable: unsupported type '${args.type}'. Supported: ${SUPPORTED_WRITE_TYPES.join(', ')}.`
+    );
+  }
+
+  const action = (args.action ?? 'list').toLowerCase();
+
+  if (action === 'list') {
+    const result = await bridge.send<import('../sdk-bridge/protocol').VariableListResult>('variable_list', {
+      name: args.name,
+      type: typeKey,
+    });
+    return JSON.stringify(result, null, 2);
+  }
+
+  requireConfirm(args.confirm, `gx_variable action="${action}"`);
+
+  if (action === 'add') {
+    if (!args.varName) throw new Error('gx_variable add requires varName.');
+    const result = await bridge.send<import('../sdk-bridge/protocol').VariableMutateResult>('variable_add', {
+      name: args.name,
+      type: typeKey,
+      varName: args.varName,
+      dataType: args.dataType ?? 'Character',
+      length: args.length ?? 0,
+      decimals: args.decimals ?? 0,
+      isCollection: args.isCollection === true,
+    }, 180000);
+    return JSON.stringify(result, null, 2);
+  }
+
+  if (action === 'delete') {
+    if (!args.varName) throw new Error('gx_variable delete requires varName.');
+    const result = await bridge.send<import('../sdk-bridge/protocol').VariableMutateResult>('variable_delete', {
+      name: args.name,
+      type: typeKey,
+      varName: args.varName,
+    }, 180000);
+    return JSON.stringify(result, null, 2);
+  }
+
+  throw new Error(`gx_variable: unknown action '${args.action}'. Use list, add, or delete.`);
 }
