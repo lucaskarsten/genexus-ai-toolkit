@@ -186,6 +186,75 @@ GX18 KB.**
 
 ---
 
+## FAQ
+
+**Connection timed out on first run**
+
+`npx -y gx18-mcp start` downloads the package on first run (~30 s) and the MCP handshake
+times out before the server is ready. Fix: install globally once so subsequent starts are
+instant.
+
+```bash
+npm install -g gx18-mcp
+# then use "command": "gx18-mcp" in your .mcp.json (no npx)
+```
+
+If you prefer npx, reload Claude Code after the first timeout — the package will be cached and
+the next connection will succeed.
+
+---
+
+**`(localdb)\MSSQLLocalDB` not found / connection timeout**
+
+`(localdb)\MSSQLLocalDB` is a **per-Windows-user** SQL Server instance. Each developer must
+point `GX_KB_SERVER` to the instance where **their own** KB is attached. If the KB was created
+on a different machine or user account, restore it locally first.
+
+Common values:
+- `(localdb)\MSSQLLocalDB` — default LocalDB (Visual Studio / SQL Server Express)
+- `.\SQLEXPRESS` — named SQL Server Express instance
+- `localhost` — full SQL Server on the same machine
+
+The parentheses in `(localdb)\MSSQLLocalDB` are **required** — without them the SQL client
+treats it as a named instance and times out after ~30 s.
+
+---
+
+**Write tools return "requires confirm: true"**
+
+All KB write operations (`gx_create`, `gx_modify`, `gx_import`, `gx_delete`, etc.) require
+`confirm: true` in the call to prevent accidental writes. Always run `gx_whoami` first to
+confirm the Windows identity before any write — the server verifies `UserId` after every save
+and will fail loudly if the author is wrong.
+
+To disable all writes (read-only mode):
+
+```json
+"env": { "GX18_READONLY": "true" }
+```
+
+---
+
+**Oracle connection fails (NNE / Native Network Encryption)**
+
+Oracle environments that require NNE cannot use the Node.js `oracledb` thin driver. `gx18-mcp`
+routes Oracle queries through the C# worker (ODP.NET Managed), which supports NNE natively
+without an Oracle Client installation. Configure via env vars:
+
+```json
+"env": {
+  "ORACLE_HOST":    "your-oracle-host",
+  "ORACLE_PORT":    "1521",
+  "ORACLE_SERVICE": "your.service.name",
+  "ORACLE_USER":    "YOUR_USER",
+  "ORACLE_PASSWORD": "your-password"
+}
+```
+
+Verify with: `gx_db_query { "connection": "oracle", "query": "SELECT COUNT(*) FROM USER_TABLES" }`
+
+---
+
 ## Build from source (publishing)
 
 Building the C# worker requires **Windows** with the **.NET SDK** (`dotnet`) and GeneXus 18 SDK
