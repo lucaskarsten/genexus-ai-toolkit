@@ -10,6 +10,9 @@ const shared = {
   // (they bloated the published tarball with ~4MB of useless maps).
   sourcemap: watch,
   target: 'node18',
+  // Inline .md files as string literals so documentation is embedded in the
+  // bundle and available inside the .exe without any file system access.
+  loader: { '.md': 'text' },
 };
 
 const entries = [

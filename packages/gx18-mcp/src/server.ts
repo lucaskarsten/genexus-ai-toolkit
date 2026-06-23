@@ -3,9 +3,12 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 
 import { callTool, isReadonly, visibleTools } from './dispatch';
+import { RESOURCES, readResource } from './resources';
 
 // The tool registry, read-only helpers, and dispatch now live in ./dispatch so the
 // same logic backs both this stdio MCP server and the local web UI (src/ui).
@@ -17,8 +20,10 @@ export async function run(): Promise<void> {
 
   const server = new Server(
     { name: 'gx18-mcp', version: '1.0.0' },
-    { capabilities: { tools: {} } }
+    { capabilities: { tools: {}, resources: {} } }
   );
+
+  // ── Tools ────────────────────────────────────────────────────────────────────
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
     tools: visibleTools(readonly),
@@ -32,6 +37,24 @@ export async function run(): Promise<void> {
       content: [{ type: 'text', text: result.text }],
       isError: result.isError,
     };
+  });
+
+  // ── Resources ────────────────────────────────────────────────────────────────
+  // Documentation embedded at build time (esbuild loader: { '.md': 'text' }).
+  // Available to any MCP client that supports resources/list + resources/read,
+  // regardless of whether the user has the git repository.
+
+  server.setRequestHandler(ListResourcesRequestSchema, async () => ({
+    resources: RESOURCES,
+  }));
+
+  server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+    const { uri } = request.params;
+    const result = readResource(uri);
+    if (!result) {
+      throw new Error(`Unknown resource: ${uri}`);
+    }
+    return result;
   });
 
   const transport = new StdioServerTransport();
