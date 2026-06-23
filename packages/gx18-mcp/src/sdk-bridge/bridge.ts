@@ -1,4 +1,4 @@
-import { spawn, ChildProcess } from 'child_process';
+import { spawn, spawnSync, ChildProcess } from 'child_process';
 import fs from 'fs';
 import { loadConfig } from '../config';
 import { WorkerRequest, WorkerResponse } from './protocol';
@@ -20,6 +20,22 @@ class SdkBridge {
   private startedAt = 0;
   private isStarting = false;
 
+  private readonly MAX_UPTIME_MS = 90 * 60 * 1000;
+
+  constructor() {
+    this.scheduleRecycle();
+  }
+
+  private scheduleRecycle(): void {
+    setInterval(() => {
+      const s = this.status();
+      if (s.alive && !s.starting && this.pending.size === 0 && s.uptimeMs > this.MAX_UPTIME_MS) {
+        process.stderr.write(`[gx18-bridge] Auto-reciclando worker (uptime ${Math.round(s.uptimeMs / 60000)}min — liberando memória SDK)\n`);
+        this.restart().catch(() => {});
+      }
+    }, 60_000).unref();
+  }
+
   async send<T>(method: string, params: Record<string, unknown> = {}, timeoutMs = 30000): Promise<T> {
     await this.ensureStarted();
     return new Promise<T>((resolve, reject) => {
@@ -29,8 +45,13 @@ class SdkBridge {
         reject(new Error(`Worker timeout: ${method} (${timeoutMs}ms)`));
       }, timeoutMs);
       this.pending.set(id, { resolve: resolve as (r: unknown) => void, reject, timer });
+      if (!this.worker?.stdin?.writable) {
+        clearTimeout(timer);
+        this.pending.delete(id);
+        return reject(new Error(`Worker stdin not writable: ${method}`));
+      }
       const req: WorkerRequest = { id, method, params };
-      this.worker!.stdin!.write(JSON.stringify(req) + '\n');
+      this.worker.stdin.write(JSON.stringify(req) + '\n');
     });
   }
 
@@ -50,7 +71,16 @@ class SdkBridge {
       );
     }
 
+    if (process.platform === 'win32') {
+      spawnSync('powershell', [
+        '-NoProfile', '-NonInteractive', '-Command',
+        `Unblock-File -LiteralPath '${config.workerExe}' -ErrorAction SilentlyContinue`,
+      ], { stdio: 'ignore' });
+    }
+
     this.isStarting = true;
+    let startSucceeded = false;
+    try {
     const t0 = Date.now();
     process.stderr.write('[gx18-bridge] Iniciando worker C# (primeira vez pode levar ~30s enquanto o SDK carrega)...\n');
 
@@ -107,10 +137,17 @@ class SdkBridge {
 
     // Wait for ping to confirm worker is ready (30s timeout — SDK cold-start)
     await this.send('ping', {}, 30000);
-    this.isStarting = false;
+    startSucceeded = true;
     this.restarts = 0;
     this.startedAt = Date.now();
     process.stderr.write(`[gx18-bridge] Worker pronto em ${((Date.now() - t0) / 1000).toFixed(1)}s\n`);
+    } finally {
+      this.isStarting = false;
+      if (!startSucceeded && this.worker) {
+        this.worker.kill();
+        this.worker = null;
+      }
+    }
   }
 
   status(): { alive: boolean; starting: boolean; pid: number | undefined; uptimeMs: number } {

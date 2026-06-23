@@ -4,6 +4,8 @@ import os from 'os';
 import path from 'path';
 
 import { loadConfig, saveConfig, readRawConfig, detectChatConfig, loadConversations, saveConversations, ConversationRecord, Config, OracleConfig, ChatConfig } from '../config';
+
+const pkg = require('../../package.json') as { version: string };
 import { bridge } from '../sdk-bridge/bridge';
 import { callTool, isReadonly, visibleTools } from '../dispatch';
 import { CLIENTS, ClientId, registerClient, getServerEntry, SERVER_KEY } from '../clients';
@@ -137,6 +139,7 @@ export async function handleApi(
     return {
       status: 200,
       body: {
+        version: pkg.version,
         config: maskedConfig(loadConfig()),
         readonly: ctx.readonly,
         workerExists: workerExists(),

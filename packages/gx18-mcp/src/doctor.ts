@@ -48,33 +48,43 @@ export async function runDoctor(): Promise<DoctorReport> {
   }
 
   // 4. Ping worker (+ EntityVersion count when SQL is ready)
-  try {
-    const ping = await bridge.send<{
-      ok: boolean; sdkReady: boolean; sqlReady: boolean; user: string; kbPath: string;
-    }>('ping', {}, 15000);
-    checks.push({
-      name: 'Worker ping',
-      status: 'ok',
-      detail: `user=${ping.user} kbPath=${ping.kbPath} sdkReady=${ping.sdkReady} sqlReady=${ping.sqlReady}`,
-    });
+  // Only ping if the worker is already running — avoid auto-starting it just for a health check,
+  // which would wake up LocalDB and consume memory unnecessarily.
+  const workerAlive = bridge.status().alive;
+  if (!workerAlive) {
+    checks.push({ name: 'Worker ping', status: 'warn', detail: 'Worker not started (will start on first tool call)' });
+  } else {
+    try {
+      const ping = await bridge.send<{
+        ok: boolean; sdkReady: boolean; sqlReady: boolean; user: string; kbPath: string;
+      }>('ping', {}, 15000);
+      checks.push({
+        name: 'Worker ping',
+        status: 'ok',
+        detail: `user=${ping.user} kbPath=${ping.kbPath} sdkReady=${ping.sdkReady} sqlReady=${ping.sqlReady}`,
+      });
 
-    if (ping.sqlReady) {
-      try {
-        const result = await bridge.send<{ rows: Array<{ cnt: number }> }>(
-          'sql_query',
-          { query: 'SELECT COUNT(*) AS cnt FROM EntityVersion', readOnly: true },
-        );
-        checks.push({
-          name: 'SQL EntityVersion rows',
-          status: 'ok',
-          detail: String(result.rows[0]?.cnt ?? '(none)'),
-        });
-      } catch (err) {
-        checks.push({ name: 'SQL EntityVersion rows', status: 'warn', detail: String(err) });
+      if (ping.sqlReady) {
+        try {
+          // TOP 1 avoids a full table scan — we just need to know the table is accessible.
+          // The actual row count is expensive on large KBs (LocalDB full scan).
+          const result = await bridge.send<{ rows: Array<{ cnt: number }> }>(
+            'sql_query',
+            { query: 'SELECT COUNT(*) AS cnt FROM (SELECT TOP 5000 1 AS n FROM EntityVersion) t', readOnly: true },
+          );
+          const cnt = result.rows[0]?.cnt ?? 0;
+          checks.push({
+            name: 'SQL EntityVersion rows',
+            status: 'ok',
+            detail: cnt >= 5000 ? `${cnt}+ (sampled)` : String(cnt),
+          });
+        } catch (err) {
+          checks.push({ name: 'SQL EntityVersion rows', status: 'warn', detail: String(err) });
+        }
       }
+    } catch (err) {
+      checks.push({ name: 'Worker ping', status: 'fail', detail: String(err) });
     }
-  } catch (err) {
-    checks.push({ name: 'Worker ping', status: 'fail', detail: String(err) });
   }
 
   return { checks, ok: checks.every((c) => c.status !== 'fail') };

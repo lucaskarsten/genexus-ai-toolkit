@@ -15,7 +15,7 @@ namespace Gx18Mcp.SdkWorker.Sql
 
         public KbSqlClient(string server, string database)
         {
-            _connectionString = $"Data Source={server};Initial Catalog={database};Integrated Security=True;Connection Timeout=30";
+            _connectionString = $"Data Source={server};Initial Catalog={database};Integrated Security=True;Connection Timeout=30;Min Pool Size=1;Max Pool Size=8;Pooling=true";
         }
 
         private SqlConnection Open()

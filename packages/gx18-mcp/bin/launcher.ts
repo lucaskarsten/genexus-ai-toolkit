@@ -7,18 +7,17 @@
 import { startUi } from '../src/ui/server';
 import { checkAndUpdate, justUpdated } from '../src/updater';
 
+const pkg = require('../package.json') as { version: string };
 const SEP = '  ' + '='.repeat(44);
 const LINE = (s: string) => '  ' + s;
 
 console.log('');
 console.log(SEP);
-console.log(LINE('  GeneXus AI Toolkit'));
+console.log(LINE(`  GeneXus AI Toolkit  v${pkg.version}`));
 console.log(SEP);
 console.log('');
 console.log(LINE('Iniciando servidor local...'));
 console.log('');
-
-const pkg = require('../package.json') as { version: string };
 
 startUi({ open: true })
   .then((ui) => {

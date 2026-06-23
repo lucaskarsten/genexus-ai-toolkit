@@ -27,16 +27,18 @@ const MAX_BODY = 1_000_000; // 1 MB cap on request bodies
 
 function readBody(req: http.IncomingMessage): Promise<unknown> {
   return new Promise((resolve, reject) => {
-    let data = '';
+    const chunks: Buffer[] = [];
+    let totalBytes = 0;
     let tooBig = false;
-    req.on('data', (chunk) => {
-      data += chunk;
-      if (data.length > MAX_BODY) { tooBig = true; req.destroy(); }
+    req.on('data', (chunk: Buffer) => {
+      totalBytes += chunk.length;
+      if (totalBytes > MAX_BODY) { tooBig = true; req.destroy(); return; }
+      chunks.push(chunk);
     });
     req.on('end', () => {
       if (tooBig) return reject(new Error('Request body too large'));
-      if (!data) return resolve(undefined);
-      try { resolve(JSON.parse(data)); } catch { reject(new Error('Invalid JSON body')); }
+      if (chunks.length === 0) return resolve(undefined);
+      try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))); } catch { reject(new Error('Invalid JSON body')); }
     });
     req.on('error', reject);
   });

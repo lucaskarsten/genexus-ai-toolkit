@@ -253,6 +253,7 @@ pre.out.err{border-color:var(--fail);color:#ffb4ae;}
 <div id="gx-app" style="display:none">
   <header id="gx-header">
     <span class="hd-title">gx18&#8209;mcp</span>
+    <span id="hd-version" class="tag muted" style="font-size:11px"></span>
     <span id="hd-mode" class="tag">loading</span>
     <span class="tag muted" style="font-size:11px">127.0.0.1</span>
     <span class="spacer"></span>
@@ -584,6 +585,7 @@ function bootApp() {
     }
     if (r.status !== 200) return;
     READONLY = !!r.body.readonly;
+    if (r.body.version) el('hd-version').textContent = 'v' + r.body.version;
     el('hd-mode').textContent = READONLY ? 'read-only' : 'read-write';
     el('hd-mode').className = 'tag' + (READONLY ? ' ro' : '');
     var c = r.body.config || {};
@@ -715,6 +717,7 @@ function startLogs() {
   es.onopen  = function() { tag.textContent = 'live'; tag.className = 'tag ok'; };
   es.onerror = function() {
     tag.textContent = 'disconnected'; tag.className = 'tag fail';
+    es.close();
     _logEs = null;
     setTimeout(function() { if (!_logEs) startLogs(); }, 3000);
   };
