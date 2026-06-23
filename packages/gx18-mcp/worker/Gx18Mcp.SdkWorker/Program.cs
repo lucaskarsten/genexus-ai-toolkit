@@ -20,10 +20,19 @@ namespace Gx18Mcp.SdkWorker
         private static AssemblyResolver _asmResolver;
         private static KbSession _kbSession;
         private static bool _sdkReady = false;
+        private static bool _exitPending = false;
 
         [STAThread]
         static int Main(string[] args)
         {
+            // Log unhandled exceptions from any thread before the runtime terminates the process.
+            // Without this, background SDK threads crash silently with exit code -1.
+            AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
+            {
+                var ex = e.ExceptionObject as Exception;
+                Console.Error.WriteLine($"[gx18-worker] UNHANDLED EXCEPTION (isTerminating={e.IsTerminating}): {ex}");
+            };
+
             // Configure stdout for newline-delimited JSON (NO BOM — UTF8Encoding(false))
             // System.Text.Encoding.UTF8 emits a BOM prefix that breaks JSON.parse on the Node.js side.
             var noBomUtf8 = new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
@@ -58,25 +67,38 @@ namespace Gx18Mcp.SdkWorker
 
             // Main message loop
             string line;
-            while ((line = Console.ReadLine()) != null)
+            try
             {
-                if (string.IsNullOrWhiteSpace(line)) continue;
-                Dictionary<string, object> req;
-                int id = 0;
-                try
+                while ((line = Console.ReadLine()) != null)
                 {
-                    req = _json.Deserialize<Dictionary<string, object>>(line);
-                    id = Convert.ToInt32(req["id"]);
-                    var method = req["method"] as string ?? "";
-                    var paramsDict = req.ContainsKey("params") ? req["params"] as Dictionary<string, object> : new Dictionary<string, object>();
-                    var result = Dispatch(method, paramsDict ?? new Dictionary<string, object>());
-                    WriteSuccess(id, result);
+                    if (string.IsNullOrWhiteSpace(line)) continue;
+                    Dictionary<string, object> req;
+                    int id = 0;
+                    try
+                    {
+                        req = _json.Deserialize<Dictionary<string, object>>(line);
+                        id = Convert.ToInt32(req["id"]);
+                        var method = req["method"] as string ?? "";
+                        var paramsDict = req.ContainsKey("params") ? req["params"] as Dictionary<string, object> : new Dictionary<string, object>();
+                        var result = Dispatch(method, paramsDict ?? new Dictionary<string, object>());
+                        WriteSuccess(id, result);
+                        if (_exitPending)
+                        {
+                            try { _kbSession?.Dispose(); } catch { }
+                            try { GC.Collect(); GC.WaitForPendingFinalizers(); } catch { }
+                            Environment.Exit(0);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.Error.WriteLine("[gx18-worker] FULL EXCEPTION:\n" + ex.ToString());
+                        WriteError(id, Unwrap(ex));
+                    }
                 }
-                catch (Exception ex)
-                {
-                    Console.Error.WriteLine("[gx18-worker] FULL EXCEPTION:\n" + ex.ToString());
-                    WriteError(id, Unwrap(ex));
-                }
+            }
+            catch (IOException)
+            {
+                // stdin pipe closed — bridge shut down or process killed; exit cleanly
             }
             return 0;
         }
@@ -125,7 +147,9 @@ namespace Gx18Mcp.SdkWorker
                 case "probe_sdk": return SdkProbe.Run(
                     Environment.GetEnvironmentVariable("GX18_INSTALL_DIR") ?? @"C:\Program Files (x86)\GeneXus\GeneXus18U6",
                     S(p, "assembly"), S(p, "type"), S(p, "filter"));
-                case "shutdown": Environment.Exit(0); return null;
+                case "shutdown":
+                    _exitPending = true;
+                    return new { ok = true };
                 default: throw new ArgumentException($"Unknown method: {method}");
             }
         }
