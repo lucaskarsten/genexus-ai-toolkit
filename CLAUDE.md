@@ -44,7 +44,7 @@ Use sempre a ferramenta mais direta. A coluna "NUNCA usar" indica o caminho long
 | Query no Oracle | `gx_db_query connection=oracle` | `gx_sql` (não alcança Oracle) |
 
 **EntityTypeIds** (param `type` em `gx_read`, `gx_modify`, `gx_export`, `gx_import`, `gx_list`):
-`34`=Procedure · `36`=SDT · `39`=Transaction · `147`=UserControl · `148`=WebPanel · `149`=WebComponent · `161`=DSO
+`34`=Procedure · `36`=SDT · `39`=Transaction · `43`=WebPanel/WebComponent · `147`=UserControl · `161`=DSO
 
 **Sections** (param `section` em `gx_read` e `gx_modify`):
 `source` · `events` · `rules` · `layout` · `variables` · `properties`

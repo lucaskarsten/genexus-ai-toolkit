@@ -10,6 +10,8 @@ import { gxDbConnections, gxDbQuery } from './tools/database';
 // EntityTypeId reference (included in descriptions for discoverability):
 // Procedure=34, SDT=36, Transaction=39, WebPanel/WebComponent=43, UserControl=147, DSO=161
 // Sub-components: Events=64, Rules/Source=69, Variables=72, WebForm=74
+// NOTE: 43 is the SDK value for WebPanel and WebComponent (both). Raw SQL on EntityVersion
+// may return different values depending on the KB — always use 43 for tool calls.
 
 // Single source of truth for the tool registry. Kept module-private and exposed
 // only via visibleTools(); both the stdio MCP server (src/server.ts) and the local
@@ -21,7 +23,9 @@ const TOOLS: Tool[] = [
     description:
       'Search GeneXus KB objects by name pattern (SQL LIKE). ' +
       'Returns matching entities with entityTypeId, entityId, name, lastModified. ' +
-      'EntityTypeId values: Procedure=34, SDT=36, Transaction=39, WebPanel/WebComponent=43, UserControl=147, DSO=161.',
+      'EntityTypeId values: Procedure=34, SDT=36, Transaction=39, WebPanel/WebComponent=43, UserControl=147, DSO=161. ' +
+      'PREFER this over manual SQL on EntityVersion for name lookups. ' +
+      'Always call gx_find first to confirm the object exists and get its real entityTypeId before reading or writing.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -68,7 +72,10 @@ const TOOLS: Tool[] = [
       'Read the source code of a GeneXus KB object section. ' +
       'Sections: source (Procedure code / UC template), events (WebPanel/UC events), ' +
       'rules (Transaction/Procedure rules), layout (WebForm), variables. ' +
-      'Returns the reconstructed plain-text source.',
+      'Returns the reconstructed plain-text source. ' +
+      'NEVER read the generated Java in javaoracle/ or render.js in static/ — use this tool instead. ' +
+      'IMPORTANT: UserControl AfterShow and Methods scripts are NOT included in any gx_read section — ' +
+      'use gx_export to get the .xpz archive, then read the CDATA blocks inside it.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -84,7 +91,9 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'gx_properties',
-    description: 'Read all properties of a GeneXus KB object (e.g. Title, IsPrivate, Theme). Returns a key-value map.',
+    description:
+      'Read all properties of a GeneXus KB object (e.g. Title, IsPrivate, Theme). Returns a key-value map of actual property VALUES. ' +
+      'PREFER this over gx_read with section=properties — that returns the property definitions XML, not the values.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -110,7 +119,8 @@ const TOOLS: Tool[] = [
     description:
       'Get current Windows identity as seen by the GeneXus KB. ' +
       'Returns windowsUser, kbUserId, kbPath, kbOpen, gx18Dir, sdkReady. ' +
-      'Use this to verify the correct user is attached before write operations.',
+      'ALWAYS call this before any write operation (gx_create, gx_modify, gx_import). ' +
+      'Wrong UserId corrupts Team Development authorship — verify first.',
     inputSchema: {
       type: 'object',
       properties: {},
@@ -174,7 +184,11 @@ const TOOLS: Tool[] = [
     name: 'gx_modify',
     description:
       'Modify a section of an existing GeneXus KB object. Requires confirm:true. ' +
-      'Sections: source, events, rules, layout, variables.',
+      'Sections: source, events, rules, layout, variables. ' +
+      'Use this for existing objects — NOT gx_import (import does not overwrite existing objects). ' +
+      'IMPORTANT: gx_modify cannot reach UserControl AfterShow/Methods scripts. ' +
+      'For those, use the round-trip: gx_export → patch CDATA in .xpz → gx_import with fullOverwrite:true. ' +
+      'For DSO styles, pass the friendly @import name (e.g. "@import DsoBase;"), NOT the GUID form.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -246,7 +260,9 @@ const TOOLS: Tool[] = [
   {
     name: 'gx_sql',
     description:
-      'Execute a SQL query directly on the GeneXus KB database. ' +
+      'Execute a SQL query directly on the GeneXus KB database (SQL Server, Windows auth). ' +
+      'PREFER this over gx_db_query with connection="kb" — they hit the same database but gx_sql is direct. ' +
+      'For Oracle queries, use gx_db_query with connection="oracle" instead. ' +
       'Read-only queries (SELECT) require only query param. ' +
       'Write queries require readOnly:false AND confirm:true.',
     inputSchema: {
@@ -264,7 +280,10 @@ const TOOLS: Tool[] = [
     description:
       'Export a GeneXus KB object to a real .xpz archive via the Knowledge Manager service ' +
       '(importable into any GeneXus 18 KB). A successful export also validates the object is well-formed. ' +
-      'Writes <name>.xpz to outputDir or the configured GX_OUTPUT_PATH.',
+      'Writes <name>.xpz to outputDir or the configured GX_OUTPUT_PATH. ' +
+      'This is the ONLY way to access UserControl AfterShow and Methods scripts — ' +
+      'they are stored as CDATA blocks inside the .xpz XML and are not reachable via gx_read. ' +
+      'Also use as the first step of the edit round-trip: gx_export → patch CDATA → gx_import.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -333,8 +352,8 @@ const TOOLS: Tool[] = [
     name: 'gx_db_query',
     description:
       'Execute SQL on a named database connection. ' +
-      'connection "kb" → GeneXus KB SQL Server (Windows auth, same as gx_sql). ' +
-      'connection "oracle" → Oracle database (from ORACLE_* env vars, thin mode). ' +
+      'connection "kb" → GeneXus KB SQL Server (Windows auth, same as gx_sql — prefer gx_sql for KB queries). ' +
+      'connection "oracle" → Oracle database via ODP.NET Managed (supports NNE); use this for Oracle, NOT gx_sql. ' +
       'Read-only by default (readOnly:true). Writes require readOnly:false + confirm:true. ' +
       'Results are capped at 1000 rows max (use limit to control).',
     inputSchema: {
