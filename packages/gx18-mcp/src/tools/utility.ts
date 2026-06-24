@@ -1,7 +1,8 @@
 import path from 'path';
+import fs from 'fs';
 import { bridge } from '../sdk-bridge/bridge';
 import { loadConfig, saveConfig } from '../config';
-import { ValidateResult, BuildResult, SqlQueryResult, SearchResult } from '../sdk-bridge/protocol';
+import { ValidateResult, BuildResult, SqlQueryResult, SearchResult, ExportResult, ReadXpzResult, PatchXpzResult } from '../sdk-bridge/protocol';
 import { ENTITY_TYPE_TO_KEY } from './writer';
 import { runDoctor } from '../doctor';
 
@@ -71,6 +72,8 @@ export async function gxSearch(args: {
   type?: number;
   section?: string;
   limit?: number;
+  module?: string;
+  exclude?: string;
 }): Promise<string> {
   if (!args.pattern) throw new Error('gx_search requires pattern.');
   const result = await bridge.send<SearchResult>('search', {
@@ -78,6 +81,8 @@ export async function gxSearch(args: {
     type: args.type ?? 0,
     section: args.section ?? '',
     limit: args.limit ?? 20,
+    module: args.module,
+    exclude: args.exclude,
   }, 60000);
   return JSON.stringify(result, null, 2);
 }
@@ -125,10 +130,50 @@ export async function gxExport(args: {
   const outputFile = path.resolve(outputDir, `${args.name}.xpz`);
 
   // export_xpz exports via the Knowledge Manager service — a real, importable .xpz archive.
-  const result = await bridge.send<{ ok: boolean; outputFile: string; bytes: number; fileExists: boolean }>(
+  fs.mkdirSync(outputDir, { recursive: true });
+  const result = await bridge.send<ExportResult>(
     'export_xpz',
     { type: typeKey, name: args.name, outputFile },
-    120000,
+    180000,
   );
+  return JSON.stringify(result, null, 2);
+}
+
+export async function gxReadXpz(args: {
+  xpzFile: string;
+  scriptName?: string;
+}): Promise<string> {
+  if (!args.xpzFile) throw new Error('gx_read_xpz requires xpzFile.');
+  if (!fs.existsSync(args.xpzFile)) {
+    throw new Error(`gx_read_xpz: file not found: ${args.xpzFile}`);
+  }
+  const result = await bridge.send<ReadXpzResult>('read_xpz', {
+    xpzFile: args.xpzFile,
+    scriptName: args.scriptName ?? null,
+  }, 30000);
+  return JSON.stringify(result, null, 2);
+}
+
+export async function gxPatchXpz(args: {
+  xpzFile: string;
+  scriptName: string;
+  content: string;
+  outputFile?: string;
+}): Promise<string> {
+  if (!args.xpzFile) throw new Error('gx_patch_xpz requires xpzFile.');
+  if (!args.scriptName) throw new Error('gx_patch_xpz requires scriptName.');
+  if (args.content == null) throw new Error('gx_patch_xpz requires content (pass empty string to clear).');
+  if (!fs.existsSync(args.xpzFile)) {
+    throw new Error(`gx_patch_xpz: xpzFile not found: ${args.xpzFile}`);
+  }
+  if (args.outputFile) {
+    fs.mkdirSync(path.dirname(args.outputFile), { recursive: true });
+  }
+  const result = await bridge.send<PatchXpzResult>('patch_xpz', {
+    xpzFile: args.xpzFile,
+    scriptName: args.scriptName,
+    content: args.content,
+    outputFile: args.outputFile ?? null,
+  }, 30000);
   return JSON.stringify(result, null, 2);
 }

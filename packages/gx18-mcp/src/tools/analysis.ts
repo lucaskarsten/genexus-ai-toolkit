@@ -31,11 +31,13 @@ export async function gxDeadCode(args: {
   type?: number;
   module?: string;
   limit?: number;
+  exclude?: string;
 }): Promise<string> {
   const r = await bridge.send('dead_code', {
     entityTypeId: args.type ?? 34,
     module: args.module,
     limit: args.limit ?? 50,
+    exclude: args.exclude,
   });
   return JSON.stringify(r, null, 2);
 }

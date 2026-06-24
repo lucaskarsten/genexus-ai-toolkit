@@ -5,11 +5,15 @@ export async function gxFind(args: {
   pattern: string;
   type?: number;
   limit?: number;
+  module?: string;
+  exclude?: string;
 }): Promise<string> {
   const results = await bridge.send<EntityInfo[]>('find', {
     pattern: args.pattern,
     type: args.type,
     limit: args.limit ?? 50,
+    module: args.module,
+    exclude: args.exclude,
   });
   return JSON.stringify(results, null, 2);
 }
@@ -19,12 +23,14 @@ export async function gxList(args: {
   module?: string;
   limit?: number;
   offset?: number;
+  exclude?: string;
 }): Promise<string> {
   const results = await bridge.send<EntityInfo[]>('list', {
     type: args.type,
     module: args.module,
     limit: args.limit ?? 100,
     offset: args.offset ?? 0,
+    exclude: args.exclude,
   });
   return JSON.stringify(results, null, 2);
 }
@@ -45,6 +51,7 @@ export async function gxAnalyze(args: {
   type: number;
   action?: 'usedby' | 'uses' | 'dependencies';
   limit?: number;
+  exclude?: string;
 }): Promise<string> {
   if (!args.name) throw new Error('gx_analyze requires name.');
   const result = await bridge.send<AnalyzeResult>('analyze', {
@@ -52,8 +59,18 @@ export async function gxAnalyze(args: {
     type: args.type,
     action: args.action ?? 'usedby',
     limit: args.limit ?? 50,
+    exclude: args.exclude,
   }, 60000);
   return JSON.stringify(result, null, 2);
+}
+
+export async function gxWhereUsed(args: {
+  name: string;
+  type: number;
+  limit?: number;
+  exclude?: string;
+}): Promise<string> {
+  return gxAnalyze({ ...args, action: 'usedby' });
 }
 
 export async function gxHistory(args: {

@@ -1,10 +1,10 @@
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 
-import { gxFind, gxList, gxGet, gxAnalyze, gxHistory } from './tools/discovery';
+import { gxFind, gxList, gxGet, gxAnalyze, gxWhereUsed, gxHistory } from './tools/discovery';
 import { gxRead, gxProperties, gxStructure, gxAttribute } from './tools/reader';
 import { gxWhoami } from './tools/identity';
 import { gxCreate, gxModify, gxSetProperty, gxRename, gxImport, gxDelete, gxVariable, gxClone, gxBulkModify } from './tools/writer';
-import { gxValidate, gxBuild, gxSql, gxExport, gxSaveConfig, gxSearch, gxDoctor, gxReload } from './tools/utility';
+import { gxValidate, gxBuild, gxSql, gxExport, gxReadXpz, gxPatchXpz, gxSaveConfig, gxSearch, gxDoctor, gxReload } from './tools/utility';
 import { gxDbConnections, gxDbQuery, gxMove } from './tools/database';
 import { gxStats, gxModules, gxDiff, gxDeadCode, gxImpact, gxCompare, gxLint } from './tools/analysis';
 
@@ -33,6 +33,8 @@ const TOOLS: Tool[] = [
         pattern: { type: 'string', description: 'SQL LIKE pattern, e.g. "%NavHeader%" or "PrcFocco%"' },
         type: { type: 'number', description: 'Filter by EntityTypeId (optional)' },
         limit: { type: 'number', description: 'Max results (default 50)' },
+        module: { type: 'string', description: 'Filter by module name (exact match, optional)' },
+        exclude: { type: 'string', description: 'Exclude objects whose name matches this SQL LIKE pattern (e.g. "%Test%", "%Submit")' },
       },
       required: ['pattern'],
     },
@@ -49,6 +51,7 @@ const TOOLS: Tool[] = [
         module: { type: 'string', description: 'Module name filter (optional)' },
         limit: { type: 'number', description: 'Max results (default 100)' },
         offset: { type: 'number', description: 'Pagination offset (default 0)' },
+        exclude: { type: 'string', description: 'Exclude names matching this SQL LIKE pattern (e.g. "%V2", "Prc%Test%")' },
       },
       required: ['type'],
     },
@@ -106,7 +109,10 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'gx_structure',
-    description: 'Read the attribute structure of a GeneXus Transaction (table structure with field names, types, lengths).',
+    description:
+      'Read the attribute structure of a GeneXus Transaction — the table schema with field names, types, lengths, decimals, and key flags. ' +
+      'Returns the decoded level/attribute hierarchy directly from the KB blob, without hitting Oracle. ' +
+      'Use this instead of raw SQL on EntityVersionComposition when you need to understand TRN fields before reading or writing related data.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -204,7 +210,11 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'gx_set_property',
-    description: 'Set a property on a GeneXus KB object. Requires confirm:true.',
+    description:
+      'Set a named property on a GeneXus KB object. Requires confirm:true. ' +
+      'Common property names: "Title" (display name), "IsPrivate" (bool), "Theme" (string), "MainProgram" (bool), "AccessLevel". ' +
+      'Property names are case-sensitive and must match the GeneXus property key exactly — use gx_properties first to list valid names and current values. ' +
+      'ALWAYS call gx_whoami before writing to verify the correct Windows identity.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -219,7 +229,11 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'gx_rename',
-    description: 'Rename a GeneXus KB object. Requires confirm:true.',
+    description:
+      'Rename a GeneXus KB object. Requires confirm:true. ' +
+      'The rename updates the object\'s EntityVersionName in the KB and propagates to all caller objects that reference it by name — ' +
+      'run gx_where_used first to understand the impact before renaming. ' +
+      'ALWAYS call gx_whoami before writing. Note: renaming a UserControl also requires re-deploying static assets (the render.js is named after the UC).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -318,7 +332,43 @@ const TOOLS: Tool[] = [
         fullOverwrite: { type: 'boolean', description: 'Overwrite existing objects (default true). false = ImportOptions.Default.' },
         confirm: { type: 'boolean', description: 'Must be true to execute the import' },
       },
-      required: ['xpzFile', 'type', 'name', 'confirm'],
+      required: ['xpzFile', 'name', 'confirm'],
+    },
+  },
+  {
+    name: 'gx_read_xpz',
+    description:
+      'Read the scripts inside a .xpz archive (GeneXus export format). ' +
+      'Without scriptName: lists all <Script> elements with name and byte length. ' +
+      'With scriptName: returns the full CDATA content of that script (e.g. "AfterShow", "Tooltip", or any method name). ' +
+      'No KB connection required — operates directly on the .xpz file. ' +
+      'Use after gx_export to inspect scripts, then gx_patch_xpz to modify.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        xpzFile: { type: 'string', description: 'Absolute path to the .xpz file' },
+        scriptName: { type: 'string', description: 'Script name to read (e.g. "AfterShow"). Omit to list all scripts.' },
+      },
+      required: ['xpzFile'],
+    },
+  },
+  {
+    name: 'gx_patch_xpz',
+    description:
+      'Patch a script CDATA in a .xpz archive, writing the result to a NEW file (original is never modified). ' +
+      'Replaces <Script Name="scriptName"><![CDATA[...]]></Script> body with the new content. ' +
+      'Also bumps lastUpdate and zeroes checksum on the <Object> element. ' +
+      'No KB write — produces a local patched .xpz only. ' +
+      'Workflow: gx_export → gx_read_xpz (inspect) → gx_patch_xpz → gx_import(confirm:true) to apply to KB.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        xpzFile: { type: 'string', description: 'Absolute path to the source .xpz file' },
+        scriptName: { type: 'string', description: 'Script name to patch (e.g. "AfterShow")' },
+        content: { type: 'string', description: 'New CDATA content for the script' },
+        outputFile: { type: 'string', description: 'Output path for the patched .xpz (default: <original>_patched.xpz in same dir)' },
+      },
+      required: ['xpzFile', 'scriptName', 'content'],
     },
   },
   {
@@ -396,8 +446,11 @@ const TOOLS: Tool[] = [
   {
     name: 'gx_variable',
     description:
-      'Manage variables on a GeneXus KB object. action=list returns current variables; ' +
-      'add/delete require confirm:true.',
+      'Manage variables on a GeneXus KB object. ' +
+      'action=list: returns all declared variables (name, type, length, collection flag) — no confirm needed. ' +
+      'action=add: declares a new variable; dataType must be one of Character, VarChar, Numeric, Int, Date, DateTime, Boolean, GUID; add confirm:true. ' +
+      'action=delete: removes a variable by name; requires confirm:true. ' +
+      'ALWAYS call gx_whoami before add/delete. Prefer gx_create sections.variables for bulk variable declarations on new objects.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -431,6 +484,8 @@ const TOOLS: Tool[] = [
         type: { type: 'number', description: 'Filter by EntityTypeId (optional, 0 = all)' },
         section: { type: 'string', description: 'Section to search: source, events (default: all)' },
         limit: { type: 'number', description: 'Max matching objects to return (default 20)' },
+        module: { type: 'string', description: 'Restrict search to objects in this module (optional)' },
+        exclude: { type: 'string', description: 'Skip objects whose name matches this SQL LIKE pattern (e.g. "%Test%")' },
       },
       required: ['pattern'],
     },
@@ -449,6 +504,7 @@ const TOOLS: Tool[] = [
         type: { type: 'number', description: 'EntityTypeId of the object' },
         action: { type: 'string', enum: ['usedby', 'uses', 'dependencies'], description: 'Analysis direction (default usedby)' },
         limit: { type: 'number', description: 'Max results (default 50)' },
+        exclude: { type: 'string', description: 'Exclude results whose name matches this SQL LIKE pattern' },
       },
       required: ['name', 'type'],
     },
@@ -548,8 +604,26 @@ const TOOLS: Tool[] = [
         type: { type: 'number', description: 'EntityTypeId to scan (default: 34=Procedure).' },
         module: { type: 'string', description: 'Restrict to objects in this module (optional).' },
         limit: { type: 'number', description: 'Max candidates to check (default: 50).' },
+        exclude: { type: 'string', description: 'Skip candidates whose name matches this SQL LIKE pattern — useful to exclude known entry points (e.g. "%Submit", "Prc%Seed%").' },
       },
       required: [],
+    },
+  },
+  {
+    name: 'gx_where_used',
+    description:
+      'Find all objects that reference a given object by name in their source, events, or rules. ' +
+      'Simpler alias for gx_analyze with action=usedby. ' +
+      'Use exclude to filter out known false positives.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        name: { type: 'string', description: 'Object name to find references to' },
+        type: { type: 'number', description: 'EntityTypeId of the object (34=Procedure, 147=UserControl, 43=WebPanel, etc.)' },
+        limit: { type: 'number', description: 'Max results (default 50)' },
+        exclude: { type: 'string', description: 'Exclude results whose name matches this SQL LIKE pattern' },
+      },
+      required: ['name', 'type'],
     },
   },
   {
@@ -606,7 +680,11 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'gx_clone',
-    description: 'Clone an existing GeneXus object to a new name, copying all source sections. Requires confirm:true.',
+    description:
+      'Clone an existing GeneXus object to a new name, copying all source sections. Requires confirm:true. ' +
+      'Use cases: creating a new object based on a similar one (faster than gx_create from scratch), or making a backup before a risky refactor. ' +
+      'The clone lands in the root module unless you specify a target module. ' +
+      'ALWAYS call gx_whoami before cloning; run gx_find on the newName first to confirm it does not already exist.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -621,7 +699,11 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'gx_bulk_modify',
-    description: 'Apply the same section modification to multiple GeneXus objects. Requires confirm:true.',
+    description:
+      'Apply the same section content to multiple GeneXus objects in a single call. Requires confirm:true. ' +
+      'Writes are serialized one-at-a-time (the SDK worker is single-session); a failed object stops the batch and reports which objects succeeded. ' +
+      'Use case: standardizing a DSO styles block across several DSOs, or applying the same rules block to a set of procedures. ' +
+      'ALWAYS call gx_whoami first. For heterogeneous changes (different content per object) call gx_modify individually instead.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -729,6 +811,10 @@ async function dispatch(name: string, a: Record<string, unknown>): Promise<ToolR
       return { text: await gxExport(a as Parameters<typeof gxExport>[0]), isError: false };
     case 'gx_import':
       return { text: await gxImport(a as Parameters<typeof gxImport>[0]), isError: false };
+    case 'gx_read_xpz':
+      return { text: await gxReadXpz(a as Parameters<typeof gxReadXpz>[0]), isError: false };
+    case 'gx_patch_xpz':
+      return { text: await gxPatchXpz(a as Parameters<typeof gxPatchXpz>[0]), isError: false };
     case 'gx_save_config':
       return { text: await gxSaveConfig(a as Parameters<typeof gxSaveConfig>[0]), isError: false };
     case 'gx_db_connections':
@@ -743,6 +829,8 @@ async function dispatch(name: string, a: Record<string, unknown>): Promise<ToolR
       return { text: await gxSearch(a as Parameters<typeof gxSearch>[0]), isError: false };
     case 'gx_analyze':
       return { text: await gxAnalyze(a as Parameters<typeof gxAnalyze>[0]), isError: false };
+    case 'gx_where_used':
+      return { text: await gxWhereUsed(a as Parameters<typeof gxWhereUsed>[0]), isError: false };
     case 'gx_history':
       return { text: await gxHistory(a as Parameters<typeof gxHistory>[0]), isError: false };
     case 'gx_move':

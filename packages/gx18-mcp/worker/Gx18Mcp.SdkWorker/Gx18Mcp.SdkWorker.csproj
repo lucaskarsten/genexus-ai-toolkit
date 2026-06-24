@@ -15,6 +15,9 @@
     <Reference Include="System.Web.Extensions" />
     <!-- Required for 'dynamic' keyword in SDK-style net48 projects -->
     <Reference Include="Microsoft.CSharp" />
+    <!-- ZipArchive/ZipArchiveMode are in System.IO.Compression; ZipFile is in FileSystem -->
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
   </ItemGroup>
   <ItemGroup>
     <!-- ODP.NET Managed: fully managed Oracle driver, supports NNE, no Oracle Client needed -->

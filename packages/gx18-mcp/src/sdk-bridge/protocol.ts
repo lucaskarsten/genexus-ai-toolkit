@@ -21,6 +21,7 @@ export interface EntityInfo {
   typeName: string;
   entityId: number;
   name: string;
+  module?: string;
   lastModified: string;
 }
 
@@ -68,6 +69,8 @@ export interface FindParams {
   pattern: string;
   type?: number;
   limit?: number;
+  module?: string;
+  exclude?: string;
 }
 
 // list
@@ -76,6 +79,26 @@ export interface ListParams {
   module?: string;
   limit?: number;
   offset?: number;
+  exclude?: string;
+}
+
+// search
+export interface SearchParams {
+  pattern: string;
+  type?: number;
+  section?: string;
+  limit?: number;
+  module?: string;
+  exclude?: string;
+}
+
+// analyze
+export interface AnalyzeParams {
+  name: string;
+  type: number;
+  action?: string;
+  limit?: number;
+  exclude?: string;
 }
 
 // get
@@ -150,7 +173,7 @@ export type ModifyResult = WriteResult;
 // import (.xpz via Knowledge Manager) — WriteResult-compatible so the UserId guard applies
 export interface ImportParams {
   xpzFile: string;
-  type: string;
+  type?: string;
   name: string;
   fullOverwrite?: boolean;
 }
@@ -322,5 +345,35 @@ export interface ExportParams {
 }
 
 export interface ExportResult {
-  path: string;
+  ok: boolean;
+  name: string;
+  type: string;
+  outputFile: string;
+  fileExists: boolean;
+  bytes: number;
+}
+
+// read_xpz
+export interface XpzScriptInfo {
+  name: string;
+  length: number;
+  content?: string;
+}
+
+export interface ReadXpzResult {
+  ok: boolean;
+  xpzFile: string;
+  scripts: XpzScriptInfo[];
+  scriptCount: number;
+}
+
+// patch_xpz
+export interface PatchXpzResult {
+  ok: boolean;
+  xpzFile: string;
+  outputFile: string;
+  scriptName: string;
+  originalLength: number;
+  newLength: number;
+  patched: boolean;
 }

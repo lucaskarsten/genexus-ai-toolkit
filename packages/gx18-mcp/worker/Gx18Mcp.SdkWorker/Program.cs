@@ -109,8 +109,8 @@ namespace Gx18Mcp.SdkWorker
             {
                 case "ping":    return Ping();
                 case "whoami":  return _identity.GetInfo(_sdkReady, Environment.GetEnvironmentVariable("GX_KB_PATH"), Environment.GetEnvironmentVariable("GX18_INSTALL_DIR") ?? @"C:\Program Files (x86)\GeneXus\GeneXus18U6");
-                case "find":    return _sql.Find(S(p, "pattern"), N(p, "type"), N(p, "limit", 50));
-                case "list":    return _sql.List(N(p, "type"), S(p, "module"), N(p, "limit", 100), N(p, "offset", 0));
+                case "find":    return _sql.Find(S(p, "pattern"), N(p, "type"), N(p, "limit", 50), S(p, "module"), S(p, "exclude"));
+                case "list":    return _sql.List(N(p, "type"), S(p, "module"), N(p, "limit", 100), N(p, "offset", 0), S(p, "exclude"));
                 case "get":     return _sql.Get(S(p, "name"), N(p, "type"));
                 case "read_source":    return _sql.ReadSource(N(p, "entityTypeId"), N(p, "entityId"));
                 case "read_properties": return _sql.ReadProperties(S(p, "name"), N(p, "type"));
@@ -120,6 +120,10 @@ namespace Gx18Mcp.SdkWorker
                     if (_oracle == null) throw new Exception("Oracle not configured — set ORACLE_HOST in .env");
                     return _oracle.Query(S(p, "query"), B(p, "readOnly", true), N(p, "limit", 100));
                 case "export":   return _sql.Export(S(p, "name"), N(p, "type"), S(p, "outputDir", Environment.GetEnvironmentVariable("GX_OUTPUT_PATH") ?? @".\output"));
+                case "read_xpz":
+                    return Gx18Mcp.SdkWorker.Sdk.XpzHelper.ReadXpz(S(p, "xpzFile"), S(p, "scriptName"));
+                case "patch_xpz":
+                    return Gx18Mcp.SdkWorker.Sdk.XpzHelper.PatchXpz(S(p, "xpzFile"), S(p, "scriptName"), S(p, "content"), S(p, "outputFile"));
                 case "create":
                 {
                     var sections = new Dictionary<string, object>();
@@ -138,8 +142,8 @@ namespace Gx18Mcp.SdkWorker
                 case "variable_list":   return EnsureSdk().VariableList(S(p, "name"), S(p, "type"));
                 case "variable_add":    return EnsureSdk().VariableAdd(S(p, "name"), S(p, "type"), S(p, "varName"), S(p, "dataType"), N(p, "length"), N(p, "decimals"), B(p, "isCollection", false));
                 case "variable_delete": return EnsureSdk().VariableDelete(S(p, "name"), S(p, "type"), S(p, "varName"));
-                case "search":   return _sql.Search(S(p, "pattern"), N(p, "type"), S(p, "section"), N(p, "limit", 20));
-                case "analyze":  return _sql.Analyze(S(p, "name"), N(p, "type"), S(p, "action", "usedby"), N(p, "limit", 50));
+                case "search":   return _sql.Search(S(p, "pattern"), N(p, "type"), S(p, "section"), N(p, "limit", 20), S(p, "module"), S(p, "exclude"));
+                case "analyze":  return _sql.Analyze(S(p, "name"), N(p, "type"), S(p, "action", "usedby"), N(p, "limit", 50), S(p, "exclude"));
                 case "history":  return _sql.GetHistory(S(p, "name"), N(p, "type"), N(p, "limit", 10));
                 case "move":     return _sql.MoveToModule(S(p, "name"), N(p, "type"), S(p, "targetModule"));
                 case "open_spike": return OpenSpike();
@@ -166,7 +170,8 @@ namespace Gx18Mcp.SdkWorker
                     return _sql.DeadCode(
                         N(p, "entityTypeId"),
                         S(p, "module"),
-                        N(p, "limit", 50)
+                        N(p, "limit", 50),
+                        S(p, "exclude")
                     );
 
                 case "impact":
