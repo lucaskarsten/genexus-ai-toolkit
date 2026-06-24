@@ -21,6 +21,8 @@ export interface ApiCtx {
   readonly: boolean;
   /** Port the server is bound to (for the Host allowlist). */
   port: number;
+  /** Session token — every /api/* request must supply this in X-Auth-Token. */
+  token: string;
 }
 
 export interface ApiResult {
@@ -116,8 +118,13 @@ export async function handleApi(
   ctx: ApiCtx,
   method: string,
   pathname: string,
+  requestToken: string | undefined,
   body: unknown,
 ): Promise<ApiResult> {
+  if (!requestToken || requestToken.length !== ctx.token.length || requestToken !== ctx.token) {
+    return { status: 401, body: { error: 'Unauthorized' } };
+  }
+
   // GET /api/config
   if (method === 'GET' && pathname === '/api/config') {
     return {

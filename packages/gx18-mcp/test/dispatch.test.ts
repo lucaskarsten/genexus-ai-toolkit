@@ -153,7 +153,7 @@ describe('gx_find / gx_list filters', () => {
     expect(r.isError).toBe(false);
     expect(send).toHaveBeenCalledWith('dead_code', expect.objectContaining({
       entityTypeId: 34, exclude: '%Submit',
-    }));
+    }), 60000);
   });
 
   it('passes exclude to bridge for gx_analyze', async () => {
