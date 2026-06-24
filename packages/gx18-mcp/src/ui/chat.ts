@@ -113,9 +113,22 @@ export async function streamChat(
             }
           }
         } else if (t === 'tool_result') {
+          // Top-level tool_result event (some Claude Code versions)
           const content = ev['content'];
           const result = typeof content === 'string' ? content : JSON.stringify(content ?? '');
           send({ type: 'tool_result', id: String(ev['tool_use_id'] ?? ''), name: '', result, isError: !!ev['is_error'] });
+        } else if (t === 'user') {
+          // Tool results are embedded in the user turn in stream-json format
+          const msg = ev['message'] as { content?: Array<Record<string, unknown>> } | undefined;
+          for (const block of (msg?.content ?? [])) {
+            if (block['type'] === 'tool_result') {
+              const content = block['content'];
+              const result = typeof content === 'string' ? content
+                : Array.isArray(content) ? (content as Array<Record<string,unknown>>).map(c => c['text'] ?? '').join('\n')
+                : JSON.stringify(content ?? '');
+              send({ type: 'tool_result', id: String(block['tool_use_id'] ?? ''), name: '', result: String(result), isError: !!block['is_error'] });
+            }
+          }
         } else if (t === 'result') {
           // Final result event: contains session_id
           const sid = ev['session_id'];

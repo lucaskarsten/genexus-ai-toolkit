@@ -1163,12 +1163,8 @@ function chatSend() {
           var ev;
           try { ev = JSON.parse(line); } catch(e) { return; }
           if (ev.type === 'delta') {
-            if (firstChunk) { aDiv.classList.remove('thinking'); aDiv.textContent = ''; firstChunk = false; }
             fullText += ev.text;
-            aDiv.textContent = fullText;
-            typingStart(aDiv);
             chatStatus('thinking', 'Claude está pensando…');
-            chatScrollBottom();
           } else if (ev.type === 'tool_call') {
             typingStop(aDiv);
             var label = toolLabel(ev.name, ev.args || {});
