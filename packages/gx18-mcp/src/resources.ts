@@ -3,6 +3,7 @@ import quickReference from './docs/quick-reference.md';
 import usageGuide from './docs/usage-guide.md';
 import xpzWorkflow from './docs/xpz-workflow.md';
 import genexusKnowledge from './docs/genexus-knowledge.md';
+import writeSafetyChecklist from './docs/write-safety-checklist.md';
 import spec from '../spec/entity-types.json';
 
 // Both .md imports are resolved by esbuild at build time (loader: { '.md': 'text' })
@@ -13,6 +14,7 @@ const USAGE_GUIDE_URI = 'gx18://docs/usage-guide';
 const ENTITY_TYPES_URI = 'gx18://docs/entity-types';
 const XPZ_WORKFLOW_URI = 'gx18://docs/xpz-workflow';
 const GENEXUS_KNOWLEDGE_URI = 'gx18://docs/genexus-knowledge';
+const WRITE_SAFETY_URI = 'gx18://docs/write-safety';
 
 export const RESOURCES: Resource[] = [
   {
@@ -55,6 +57,16 @@ export const RESOURCES: Resource[] = [
       'GeneXus 18 platform reference for LLMs: object model, event lifecycle (Start/Refresh/Load/OnMessage), ' +
       'procedure and WebPanel syntax, UserControl AfterShow/MutationObserver patterns, DSO styles, ' +
       'Submit async pattern, special variables, module structure, and KB SQL key tables.',
+    mimeType: 'text/markdown',
+  },
+  {
+    uri: WRITE_SAFETY_URI,
+    name: 'Write Safety Checklist',
+    description:
+      'MANDATORY pre-flight checklist before gx_modify, gx_import, or gx_export on existing objects. ' +
+      'Covers: part blob validation, EntityVersionProperties check, worker kill after SQL, ' +
+      'silent import failure diagnosis, GUID collision detection, SDT ATTCUSTOMTYPE vs idBasedOn, ' +
+      'and GeneXus 18 syntax pitfalls. Read this before any write operation to avoid silent failures.',
     mimeType: 'text/markdown',
   },
 ];
@@ -119,6 +131,8 @@ export function readResource(uri: string): { contents: ResourceContents[] } | nu
       return { contents: [{ uri, mimeType: 'text/markdown', text: xpzWorkflow }] };
     case GENEXUS_KNOWLEDGE_URI:
       return { contents: [{ uri, mimeType: 'text/markdown', text: genexusKnowledge }] };
+    case WRITE_SAFETY_URI:
+      return { contents: [{ uri, mimeType: 'text/markdown', text: writeSafetyChecklist }] };
     default:
       return null;
   }

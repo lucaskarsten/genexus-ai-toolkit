@@ -42,6 +42,27 @@ namespace Gx18Mcp.SdkWorker.Sql
             }
         }
 
+        public object QueryByName(string sql, string name)
+        {
+            var rows = new List<object>();
+            using (var conn = Open())
+            using (var cmd = new SqlCommand(sql, conn))
+            {
+                cmd.Parameters.AddWithValue("@name", name ?? "");
+                using (var r = cmd.ExecuteReader())
+                {
+                    while (r.Read())
+                    {
+                        var row = new Dictionary<string, object>();
+                        for (int i = 0; i < r.FieldCount; i++)
+                            row[r.GetName(i)] = r.IsDBNull(i) ? (object)null : r.GetValue(i);
+                        rows.Add(row);
+                    }
+                }
+            }
+            return new { rows, count = rows.Count };
+        }
+
         public long ScalarLong(string sql)
         {
             using (var conn = Open())
@@ -66,28 +87,55 @@ namespace Gx18Mcp.SdkWorker.Sql
 
         private string TypeName(int id) => TYPE_NAMES.ContainsKey(id) ? TYPE_NAMES[id] : id.ToString();
 
-        public List<object> Find(string pattern, int type, int limit)
+        public List<object> FindMulti(string pattern, int[] types, int limit, string module = null, string exclude = null)
         {
-            var sql = type > 0
-                ? $"SELECT TOP {limit} e.EntityTypeId, e.EntityId, ev.EntityVersionName, CONVERT(varchar,ev.EntityVersionTimestamp,120) as ts FROM Entity e JOIN EntityVersion ev ON e.EntityTypeId=ev.EntityTypeId AND e.EntityId=ev.EntityId WHERE e.EntityTypeId={type} AND ev.EntityVersionName LIKE @pat AND ev.EntityVersionId=(SELECT MAX(v2.EntityVersionId) FROM EntityVersion v2 WHERE v2.EntityTypeId=e.EntityTypeId AND v2.EntityId=e.EntityId) ORDER BY ev.EntityVersionName"
-                : $"SELECT TOP {limit} e.EntityTypeId, e.EntityId, ev.EntityVersionName, CONVERT(varchar,ev.EntityVersionTimestamp,120) as ts FROM Entity e JOIN EntityVersion ev ON e.EntityTypeId=ev.EntityTypeId AND e.EntityId=ev.EntityId WHERE ev.EntityVersionName LIKE @pat AND ev.EntityVersionId=(SELECT MAX(v2.EntityVersionId) FROM EntityVersion v2 WHERE v2.EntityTypeId=e.EntityTypeId AND v2.EntityId=e.EntityId) ORDER BY ev.EntityVersionName";
+            var typeFilter = types != null && types.Length > 0
+                ? $" AND e.EntityTypeId IN ({string.Join(",", types)})"
+                : "";
+            var modFilter = !string.IsNullOrEmpty(module) ? " AND e.ModuleName=@mod" : "";
+            var exclFilter = !string.IsNullOrEmpty(exclude) ? " AND ev.EntityVersionName NOT LIKE @excl" : "";
+            var sql = $"SELECT TOP {limit} e.EntityTypeId, e.EntityId, ev.EntityVersionName, CONVERT(varchar,ev.EntityVersionTimestamp,120) as ts, ISNULL(e.ModuleName,'') as module FROM Entity e JOIN EntityVersion ev ON e.EntityTypeId=ev.EntityTypeId AND e.EntityId=ev.EntityId WHERE ev.EntityVersionName LIKE @pat{typeFilter}{modFilter}{exclFilter} AND ev.EntityVersionId=(SELECT MAX(v2.EntityVersionId) FROM EntityVersion v2 WHERE v2.EntityTypeId=e.EntityTypeId AND v2.EntityId=e.EntityId) ORDER BY ev.EntityVersionName";
 
             var results = new List<object>();
             using (var conn = Open())
             using (var cmd = new SqlCommand(sql, conn))
             {
                 cmd.Parameters.AddWithValue("@pat", pattern != null && pattern.Contains("%") ? pattern : $"%{pattern}%");
+                if (!string.IsNullOrEmpty(module)) cmd.Parameters.AddWithValue("@mod", module);
+                if (!string.IsNullOrEmpty(exclude)) cmd.Parameters.AddWithValue("@excl", exclude.Contains("%") ? exclude : $"%{exclude}%");
                 using (var r = cmd.ExecuteReader())
                     while (r.Read())
-                        results.Add(new { entityTypeId = r.GetInt32(0), typeName = TypeName(r.GetInt32(0)), entityId = r.GetInt32(1), name = r.GetString(2), lastModified = r.GetString(3) });
+                        results.Add(new { entityTypeId = r.GetInt32(0), typeName = TypeName(r.GetInt32(0)), entityId = r.GetInt32(1), name = r.GetString(2), lastModified = r.GetString(3), module = r.GetString(4) });
             }
             return results;
         }
 
-        public List<object> List(int type, string module, int limit, int offset)
+        public List<object> Find(string pattern, int type, int limit, string module = null, string exclude = null)
+        {
+            var typeFilter = type > 0 ? $" AND e.EntityTypeId={type}" : "";
+            var modFilter = !string.IsNullOrEmpty(module) ? " AND e.ModuleName=@mod" : "";
+            var exclFilter = !string.IsNullOrEmpty(exclude) ? " AND ev.EntityVersionName NOT LIKE @excl" : "";
+            var sql = $"SELECT TOP {limit} e.EntityTypeId, e.EntityId, ev.EntityVersionName, CONVERT(varchar,ev.EntityVersionTimestamp,120) as ts, ISNULL(e.ModuleName,'') as module FROM Entity e JOIN EntityVersion ev ON e.EntityTypeId=ev.EntityTypeId AND e.EntityId=ev.EntityId WHERE ev.EntityVersionName LIKE @pat{typeFilter}{modFilter}{exclFilter} AND ev.EntityVersionId=(SELECT MAX(v2.EntityVersionId) FROM EntityVersion v2 WHERE v2.EntityTypeId=e.EntityTypeId AND v2.EntityId=e.EntityId) ORDER BY ev.EntityVersionName";
+
+            var results = new List<object>();
+            using (var conn = Open())
+            using (var cmd = new SqlCommand(sql, conn))
+            {
+                cmd.Parameters.AddWithValue("@pat", pattern != null && pattern.Contains("%") ? pattern : $"%{pattern}%");
+                if (!string.IsNullOrEmpty(module)) cmd.Parameters.AddWithValue("@mod", module);
+                if (!string.IsNullOrEmpty(exclude)) cmd.Parameters.AddWithValue("@excl", exclude.Contains("%") ? exclude : $"%{exclude}%");
+                using (var r = cmd.ExecuteReader())
+                    while (r.Read())
+                        results.Add(new { entityTypeId = r.GetInt32(0), typeName = TypeName(r.GetInt32(0)), entityId = r.GetInt32(1), name = r.GetString(2), lastModified = r.GetString(3), module = r.GetString(4) });
+            }
+            return results;
+        }
+
+        public List<object> List(int type, string module, int limit, int offset, string exclude = null)
         {
             var moduleFilter = string.IsNullOrEmpty(module) ? "" : " AND e.ModuleName=@mod";
-            var sql = $"SELECT e.EntityTypeId, e.EntityId, ev.EntityVersionName, CONVERT(varchar,ev.EntityVersionTimestamp,120) as ts FROM Entity e JOIN EntityVersion ev ON e.EntityTypeId=ev.EntityTypeId AND e.EntityId=ev.EntityId WHERE e.EntityTypeId=@type AND ev.EntityVersionId=(SELECT MAX(v2.EntityVersionId) FROM EntityVersion v2 WHERE v2.EntityTypeId=e.EntityTypeId AND v2.EntityId=e.EntityId){moduleFilter} ORDER BY ev.EntityVersionName OFFSET @off ROWS FETCH NEXT @lim ROWS ONLY";
+            var exclFilter = string.IsNullOrEmpty(exclude) ? "" : " AND ev.EntityVersionName NOT LIKE @excl";
+            var sql = $"SELECT e.EntityTypeId, e.EntityId, ev.EntityVersionName, CONVERT(varchar,ev.EntityVersionTimestamp,120) as ts, ISNULL(e.ModuleName,'') as module FROM Entity e JOIN EntityVersion ev ON e.EntityTypeId=ev.EntityTypeId AND e.EntityId=ev.EntityId WHERE e.EntityTypeId=@type AND ev.EntityVersionId=(SELECT MAX(v2.EntityVersionId) FROM EntityVersion v2 WHERE v2.EntityTypeId=e.EntityTypeId AND v2.EntityId=e.EntityId){moduleFilter}{exclFilter} ORDER BY ev.EntityVersionName OFFSET @off ROWS FETCH NEXT @lim ROWS ONLY";
             var results = new List<object>();
             using (var conn = Open())
             using (var cmd = new SqlCommand(sql, conn))
@@ -96,9 +144,10 @@ namespace Gx18Mcp.SdkWorker.Sql
                 cmd.Parameters.AddWithValue("@off", offset);
                 cmd.Parameters.AddWithValue("@lim", limit);
                 if (!string.IsNullOrEmpty(module)) cmd.Parameters.AddWithValue("@mod", module);
+                if (!string.IsNullOrEmpty(exclude)) cmd.Parameters.AddWithValue("@excl", exclude.Contains("%") ? exclude : $"%{exclude}%");
                 using (var r = cmd.ExecuteReader())
                     while (r.Read())
-                        results.Add(new { entityTypeId = r.GetInt32(0), typeName = TypeName(r.GetInt32(0)), entityId = r.GetInt32(1), name = r.GetString(2), lastModified = r.GetString(3) });
+                        results.Add(new { entityTypeId = r.GetInt32(0), typeName = TypeName(r.GetInt32(0)), entityId = r.GetInt32(1), name = r.GetString(2), lastModified = r.GetString(3), module = r.GetString(4) });
             }
             return results;
         }
@@ -242,15 +291,22 @@ namespace Gx18Mcp.SdkWorker.Sql
             return new { name, attributes = attrs };
         }
 
-        public object Query(string query, bool readOnly)
+        public object Query(string query, bool readOnly, int maxRows = 1000)
         {
-            if (!readOnly)
-            {
-                var upper = query.TrimStart().ToUpperInvariant();
-                if (upper.StartsWith("DROP") || upper.StartsWith("TRUNCATE") || upper.StartsWith("ALTER"))
-                    throw new Exception("Blocked: DROP/TRUNCATE/ALTER not allowed via gx_sql");
-            }
+            if (maxRows <= 0 || maxRows > 5000) maxRows = 1000;
+            // Block DDL regardless of readOnly mode — use IDE GX18 for schema changes.
+            var upper = (query ?? "").TrimStart().ToUpperInvariant();
+            if (upper.StartsWith("DROP ") || upper.StartsWith("DROP\t") ||
+                upper.StartsWith("TRUNCATE ") || upper.StartsWith("TRUNCATE\t") ||
+                upper.StartsWith("ALTER ") || upper.StartsWith("ALTER\t") ||
+                upper.StartsWith("CREATE TABLE") || upper.StartsWith("CREATE INDEX") ||
+                upper.StartsWith("EXEC ") || upper.StartsWith("EXEC\t") ||
+                upper.StartsWith("EXECUTE ") || upper.StartsWith("EXECUTE\t"))
+                throw new Exception(
+                    "DDL statements (DROP, TRUNCATE, ALTER, CREATE TABLE, CREATE INDEX, EXEC) are blocked. " +
+                    "Use the IDE GX18 for schema changes.");
             var rows = new List<object>();
+            bool truncated = false;
             using (var conn = Open())
             using (var cmd = new SqlCommand(query, conn))
             {
@@ -258,6 +314,7 @@ namespace Gx18Mcp.SdkWorker.Sql
                 {
                     while (r.Read())
                     {
+                        if (rows.Count >= maxRows) { truncated = true; break; }
                         var row = new Dictionary<string, object>();
                         for (int i = 0; i < r.FieldCount; i++)
                             row[r.GetName(i)] = r.IsDBNull(i) ? null : r.GetValue(i);
@@ -265,12 +322,12 @@ namespace Gx18Mcp.SdkWorker.Sql
                     }
                 }
             }
-            return new { rows, count = rows.Count };
+            return new { rows, count = rows.Count, truncated };
         }
 
         // Search object sources for a text/regex pattern.
         // Reads and decompresses part blobs in memory — limited by `limit` to avoid timeouts.
-        public object Search(string pattern, int type, string section, int limit)
+        public object Search(string pattern, int type, string section, int limit, string module = null, string exclude = null)
         {
             if (string.IsNullOrEmpty(pattern)) throw new Exception("pattern is required");
 
@@ -288,6 +345,9 @@ namespace Gx18Mcp.SdkWorker.Sql
             // Get parent objects (parts belong to compound objects via EntityVersionComposition)
             var partTypeIn = string.Join(",", partTypes);
             var typeFilter = type > 0 ? $" AND c.CompoundEntityTypeId={type}" : "";
+            var modJoin = !string.IsNullOrEmpty(module) ? " JOIN Entity e ON e.EntityTypeId=c.CompoundEntityTypeId AND e.EntityId=c.CompoundEntityId" : "";
+            var modFilter = !string.IsNullOrEmpty(module) ? " AND e.ModuleName=@mod" : "";
+            var exclFilter = !string.IsNullOrEmpty(exclude) ? " AND pn.EntityVersionName NOT LIKE @excl" : "";
             var sql = $@"SELECT TOP {limit * 5}
                     c.CompoundEntityTypeId, c.CompoundEntityId,
                     p.EntityTypeId AS PartTypeId, p.EntityId AS PartEntityId,
@@ -296,16 +356,20 @@ namespace Gx18Mcp.SdkWorker.Sql
                 JOIN EntityVersion p ON p.EntityTypeId=c.ComponentEntityTypeId AND p.EntityId=c.ComponentEntityId
                     AND p.EntityVersionId=(SELECT MAX(v2.EntityVersionId) FROM EntityVersion v2 WHERE v2.EntityTypeId=p.EntityTypeId AND v2.EntityId=p.EntityId)
                 JOIN EntityVersion pn ON pn.EntityTypeId=c.CompoundEntityTypeId AND pn.EntityId=c.CompoundEntityId
-                    AND pn.EntityVersionId=c.CompoundEntityVersionId
-                WHERE c.ComponentEntityTypeId IN ({partTypeIn}){typeFilter}
+                    AND pn.EntityVersionId=c.CompoundEntityVersionId{modJoin}
+                WHERE c.ComponentEntityTypeId IN ({partTypeIn}){typeFilter}{modFilter}{exclFilter}
                     AND c.CompoundEntityVersionId=(SELECT MAX(v3.EntityVersionId) FROM EntityVersion v3 WHERE v3.EntityTypeId=c.CompoundEntityTypeId AND v3.EntityId=c.CompoundEntityId)";
 
             var candidates = new List<(int compoundType, int compoundId, int partTypeId, int partEntityId, string parentName)>();
             using (var conn = Open())
             using (var cmd = new SqlCommand(sql, conn))
-            using (var r = cmd.ExecuteReader())
-                while (r.Read())
-                    candidates.Add((r.GetInt32(0), r.GetInt32(1), r.GetInt32(2), r.GetInt32(3), r.IsDBNull(4) ? "" : r.GetString(4)));
+            {
+                if (!string.IsNullOrEmpty(module)) cmd.Parameters.AddWithValue("@mod", module);
+                if (!string.IsNullOrEmpty(exclude)) cmd.Parameters.AddWithValue("@excl", exclude.Contains("%") ? exclude : $"%{exclude}%");
+                using (var r = cmd.ExecuteReader())
+                    while (r.Read())
+                        candidates.Add((r.GetInt32(0), r.GetInt32(1), r.GetInt32(2), r.GetInt32(3), r.IsDBNull(4) ? "" : r.GetString(4)));
+            }
 
             var matches = new List<object>();
             var seen = new HashSet<string>();
@@ -347,7 +411,7 @@ namespace Gx18Mcp.SdkWorker.Sql
         }
 
         // Impact/dependency analysis. action: "usedby" | "uses" | "dependencies"
-        public object Analyze(string name, int type, string action, int limit)
+        public object Analyze(string name, int type, string action, int limit, string exclude = null)
         {
             if (string.IsNullOrEmpty(name)) throw new Exception("name is required");
 
@@ -369,7 +433,7 @@ namespace Gx18Mcp.SdkWorker.Sql
             if (actionLower == "usedby")
             {
                 // Objects that contain the name in their source — text search across all types
-                var searchResult = Search(name, 0, null, limit) as dynamic;
+                var searchResult = Search(name, 0, null, limit, null, exclude) as dynamic;
                 return new { name, entityTypeId = type, entityId, action, results = searchResult.matches };
             }
             else if (actionLower == "uses" || actionLower == "dependencies")
@@ -406,12 +470,22 @@ namespace Gx18Mcp.SdkWorker.Sql
                     if (d == null) continue;
                     var refName = Convert.ToString(d["EntityVersionName"]);
                     if (string.Equals(refName, name, StringComparison.OrdinalIgnoreCase)) continue;
+                    if (!string.IsNullOrEmpty(exclude) && MatchesLikePattern(refName, exclude.Contains("%") ? exclude : $"%{exclude}%")) continue;
                     if (src.IndexOf(refName, StringComparison.OrdinalIgnoreCase) >= 0)
                         referencedNames.Add(new { name = refName, entityTypeId = Convert.ToInt32(d["EntityTypeId"]), typeName = TypeName(Convert.ToInt32(d["EntityTypeId"])) });
                 }
                 return new { name, entityTypeId = type, entityId, action, results = referencedNames };
             }
             return new { name, entityTypeId = type, entityId, action, results = new List<object>(), note = $"Unknown action: {action}. Use usedby, uses, or dependencies." };
+        }
+
+        // SQL LIKE pattern matching with % wildcard (case-insensitive). Used for in-memory exclude filtering.
+        private static bool MatchesLikePattern(string text, string pattern)
+        {
+            var regex = "^" + System.Text.RegularExpressions.Regex.Escape(pattern)
+                .Replace("\\%", ".*").Replace("\\_", ".") + "$";
+            return System.Text.RegularExpressions.Regex.IsMatch(text ?? "", regex,
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
         }
 
         // Revision history of an object (all EntityVersion entries, not just the latest).
@@ -685,7 +759,7 @@ namespace Gx18Mcp.SdkWorker.Sql
         }
 
         // --- DeadCode ---
-        public object DeadCode(int entityTypeId, string module, int limit)
+        public object DeadCode(int entityTypeId, string module, int limit, string exclude = null)
         {
             if (entityTypeId <= 0) entityTypeId = 34;
             if (limit <= 0) limit = 50;
@@ -697,6 +771,8 @@ namespace Gx18Mcp.SdkWorker.Sql
                        AND mn.EntityVersionId=(SELECT MAX(v2.EntityVersionId) FROM EntityVersion v2 WHERE v2.EntityTypeId=100 AND v2.EntityId=mn.EntityId)
                        WHERE mev.EntityTypeId={entityTypeId} AND mn.EntityVersionName='{module.Replace("'", "''")}'
                    )";
+            var excludeFilter = string.IsNullOrEmpty(exclude) ? "" :
+                $"AND ev.EntityVersionName NOT LIKE N'{(exclude.Contains("%") ? exclude : $"%{exclude}%").Replace("'", "''")}'";
 
             // Collect candidate objects, then check if any other object's source references them by name
             var candidatesSql = $@"
@@ -705,6 +781,7 @@ namespace Gx18Mcp.SdkWorker.Sql
                 WHERE ev.EntityTypeId = {entityTypeId}
                   AND ev.EntityVersionId = (SELECT MAX(v2.EntityVersionId) FROM EntityVersion v2 WHERE v2.EntityTypeId={entityTypeId} AND v2.EntityId=ev.EntityId)
                 {moduleFilter}
+                {excludeFilter}
                 ORDER BY ev.EntityVersionName";
 
             var candidates = new List<(int EntityId, string Name)>();

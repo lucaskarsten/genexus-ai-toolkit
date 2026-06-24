@@ -1,4 +1,3 @@
-import crypto from 'crypto';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -18,8 +17,6 @@ import { CLIENTS, ClientId, registerClient, getServerEntry, SERVER_KEY } from '.
 export const PASSWORD_MASK = '********';
 
 export interface ApiCtx {
-  /** Expected per-session token; every /api request must echo it. */
-  token: string;
   /** Read-only mode (GX18_READONLY) — fixed at server start. */
   readonly: boolean;
   /** Port the server is bound to (for the Host allowlist). */
@@ -37,14 +34,6 @@ export function isHostAllowed(host: string | undefined, port: number): boolean {
   return host === `127.0.0.1:${port}` || host === `localhost:${port}`;
 }
 
-/** Constant-time token comparison; unequal lengths/null are simply not-equal. */
-function tokenOk(provided: string | undefined, expected: string): boolean {
-  if (!provided) return false;
-  const a = Buffer.from(provided);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length) return false;
-  try { return crypto.timingSafeEqual(a, b); } catch { return false; }
-}
 
 function maskedConfig(config: Config): Record<string, unknown> {
   const oracle = config.db.oracle
@@ -120,20 +109,15 @@ function isWorkerMissing(message: string): boolean {
 }
 
 /**
- * Route a single /api request. `providedToken` comes from the x-gx18-token header.
+ * Route a single /api request.
  * Returns a status + JSON body; the http adapter just serializes it.
  */
 export async function handleApi(
   ctx: ApiCtx,
   method: string,
   pathname: string,
-  providedToken: string | undefined,
   body: unknown,
 ): Promise<ApiResult> {
-  if (!tokenOk(providedToken, ctx.token)) {
-    return { status: 401, body: { error: 'Invalid or missing token.' } };
-  }
-
   // GET /api/config
   if (method === 'GET' && pathname === '/api/config') {
     return {

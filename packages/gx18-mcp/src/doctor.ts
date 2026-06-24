@@ -81,6 +81,18 @@ export async function runDoctor(): Promise<DoctorReport> {
         } catch (err) {
           checks.push({ name: 'SQL EntityVersion rows', status: 'warn', detail: String(err) });
         }
+
+        // DB connection ping — confirms live reachability of KB and Oracle (if configured).
+        try {
+          const dbPing = await bridge.send<{ kbOk: boolean; oracleOk: boolean }>('db_connections', {}, 15000);
+          checks.push({
+            name: 'DB connections',
+            status: dbPing.kbOk ? 'ok' : 'fail',
+            detail: `kb=${dbPing.kbOk ? 'reachable' : 'UNREACHABLE'} oracle=${dbPing.oracleOk ? 'reachable' : 'not configured or unreachable'}`,
+          });
+        } catch (err) {
+          checks.push({ name: 'DB connections', status: 'warn', detail: `ping failed: ${String(err)}` });
+        }
       }
     } catch (err) {
       checks.push({ name: 'Worker ping', status: 'fail', detail: String(err) });

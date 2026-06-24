@@ -12,6 +12,16 @@ export interface WorkerResponse {
   id: number;
   result?: unknown;
   error?: string;
+  code?: 'ValidationError' | 'TransientError' | 'FatalError';
+}
+
+export interface PingResult {
+  ok: boolean;
+  protocolVersion: string;
+  sdkReady: boolean;
+  sqlReady: boolean;
+  user: string;
+  kbPath: string;
 }
 
 // ---------- Shared domain types ----------
@@ -41,6 +51,8 @@ export interface IdentityInfo {
   windowsUser: string;
   kbUserId: number;
   kbPath: string;
+  kbDatabase?: string;
+  kbServer?: string;
   kbOpen: boolean;
   gx18Dir: string;
   sdkReady: boolean;
@@ -330,11 +342,13 @@ export interface MoveResult {
 export interface SqlQueryParams {
   query: string;
   readOnly?: boolean;
+  maxRows?: number;
 }
 
 export interface SqlQueryResult {
   rows: Record<string, unknown>[];
   count: number;
+  truncated?: boolean;
 }
 
 // export

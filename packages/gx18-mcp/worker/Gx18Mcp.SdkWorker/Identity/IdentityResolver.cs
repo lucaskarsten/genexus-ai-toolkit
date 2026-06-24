@@ -31,6 +31,8 @@ namespace Gx18Mcp.SdkWorker.Identity
                 windowsUser = _windowsUser,
                 kbUserId = GetKbUserId(),
                 kbPath = kbPath ?? "",
+                kbDatabase = Environment.GetEnvironmentVariable("GX_KB_DATABASE") ?? "",
+                kbServer = Environment.GetEnvironmentVariable("GX_KB_SERVER") ?? @"(localdb)\MSSQLLocalDB",
                 kbOpen = sdkReady,
                 gx18Dir = gx18Dir ?? "",
                 sdkReady

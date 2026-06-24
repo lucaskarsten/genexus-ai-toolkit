@@ -3,11 +3,14 @@ import { EntityInfo, EntityDetail, AnalyzeResult, HistoryResult } from '../sdk-b
 
 export async function gxFind(args: {
   pattern: string;
-  type?: number;
+  type?: number | number[];
   limit?: number;
   module?: string;
   exclude?: string;
 }): Promise<string> {
+  if (args.limit !== undefined && (args.limit <= 0 || args.limit > 5000)) {
+    throw new Error('gx_find: limit must be between 1 and 5000.');
+  }
   const results = await bridge.send<EntityInfo[]>('find', {
     pattern: args.pattern,
     type: args.type,

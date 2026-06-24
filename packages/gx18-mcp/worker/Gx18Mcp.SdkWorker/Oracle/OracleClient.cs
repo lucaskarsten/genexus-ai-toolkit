@@ -25,6 +25,11 @@ namespace Gx18Mcp.SdkWorker.Oracle
             return new OracleClient(host, port, service, user, password);
         }
 
+        public bool TestConnection()
+        {
+            try { using (Open()) return true; } catch { return false; }
+        }
+
         private OracleConnection Open()
         {
             var conn = new OracleConnection(_connectionString);
@@ -32,42 +37,69 @@ namespace Gx18Mcp.SdkWorker.Oracle
             return conn;
         }
 
-        public object Query(string query, bool readOnly, int limit)
+        // Strip sensitive fields (host, credentials) from Oracle exception messages
+        // before the error propagates to the client.
+        private static string SanitizeError(Exception ex)
+        {
+            var msg = ex.Message ?? "";
+            // OracleException often includes the EZConnect DSN in the message
+            var idx = msg.IndexOf("Data Source=", StringComparison.OrdinalIgnoreCase);
+            if (idx >= 0)
+                msg = msg.Substring(0, idx).TrimEnd(';', ' ') + " [connection details redacted]";
+            // Also strip "User Id=" occurrences
+            idx = msg.IndexOf("User Id=", StringComparison.OrdinalIgnoreCase);
+            if (idx >= 0)
+                msg = msg.Substring(0, idx).TrimEnd(';', ' ') + " [credentials redacted]";
+            return msg;
+        }
+
+        public object Query(string query, bool readOnly, int limit, Dictionary<string, object> parameters = null)
         {
             if (!readOnly)
             {
-                var upper = query.TrimStart().ToUpperInvariant();
-                if (upper.StartsWith("DROP") || upper.StartsWith("TRUNCATE"))
+                var upper = (query ?? "").TrimStart().ToUpperInvariant();
+                if (upper.StartsWith("DROP ") || upper.StartsWith("DROP\t") ||
+                    upper.StartsWith("TRUNCATE ") || upper.StartsWith("TRUNCATE\t"))
                     throw new Exception("Blocked: DROP/TRUNCATE not allowed via oracle_query");
             }
 
-            var rows = new List<object>();
-            using (var conn = Open())
-            using (var cmd = new OracleCommand(query, conn))
+            try
             {
-                cmd.FetchSize = cmd.FetchSize * 4;
-                using (var r = cmd.ExecuteReader())
+                var rows = new List<object>();
+                using (var conn = Open())
+                using (var cmd = new OracleCommand(query, conn))
                 {
-                    int count = 0;
-                    while (r.Read() && count < limit)
+                    cmd.CommandTimeout = 30;
+                    cmd.FetchSize = cmd.FetchSize * 4;
+                    if (parameters != null)
+                        foreach (var kv in parameters)
+                            cmd.Parameters.Add(new OracleParameter(kv.Key, kv.Value ?? DBNull.Value));
+                    using (var r = cmd.ExecuteReader())
                     {
-                        var row = new Dictionary<string, object>();
-                        for (int i = 0; i < r.FieldCount; i++)
+                        int count = 0;
+                        while (r.Read() && count < limit)
                         {
-                            var val = r.IsDBNull(i) ? null : r.GetValue(i);
-                            // Convert Oracle-specific types to strings for JSON serialization
-                            if (val is DateTime dt) val = dt.ToString("yyyy-MM-dd HH:mm:ss");
-                            else if (val != null && !(val is string || val is int || val is long ||
-                                      val is double || val is float || val is decimal || val is bool))
-                                val = val.ToString();
-                            row[r.GetName(i)] = val;
+                            var row = new Dictionary<string, object>();
+                            for (int i = 0; i < r.FieldCount; i++)
+                            {
+                                var val = r.IsDBNull(i) ? null : r.GetValue(i);
+                                if (val is DateTime dt) val = dt.ToString("yyyy-MM-dd HH:mm:ss");
+                                else if (val != null && !(val is string || val is int || val is long ||
+                                          val is double || val is float || val is decimal || val is bool))
+                                    val = val.ToString();
+                                row[r.GetName(i)] = val;
+                            }
+                            rows.Add(row);
+                            count++;
                         }
-                        rows.Add(row);
-                        count++;
                     }
                 }
+                return new { rows, count = rows.Count };
             }
-            return new { rows, count = rows.Count };
+            catch (OracleException ex)
+            {
+                throw new Exception("Oracle error: " + SanitizeError(ex));
+            }
         }
     }
 }

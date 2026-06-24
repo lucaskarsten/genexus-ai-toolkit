@@ -99,6 +99,16 @@ export async function gxModify(args: {
     );
   }
 
+  if (args.section.toLowerCase() === 'layout') {
+    const trimmed = (args.content ?? '').trimStart();
+    if (!trimmed.startsWith('<GxMultiForm')) {
+      throw new Error(
+        'gx_modify layout: content must be a <GxMultiForm> XML document. ' +
+        'Decode the layout blob first via gx_read (section=layout) and send it back modified.'
+      );
+    }
+  }
+
   const result = await bridge.send<ModifyResult>('modify', {
     name: args.name,
     type: typeKey,
@@ -123,6 +133,15 @@ export async function gxImport(args: {
   if (!args.name) throw new Error('gx_import requires name (the primary object, for post-import UserId verification).');
   if (!fs.existsSync(args.xpzFile)) {
     throw new Error(`gx_import: xpzFile not found: ${args.xpzFile}`);
+  }
+
+  const xpzSizeBytes = fs.statSync(args.xpzFile).size;
+  const MAX_XPZ_BYTES = 50 * 1024 * 1024; // 50 MB
+  if (xpzSizeBytes > MAX_XPZ_BYTES) {
+    throw new Error(
+      `gx_import: XPZ file is too large (${(xpzSizeBytes / 1024 / 1024).toFixed(1)} MB). ` +
+      `Maximum allowed is 50 MB to prevent worker hangs. Split the import into smaller archives.`
+    );
   }
 
   // Import is often the first write in a fresh worker → it pays the SDK cold-start (~10-15s)
@@ -203,10 +222,17 @@ export async function gxDelete(args: {
   name: string;
   type: string;
   dryRun?: boolean;
+  force?: boolean;
   confirm?: boolean;
 }): Promise<string> {
   if (!args.dryRun) {
     requireConfirm(args.confirm, 'gx_delete');
+    if (args.force !== true) {
+      throw new Error(
+        'gx_delete requires force: true in addition to confirm: true. ' +
+        'Use dryRun:true first to preview what will be deleted, then pass both confirm:true and force:true to proceed.'
+      );
+    }
   }
 
   const typeKey = args.type.toLowerCase();
@@ -226,7 +252,7 @@ export async function gxDelete(args: {
 }
 
 export async function gxVariable(args: {
-  action: 'list' | 'add' | 'delete';
+  action: 'list' | 'add' | 'delete' | 'update';
   name: string;
   type: string;
   varName?: string;
@@ -279,7 +305,21 @@ export async function gxVariable(args: {
     return JSON.stringify(result, null, 2);
   }
 
-  throw new Error(`gx_variable: unknown action '${args.action}'. Use list, add, or delete.`);
+  if (action === 'update') {
+    if (!args.varName) throw new Error('gx_variable update requires varName.');
+    const result = await bridge.send<import('../sdk-bridge/protocol').VariableMutateResult>('variable_update', {
+      name: args.name,
+      type: typeKey,
+      varName: args.varName,
+      dataType: args.dataType ?? null,
+      length: args.length ?? -1,
+      decimals: args.decimals ?? -1,
+      isCollection: args.isCollection ?? null,
+    }, 180000);
+    return JSON.stringify(result, null, 2);
+  }
+
+  throw new Error(`gx_variable: unknown action '${args.action}'. Use list, add, delete, or update.`);
 }
 
 export async function gxClone(args: {
@@ -311,7 +351,9 @@ export async function gxBulkModify(args: {
   if (!Array.isArray(args.names) || args.names.length === 0)
     throw new Error('names must be a non-empty array');
 
-  const results: Array<{ name: string; ok: boolean; error?: string }> = [];
+  const succeeded: string[] = [];
+  const failed: Array<{ name: string; error: string }> = [];
+
   for (const name of args.names) {
     try {
       const r = await bridge.send<WriteResult>('modify', {
@@ -321,13 +363,11 @@ export async function gxBulkModify(args: {
         content: args.content,
       }, 180_000);
       assertWriteOk(r);
-      results.push({ name, ok: true });
+      succeeded.push(name);
     } catch (e: unknown) {
-      results.push({ name, ok: false, error: e instanceof Error ? e.message : String(e) });
+      failed.push({ name, error: e instanceof Error ? e.message : String(e) });
     }
   }
 
-  const succeeded = results.filter((r) => r.ok).length;
-  const failed = results.filter((r) => !r.ok).length;
-  return JSON.stringify({ results, succeeded, failed }, null, 2);
+  return JSON.stringify({ succeeded, failed, total: args.names.length }, null, 2);
 }

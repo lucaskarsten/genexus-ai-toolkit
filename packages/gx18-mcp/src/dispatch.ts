@@ -31,8 +31,14 @@ const TOOLS: Tool[] = [
       type: 'object',
       properties: {
         pattern: { type: 'string', description: 'SQL LIKE pattern, e.g. "%NavHeader%" or "PrcFocco%"' },
-        type: { type: 'number', description: 'Filter by EntityTypeId (optional)' },
-        limit: { type: 'number', description: 'Max results (default 50)' },
+        type: {
+          description: 'Filter by EntityTypeId. Pass a single number (e.g. 34) or an array (e.g. [34, 43]) to match multiple types at once.',
+          oneOf: [
+            { type: 'number' },
+            { type: 'array', items: { type: 'number' } },
+          ],
+        },
+        limit: { type: 'number', description: 'Max results (default 50, max 5000)' },
         module: { type: 'string', description: 'Filter by module name (exact match, optional)' },
         exclude: { type: 'string', description: 'Exclude objects whose name matches this SQL LIKE pattern (e.g. "%Test%", "%Submit")' },
       },
@@ -285,7 +291,8 @@ const TOOLS: Tool[] = [
       type: 'object',
       properties: {
         query: { type: 'string', description: 'SQL query to execute' },
-        readOnly: { type: 'boolean', description: 'true (default) = SELECT only, false = allow writes' },
+        readOnly: { type: 'boolean', description: 'true (default) = SELECT only, false = allow writes (requires confirm:true)' },
+        maxRows: { type: 'number', description: 'Max rows to return (default 1000, max 5000). Result includes truncated:true when capped.' },
         confirm: { type: 'boolean', description: 'Required when readOnly:false' },
       },
       required: ['query'],
@@ -294,20 +301,22 @@ const TOOLS: Tool[] = [
   {
     name: 'gx_export',
     description:
-      'Export a GeneXus KB object to a real .xpz archive via the Knowledge Manager service ' +
-      '(importable into any GeneXus 18 KB). A successful export also validates the object is well-formed. ' +
-      'Writes <name>.xpz to outputDir or the configured GX_OUTPUT_PATH. ' +
+      'Export one or more GeneXus KB objects to a real .xpz archive via the Knowledge Manager service ' +
+      '(importable into any GeneXus 18 KB). A successful export also validates objects are well-formed. ' +
+      'Single object: pass name + type. Multiple objects of the same type: pass names (array) + type. ' +
+      'Writes <name>.xpz (or <first>_and_N_more.xpz) to outputDir or the configured GX_OUTPUT_PATH. ' +
       'This is the ONLY way to access UserControl AfterShow and Methods scripts — ' +
       'they are stored as CDATA blocks inside the .xpz XML and are not reachable via gx_read. ' +
       'Also use as the first step of the edit round-trip: gx_export → patch CDATA → gx_import.',
     inputSchema: {
       type: 'object',
       properties: {
-        name: { type: 'string', description: 'Exact object name' },
-        type: { type: 'number', description: 'EntityTypeId' },
+        name: { type: 'string', description: 'Exact object name (single-object export). Use names for multi-object.' },
+        names: { type: 'array', items: { type: 'string' }, description: 'Array of object names to export into one .xpz (all must share the same type).' },
+        type: { type: 'number', description: 'EntityTypeId (all exported objects must share the same type)' },
         outputDir: { type: 'string', description: 'Output directory (optional, defaults to GX_OUTPUT_PATH)' },
       },
-      required: ['name', 'type'],
+      required: ['type'],
     },
   },
   {
@@ -341,6 +350,7 @@ const TOOLS: Tool[] = [
       'Read the scripts inside a .xpz archive (GeneXus export format). ' +
       'Without scriptName: lists all <Script> elements with name and byte length. ' +
       'With scriptName: returns the full CDATA content of that script (e.g. "AfterShow", "Tooltip", or any method name). ' +
+      'Use partFilter to narrow the listing (e.g. partFilter="AfterShow" lists only scripts whose name contains "AfterShow"). ' +
       'No KB connection required — operates directly on the .xpz file. ' +
       'Use after gx_export to inspect scripts, then gx_patch_xpz to modify.',
     inputSchema: {
@@ -348,6 +358,7 @@ const TOOLS: Tool[] = [
       properties: {
         xpzFile: { type: 'string', description: 'Absolute path to the .xpz file' },
         scriptName: { type: 'string', description: 'Script name to read (e.g. "AfterShow"). Omit to list all scripts.' },
+        partFilter: { type: 'string', description: 'Substring filter for script names when listing (no scriptName). E.g. "AfterShow" to list only AfterShow scripts.' },
       },
       required: ['xpzFile'],
     },
@@ -355,20 +366,32 @@ const TOOLS: Tool[] = [
   {
     name: 'gx_patch_xpz',
     description:
-      'Patch a script CDATA in a .xpz archive, writing the result to a NEW file (original is never modified). ' +
-      'Replaces <Script Name="scriptName"><![CDATA[...]]></Script> body with the new content. ' +
-      'Also bumps lastUpdate and zeroes checksum on the <Object> element. ' +
-      'No KB write — produces a local patched .xpz only. ' +
+      'Patch one or more script CDATA blocks in a .xpz archive, writing the result to a NEW file (original is never modified). ' +
+      'Single patch: pass scriptName + content. Multi-patch: pass patches array [{scriptName, content}, ...] — all scripts are updated in one ZIP pass. ' +
+      'Also bumps lastUpdate and zeroes checksum on <Object> elements. ' +
+      'No KB write — produces a local patched .xpz only. Content must NOT contain the literal sequence "]]>". ' +
       'Workflow: gx_export → gx_read_xpz (inspect) → gx_patch_xpz → gx_import(confirm:true) to apply to KB.',
     inputSchema: {
       type: 'object',
       properties: {
         xpzFile: { type: 'string', description: 'Absolute path to the source .xpz file' },
-        scriptName: { type: 'string', description: 'Script name to patch (e.g. "AfterShow")' },
-        content: { type: 'string', description: 'New CDATA content for the script' },
+        scriptName: { type: 'string', description: 'Script name to patch (e.g. "AfterShow"). Use patches for multi-script.' },
+        content: { type: 'string', description: 'New CDATA content for the script (single-patch mode). Must not contain "]]>".' },
+        patches: {
+          type: 'array',
+          description: 'Multi-patch mode: array of {scriptName, content} objects. Applied in order, single ZIP write.',
+          items: {
+            type: 'object',
+            properties: {
+              scriptName: { type: 'string', description: 'Script name to patch.' },
+              content: { type: 'string', description: 'New CDATA content. Must not contain "]]>".' },
+            },
+            required: ['scriptName', 'content'],
+          },
+        },
         outputFile: { type: 'string', description: 'Output path for the patched .xpz (default: <original>_patched.xpz in same dir)' },
       },
-      required: ['xpzFile', 'scriptName', 'content'],
+      required: ['xpzFile'],
     },
   },
   {
@@ -391,10 +414,11 @@ const TOOLS: Tool[] = [
   {
     name: 'gx_db_connections',
     description:
-      'List all configured database connections available for gx_db_query. ' +
+      'List all configured database connections available for gx_db_query, with live ping status. ' +
       'Always includes "kb" (GeneXus KB SQL Server, Integrated Security). ' +
       'Also lists "oracle" when ORACLE_* env vars are set. ' +
-      'Credentials are never shown — only host/database/type info.',
+      'Credentials are never shown — only host/database/type info. ' +
+      'Each entry includes ping:true/false showing whether the connection is reachable right now.',
     inputSchema: {
       type: 'object',
       properties: {},
@@ -418,6 +442,11 @@ const TOOLS: Tool[] = [
         query: { type: 'string', description: 'SQL query to execute' },
         readOnly: { type: 'boolean', description: 'true (default) = SELECT only, false = allow writes (requires confirm)' },
         limit: { type: 'number', description: 'Max rows to return (default 100, max 1000)' },
+        params: {
+          type: 'object',
+          description: 'Named bind parameters for Oracle queries (e.g. { "name": "Focco%" }). Prevents SQL injection. Oracle only.',
+          additionalProperties: { type: ['string', 'number'] },
+        },
         confirm: { type: 'boolean', description: 'Required when readOnly:false' },
       },
       required: ['connection', 'query'],
@@ -426,8 +455,8 @@ const TOOLS: Tool[] = [
   {
     name: 'gx_delete',
     description:
-      'Delete a GeneXus KB object. Irreversible — requires confirm:true. ' +
-      'Use dryRun:true first to preview what would be deleted without making changes.',
+      'Delete a GeneXus KB object. Irreversible — requires BOTH confirm:true AND force:true to execute. ' +
+      'ALWAYS use dryRun:true first to preview what would be deleted without making changes.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -437,8 +466,9 @@ const TOOLS: Tool[] = [
           enum: ['procedure', 'webpanel', 'webcomponent', 'api', 'usercontrol', 'dso', 'sdt', 'dataselector', 'transaction'],
           description: 'Object type key',
         },
-        dryRun: { type: 'boolean', description: 'Preview the delete without executing (default false)' },
-        confirm: { type: 'boolean', description: 'Must be true to execute the delete (not required for dryRun)' },
+        dryRun: { type: 'boolean', description: 'Preview the delete without executing (default false). Use this first.' },
+        confirm: { type: 'boolean', description: 'Must be true to execute (not required for dryRun)' },
+        force: { type: 'boolean', description: 'Must be true to execute alongside confirm:true. Double-gate against accidental deletes.' },
       },
       required: ['name', 'type'],
     },
@@ -454,7 +484,7 @@ const TOOLS: Tool[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        action: { type: 'string', enum: ['list', 'add', 'delete'], description: 'Operation to perform' },
+        action: { type: 'string', enum: ['list', 'add', 'delete', 'update'], description: 'Operation: list (no confirm), add/delete/update (require confirm:true)' },
         name: { type: 'string', description: 'Exact object name' },
         type: {
           type: 'string',
@@ -748,11 +778,13 @@ export function readonlyBlock(
   name: string,
   args: Record<string, unknown>,
   readonly: boolean,
+  env: NodeJS.ProcessEnv = process.env,
 ): string | null {
   if (!readonly) return null;
-  if (WRITE_TOOLS.has(name)) return `Tool "${name}" is disabled: server is in GX18_READONLY mode.`;
+  const reason = env.GX18_READONLY_REASON ? ` Reason: ${env.GX18_READONLY_REASON}` : '';
+  if (WRITE_TOOLS.has(name)) return `Tool "${name}" is disabled: server is in GX18_READONLY mode.${reason}`;
   if (SQL_TOOLS.has(name) && args.readOnly === false) {
-    return `Refusing readOnly:false on "${name}": server is in GX18_READONLY mode.`;
+    return `Refusing readOnly:false on "${name}": server is in GX18_READONLY mode.${reason}`;
   }
   return null;
 }
@@ -769,12 +801,22 @@ export interface ToolResult {
 // SDK session; two concurrent writes (e.g. two browser tabs firing gx_create) could
 // race the same session and risk the revision storm this package exists to prevent.
 // Reads stay fully concurrent — only WRITE_TOOLS go through this chain.
+const WRITE_QUEUE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes max wait in queue
 let writeChain: Promise<unknown> = Promise.resolve();
 function serializeWrite<T>(fn: () => Promise<T>): Promise<T> {
-  const run = writeChain.then(fn, fn);
+  const queued = new Promise<T>((resolve, reject) => {
+    const deadline = setTimeout(
+      () => reject(new Error('Write queue timeout: a previous write has been running for >5 minutes. Check for worker hangs or restart the server.')),
+      WRITE_QUEUE_TIMEOUT_MS,
+    );
+    writeChain.then(
+      () => { clearTimeout(deadline); fn().then(resolve, reject); },
+      () => { clearTimeout(deadline); fn().then(resolve, reject); },
+    );
+  });
   // Keep the chain alive regardless of success/failure so the next writer still waits.
-  writeChain = run.then(() => undefined, () => undefined);
-  return run;
+  writeChain = queued.then(() => undefined, () => undefined);
+  return queued;
 }
 
 async function dispatch(name: string, a: Record<string, unknown>): Promise<ToolResult> {

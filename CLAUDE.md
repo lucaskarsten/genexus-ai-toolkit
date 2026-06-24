@@ -57,6 +57,7 @@ Use sempre a ferramenta mais direta. A coluna "NUNCA usar" indica o caminho long
 - Para editar objeto existente → `gx_modify` (NÃO `gx_import`)
 - Para editar scripts de UC → `gx_export` → patch CDATA → `gx_import` (NÃO `gx_modify`)
 - Após `gx_sql readOnly:false` que altera metadados da KB (INSERT/UPDATE em tabelas como EntityVersion, ModelEntityVersion, propriedades) → `gx_reload` para que o worker SDK releia a KB do banco; sem isso, operações SDK subsequentes usam o modelo em cache e não enxergam as mudanças
+- **Antes de `gx_modify`, `gx_import`, ou `gx_export` em objeto existente** → ler `gx18://docs/write-safety` e executar o pre-flight checklist (blobs de parts, EntityVersionProperties, worker stale, GUID collision). Pular esse passo causa NullReference e falhas silenciosas que consomem horas.
 
 ## Before generating any code
 

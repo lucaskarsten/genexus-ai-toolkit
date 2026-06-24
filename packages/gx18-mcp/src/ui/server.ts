@@ -1,5 +1,4 @@
 import http from 'http';
-import crypto from 'crypto';
 import { spawn } from 'child_process';
 
 import { handleApi, isHostAllowed, isReadonly, ApiCtx } from './api';
@@ -17,7 +16,6 @@ export interface UiServerOptions {
 export interface RunningUi {
   url: string;
   port: number;
-  token: string;
   close(): Promise<void>;
 }
 
@@ -72,11 +70,10 @@ function listenOn(server: http.Server, port: number): Promise<void> {
 }
 
 export async function startUi(opts: UiServerOptions = {}): Promise<RunningUi> {
-  const token = crypto.randomBytes(16).toString('hex');
   const readonly = isReadonly();
 
   let boundPort = 0;
-  const ctx: ApiCtx = { token, readonly, port: 0 };
+  const ctx: ApiCtx = { readonly, port: 0 };
 
   const server = http.createServer((req, res) => {
     void handleRequest(req, res, ctx);
@@ -104,13 +101,12 @@ export async function startUi(opts: UiServerOptions = {}): Promise<RunningUi> {
   }
 
   ctx.port = boundPort;
-  const url = `http://127.0.0.1:${boundPort}/#token=${token}`;
+  const url = `http://127.0.0.1:${boundPort}/`;
   if (opts.open !== false) openBrowser(url);
 
   return {
     url,
     port: boundPort,
-    token,
     close: async () => {
       await new Promise<void>((resolve) => server.close(() => resolve()));
       await bridge.shutdown();
@@ -175,12 +171,6 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
   if (pathname.startsWith('/api/')) {
     // Chat streaming (POST /api/chat) — agentic loop with SSE response.
     if (method === 'POST' && pathname === '/api/chat') {
-      const hTok = req.headers['x-gx18-token'];
-      const chatTok = Buffer.from(Array.isArray(hTok) ? hTok[0] : (hTok ?? ''));
-      const expTok = Buffer.from(ctx.token);
-      const tokOk = chatTok.length === expTok.length && chatTok.length > 0 &&
-        (() => { try { return crypto.timingSafeEqual(chatTok, expTok); } catch { return false; } })();
-      if (!tokOk) { send(res, 401, { error: 'Invalid or missing token.' }); return; }
       let chatBody: unknown;
       try { chatBody = await readBody(req); } catch (e) { send(res, 400, { error: String(e) }); return; }
       const { message, sessionId } = (chatBody ?? {}) as { message?: string; sessionId?: string | null };
@@ -200,28 +190,18 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
     }
 
     // SSE log stream: long-lived — handled before the normal JSON adapter.
-    // Token comes from ?token= query param (EventSource cannot set headers).
     if (method === 'GET' && pathname === '/api/logs') {
-      const qToken = url.searchParams.get('token') ?? '';
-      const expected = Buffer.from(ctx.token);
-      const provided = Buffer.from(qToken);
-      const valid = provided.length === expected.length &&
-        provided.length > 0 &&
-        (() => { try { return crypto.timingSafeEqual(provided, expected); } catch { return false; } })();
-      if (!valid) { send(res, 401, { error: 'Invalid or missing token.' }); return; }
       handleLogSse(req, res);
       return;
     }
 
-    const providedToken = req.headers['x-gx18-token'];
-    const tok = Array.isArray(providedToken) ? providedToken[0] : providedToken;
     let body: unknown;
     if (method === 'POST') {
       try { body = await readBody(req); }
       catch (err) { send(res, 400, { error: err instanceof Error ? err.message : String(err) }); return; }
     }
     try {
-      const result = await handleApi(ctx, method, pathname, tok, body);
+      const result = await handleApi(ctx, method, pathname, body);
       send(res, result.status, result.body);
     } catch (err) {
       send(res, 500, { error: err instanceof Error ? err.message : String(err) });

@@ -505,16 +505,23 @@ namespace Gx18Mcp.SdkWorker.Sdk
         // from corrupting the JSON-RPC stdout stream. This is safe only because the worker is
         // contractually single-threaded (one IPC call processed at a time). Do not introduce
         // concurrency without replacing this with a captured-at-boot stdout handle.
+        // Export a single object. For multi-object export use ExportXpzBatch.
         public object ExportXpz(string typeKey, string name, string outputFile)
         {
-            var spec = Spec(typeKey);
-            var concrete = Resolve(spec);
+            var result = ExportXpzBatch(new[] { (typeKey, name) }, outputFile);
+            return result;
+        }
+
+        // Export one or more objects into a single XPZ archive.
+        // items: list of (typeKey, name) pairs; all must be the same typeKey (SDK restriction).
+        public object ExportXpzBatch(IEnumerable<(string typeKey, string name)> items, string outputFile)
+        {
+            var itemList = new List<(string typeKey, string name)>(items);
+            if (itemList.Count == 0) throw new Exception("ExportXpzBatch: items list is empty");
+
             var kb = _session.KnowledgeBase;
             if (kb == null) throw new Exception("KB not open");
             var model = _session.KbType.GetProperty("DesignModel").GetValue(kb);
-
-            var obj = ResolveByName(concrete, model, name);
-            if (obj == null) throw new Exception($"Object not found: {name} ({typeKey})");
 
             var common = Assembly.Load("Artech.Architecture.Common");
             var servicesType = common.GetType("Artech.Architecture.Common.Services.Services");
@@ -522,7 +529,6 @@ namespace Gx18Mcp.SdkWorker.Sdk
             var kbObjectType = common.GetType("Artech.Architecture.Common.Objects.KBObject");
             var eoType = common.GetType("Artech.Architecture.Common.Services.ExportOptions");
 
-            // static TService Services.GetService<TService>()
             MethodInfo getSvc = null;
             foreach (var m in servicesType.GetMethods(BindingFlags.Public | BindingFlags.Static))
                 if (m.Name == "GetService" && m.IsGenericMethodDefinition && m.GetParameters().Length == 0) { getSvc = m; break; }
@@ -530,7 +536,6 @@ namespace Gx18Mcp.SdkWorker.Sdk
             var km = getSvc.MakeGenericMethod(kmType).Invoke(null, null);
             if (km == null) throw new Exception("IKnowledgeManagerService not available");
 
-            // Export(KBModel model, IEnumerable<T> objects, string outputFile, ExportOptions options)
             MethodInfo export = null;
             foreach (var m in kmType.GetMethods())
             {
@@ -540,16 +545,25 @@ namespace Gx18Mcp.SdkWorker.Sdk
             }
             if (export == null) throw new Exception("IKnowledgeManagerService.Export(model,objects,file,options) not found");
 
-            // Build a List<T> using the method's actual element type (KBObject, Entity, or IExportItem).
             var objectsParam = export.GetParameters()[1].ParameterType;
             var elemType = objectsParam.IsGenericType ? objectsParam.GetGenericArguments()[0] : kbObjectType;
             var listType = typeof(List<>).MakeGenericType(elemType);
             var list = Activator.CreateInstance(listType);
-            // The Export overload takes IEnumerable<EntityKey>; pass the object's Key (fall back to the object itself).
-            object element = elemType.IsInstanceOfType(obj) ? obj : GetProp(obj, "Key");
-            if (element == null || !elemType.IsInstanceOfType(element))
-                throw new Exception($"Cannot adapt object to export element type {elemType.FullName}");
-            listType.GetMethod("Add").Invoke(list, new[] { element });
+            var addMethod = listType.GetMethod("Add");
+
+            var exportedNames = new List<string>();
+            foreach (var (typeKey, name) in itemList)
+            {
+                var spec = Spec(typeKey);
+                var concrete = Resolve(spec);
+                var obj = ResolveByName(concrete, model, name);
+                if (obj == null) throw new Exception($"Object not found: {name} ({typeKey})");
+                object element = elemType.IsInstanceOfType(obj) ? obj : GetProp(obj, "Key");
+                if (element == null || !elemType.IsInstanceOfType(element))
+                    throw new Exception($"Cannot adapt object '{name}' to export element type {elemType.FullName}");
+                addMethod.Invoke(list, new[] { element });
+                exportedNames.Add(name);
+            }
 
             var options = Activator.CreateInstance(eoType);
             SetIfExists(eoType, options, "ExportCurrentVersion", true);
@@ -560,7 +574,9 @@ namespace Gx18Mcp.SdkWorker.Sdk
             finally { Console.SetOut(savedOut); }
 
             long size = System.IO.File.Exists(outputFile) ? new System.IO.FileInfo(outputFile).Length : 0;
-            return new { ok, name, type = typeKey, outputFile, fileExists = System.IO.File.Exists(outputFile), bytes = size };
+            var firstName = itemList.Count > 0 ? itemList[0].name : "";
+            var firstType = itemList.Count > 0 ? itemList[0].typeKey : "";
+            return new { ok, name = firstName, type = firstType, outputFile, fileExists = System.IO.File.Exists(outputFile), bytes = size, exportedNames };
         }
 
         private static void SetIfExists(Type t, object obj, string prop, object val)
@@ -619,6 +635,13 @@ namespace Gx18Mcp.SdkWorker.Sdk
             try { Console.SetOut(Console.Error); ok = (bool)importFile.Invoke(km, new object[] { xpzFile, model, options }); }
             finally { Console.SetOut(savedOut); }
 
+            // Parse XPZ XML to collect all object names that were included in the archive.
+            List<string> xpzObjectNames;
+            try { xpzObjectNames = XpzHelper.ListObjectNames(xpzFile); }
+            catch { xpzObjectNames = new List<string> { name }; }
+            if (!xpzObjectNames.Contains(name, StringComparer.OrdinalIgnoreCase))
+                xpzObjectNames.Insert(0, name);
+
             // Verify the imported object's author by name (avoids the webpanel 43/148 hint mismatch:
             // the object's own versions carry its name; its parts have different names like "Procedure, Rules").
             // Scope the UserId check to the correct EntityTypeId when we know the type.
@@ -643,6 +666,31 @@ namespace Gx18Mcp.SdkWorker.Sdk
             var infoId = GetProp(info, "id");
             int expected = infoId == null ? 0 : Convert.ToInt32(infoId);
 
+            // Build importedObjects: look up entityId for each name in the XPZ.
+            var importedObjects = new List<object>();
+            foreach (var objName in xpzObjectNames)
+            {
+                int objTypeId = 0, objEntityId = 0;
+                try
+                {
+                    var lookup = string.Equals(objName, name, StringComparison.OrdinalIgnoreCase) && filterTypeId > 0
+                        ? _sql.QueryByName(
+                            "SELECT TOP 1 EntityTypeId, EntityId FROM EntityVersion WHERE EntityVersionName=@name AND EntityTypeId=" + filterTypeId + " ORDER BY EntityVersionId DESC",
+                            objName)
+                        : _sql.QueryByName(
+                            "SELECT TOP 1 EntityTypeId, EntityId FROM EntityVersion WHERE EntityVersionName=@name ORDER BY EntityVersionId DESC",
+                            objName);
+                    var lrows = GetProp(lookup, "rows") as List<object>;
+                    if (lrows != null && lrows.Count > 0 && lrows[0] is Dictionary<string, object> lr)
+                    {
+                        if (lr.TryGetValue("EntityTypeId", out var let) && let != null) objTypeId = Convert.ToInt32(let);
+                        if (lr.TryGetValue("EntityId", out var leid) && leid != null) objEntityId = Convert.ToInt32(leid);
+                    }
+                }
+                catch { /* non-fatal: return name without IDs if lookup fails */ }
+                importedObjects.Add(new { name = objName, entityTypeId = objTypeId, entityId = objEntityId });
+            }
+
             // WriteResult-compatible shape (op/name/entityId/userId/expectedUserId/kbUserName/userIdOk)
             // so the TS guard (assertWriteOk) treats import exactly like create/modify, plus import-specific fields.
             return new
@@ -660,7 +708,8 @@ namespace Gx18Mcp.SdkWorker.Sdk
                 kbUserName = Convert.ToString(GetProp(info, "name")),
                 userIdOk = expected <= 0 || userId == expected,
                 recentVersions = rows == null ? 0 : rows.Count,
-                versions = rows
+                versions = rows,
+                importedObjects
             };
         }
 
@@ -910,6 +959,45 @@ namespace Gx18Mcp.SdkWorker.Sdk
             int id = Convert.ToInt32(GetProp(obj, "Id"));
             var writeResult = VerifyUserId(spec.EntityTypeId, id, name, "variable_delete");
             return new { op = "variable_delete", objectName = name, varName, deleted = true, writeResult };
+        }
+
+        public object VariableUpdate(string name, string typeKey, string varName, string dataType, int length, int decimals, object isCollection)
+        {
+            var spec = Spec(typeKey);
+            var concrete = Resolve(spec);
+            var kb = _session.KnowledgeBase;
+            if (kb == null) throw new Exception("KB not open");
+            var model = _session.KbType.GetProperty("DesignModel").GetValue(kb);
+
+            var obj = ResolveByName(concrete, model, name);
+            if (obj == null) throw new Exception($"Object not found: {name} ({typeKey})");
+
+            var varsPart = GetProp(obj, "Variables");
+            if (varsPart == null) throw new Exception($"Object type '{typeKey}' does not have a Variables part.");
+
+            var varList = GetProp(varsPart, "Variables") ?? GetProp(varsPart, "VariablesList");
+            if (varList == null) throw new Exception("Variables collection not found.");
+
+            object target = null;
+            foreach (var v in (System.Collections.IEnumerable)varList)
+                if (string.Equals(Convert.ToString(GetProp(v, "Name")), varName, StringComparison.OrdinalIgnoreCase)) { target = v; break; }
+
+            if (target == null) throw new Exception($"Variable '{varName}' not found in '{name}'.");
+
+            if (!string.IsNullOrEmpty(dataType))
+            {
+                var edbType = ToEDBType(null, dataType);
+                TrySetProp(target, "Type", edbType);
+            }
+            if (length >= 0) TrySetProp(target, "Length", length);
+            if (decimals >= 0) TrySetProp(target, "Decimals", decimals);
+            if (isCollection != null) TrySetProp(target, "IsCollection", Convert.ToBoolean(isCollection));
+
+            InvokeSave(obj);
+
+            int id = Convert.ToInt32(GetProp(obj, "Id"));
+            var writeResult = VerifyUserId(spec.EntityTypeId, id, name, "variable_update");
+            return new { op = "variable_update", objectName = name, varName, dataType, length, decimals, writeResult };
         }
 
         // --- Clone ---

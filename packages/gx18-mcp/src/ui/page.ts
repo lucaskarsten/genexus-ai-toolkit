@@ -1,8 +1,5 @@
 ﻿// Single self-contained page served by the UI server. Embedded as a string so it
 // is bundled by esbuild (no asset folder, no `files` change, no runtime path lookup).
-// The token is read from the URL fragment (location.hash) — never sent to the server
-// as a query (no log leakage) — and echoed on every /api call as x-gx18-token.
-// Exception: the SSE log endpoint uses ?token= because EventSource cannot set headers.
 
 export const INDEX_HTML = `<!DOCTYPE html>
 <html lang="en">
@@ -21,14 +18,6 @@ export const INDEX_HTML = `<!DOCTYPE html>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--fg);font:14px/1.5 var(--font);
      height:100vh;overflow:hidden;display:flex;flex-direction:column;}
-
-/* Login */
-#gx-login{position:fixed;inset:0;background:var(--bg);z-index:200;
-           display:flex;align-items:center;justify-content:center;}
-.lbox{background:var(--panel);border:1px solid var(--line);border-radius:14px;
-      padding:36px 40px;width:400px;max-width:90vw;}
-.lbox-logo{font-size:22px;font-weight:700;color:var(--accent);letter-spacing:-.5px;margin-bottom:6px;}
-.lbox-sub{color:var(--muted);font-size:13px;margin-bottom:18px;}
 
 /* App layout */
 #gx-app{display:flex;flex-direction:column;flex:1;overflow:hidden;}
@@ -234,23 +223,7 @@ pre.out.err{border-color:var(--fail);color:#ffb4ae;}
 </head>
 <body>
 
-<!-- ── Login screen ─────────────────────────────────── -->
-<div id="gx-login">
-  <div class="lbox">
-    <div class="lbox-logo">gx18&#8209;mcp</div>
-    <p class="lbox-sub">Open the URL from your terminal in this browser — or paste the token (or the full URL) below.</p>
-    <label style="margin-top:0">Token</label>
-    <input type="text" id="tok-in" autocomplete="off" spellcheck="false"
-           placeholder="Token or full URL from terminal" />
-    <div class="btns" style="margin-top:14px">
-      <button class="act" onclick="doLogin()">Connect</button>
-    </div>
-    <div id="login-err" style="margin-top:10px"></div>
-  </div>
-</div>
-
-<!-- ── App (hidden until authenticated) ─────────────── -->
-<div id="gx-app" style="display:none">
+<div id="gx-app" style="display:flex">
   <header id="gx-header">
     <span class="hd-title">gx18&#8209;mcp</span>
     <span id="hd-version" class="tag muted" style="font-size:11px"></span>
@@ -497,7 +470,6 @@ pre.out.err{border-color:var(--fail);color:#ffb4ae;}
 
 <script>
 // ── State ──────────────────────────────────────────────────────
-var TOKEN = '';
 var READONLY = false;
 var _logEs = null;
 var _allTools = [];
@@ -507,23 +479,7 @@ var _dashTimer = null;
 var _pendingImagePath = null;  // path of a pasted image saved to temp (cleared after send)
 
 // ── Bootstrap ─────────────────────────────────────────────────
-(function init() {
-  var frag = new URLSearchParams(location.hash.slice(1));
-  var fragTok = frag.get('token') || '';
-  if (fragTok) {
-    TOKEN = fragTok;
-    try { sessionStorage.setItem('gx18-token', fragTok); } catch(e) {}
-    history.replaceState(null, '', location.pathname);
-    showApp();
-  } else {
-    var stored = '';
-    try { stored = sessionStorage.getItem('gx18-token') || ''; } catch(e) {}
-    if (stored) { TOKEN = stored; showApp(); } else { showLogin(); }
-  }
-})();
-
-function showLogin() { el('gx-login').style.display = ''; el('gx-app').style.display = 'none'; }
-function showApp()  { el('gx-login').style.display = 'none'; el('gx-app').style.display = 'flex'; bootApp(); }
+bootApp();
 
 // ── Helpers ────────────────────────────────────────────────────
 function el(id) { return document.getElementById(id); }
@@ -541,14 +497,9 @@ function fmtUptime(ms) {
 function api(method, path, body) {
   return fetch(path, {
     method: method,
-    headers: { 'x-gx18-token': TOKEN, 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json' },
     body: (body !== undefined) ? JSON.stringify(body) : undefined
   }).then(function(r) {
-    if (r.status === 401) {
-      try { sessionStorage.removeItem('gx18-token'); } catch(e) {}
-      showLogin();
-      return { status: 401, body: {} };
-    }
     return r.json().then(function(j) { return { status: r.status, body: j }; });
   });
 }
@@ -560,37 +511,9 @@ function outBox(container, text, isErr) {
   container.appendChild(pre);
 }
 
-// ── Login ──────────────────────────────────────────────────────
-el('tok-in').addEventListener('keydown', function(e) { if (e.key === 'Enter') doLogin(); });
-function doLogin() {
-  var raw = (el('tok-in').value || '').trim();
-  var tok = raw;
-  var fragIdx = raw.indexOf('#token=');
-  if (fragIdx !== -1) tok = raw.slice(fragIdx + 7).split('&')[0];
-  if (!tok) return;
-  fetch('/api/config', { headers: { 'x-gx18-token': tok } })
-    .then(function(r) {
-      if (r.ok) {
-        TOKEN = tok;
-        try { sessionStorage.setItem('gx18-token', tok); } catch(e) {}
-        el('login-err').innerHTML = '';
-        showApp();
-      } else {
-        el('login-err').innerHTML = '<div class="banner fail">Invalid token. Open the URL your terminal printed — it contains the token as <code>#token=…</code>.</div>';
-      }
-    })
-    .catch(function() {
-      el('login-err').innerHTML = '<div class="banner fail">Could not connect to the server.</div>';
-    });
-}
-
 // ── App boot ───────────────────────────────────────────────────
 function bootApp() {
   api('GET', '/api/config').then(function(r) {
-    if (r.status === 401) {
-      try { sessionStorage.removeItem('gx18-token'); } catch(e) {}
-      showLogin(); return;
-    }
     if (r.status !== 200) return;
     READONLY = !!r.body.readonly;
     if (r.body.version) el('hd-version').textContent = 'v' + r.body.version;
@@ -720,7 +643,7 @@ function startLogs() {
   if (_logEs) return;
   var tag = el('log-conn');
   tag.textContent = 'connecting…'; tag.className = 'tag warn';
-  var es = new EventSource('/api/logs?token=' + encodeURIComponent(TOKEN));
+  var es = new EventSource('/api/logs');
   _logEs = es;
   es.onopen  = function() { tag.textContent = 'live'; tag.className = 'tag ok'; };
   es.onerror = function() {
@@ -1202,7 +1125,7 @@ function chatSend() {
   fetch('/api/chat', {
     method: 'POST',
     signal: _chatAbort ? _chatAbort.signal : undefined,
-    headers: { 'x-gx18-token': TOKEN, 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ message: text, sessionId: _chatSessionId })
   }).then(function(resp) {
     if (!resp.ok) {

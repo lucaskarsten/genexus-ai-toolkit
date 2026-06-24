@@ -2,15 +2,16 @@
  * Self-update for the standalone GeneXusAIToolkit.exe.
  *
  * Flow:
- *   1. Fetch latest GitHub release (non-blocking, fire-and-forget from launcher)
+ *   1. Fetch latest GitHub release
  *   2. Compare semver — bail if already current
  *   3. Download the zip asset → temp dir
  *   4. Extract GeneXusAIToolkit.exe from the zip via PowerShell
- *   5. Write a _update.bat that waits for this PID to exit, copies the new exe,
+ *   5. Write a _update.cmd that waits for this process to exit, copies the new exe,
  *      relaunches it, then self-deletes
- *   6. Spawn the bat (detached) and exit this process
+ *   6. Spawn the cmd (detached, hidden) and exit this process
  *
- * Everything is non-fatal: any network or I/O error is silently swallowed.
+ * Returns true if an update was triggered (process will exit shortly).
+ * Returns false on no update available, network error, or any other failure.
  */
 import https from 'https';
 import fs from 'fs';
@@ -48,7 +49,6 @@ function fetchJson(url: string): Promise<unknown> {
         'Accept': 'application/vnd.github.v3+json',
       },
     }, (res) => {
-      // Follow one redirect (GitHub may redirect to api.github.com CDN)
       if ((res.statusCode === 301 || res.statusCode === 302) && res.headers.location) {
         return fetchJson(res.headers.location).then(resolve).catch(reject);
       }
@@ -104,7 +104,12 @@ function isNewer(latest: string, current: string): boolean {
   return lc > cc;
 }
 
-export async function checkAndUpdate(currentVersion: string, exePath: string): Promise<void> {
+/** Quotes a path for use inside a batch script (wraps in double-quotes, escapes internal quotes). */
+function batchQ(p: string): string {
+  return '"' + p.replace(/"/g, '""') + '"';
+}
+
+export async function checkAndUpdate(currentVersion: string, exePath: string): Promise<boolean> {
   try {
     const release = await fetchJson(
       `https://api.github.com/repos/${REPO}/releases/latest`,
@@ -113,7 +118,7 @@ export async function checkAndUpdate(currentVersion: string, exePath: string): P
     // Tag format: "gx18-mcp-v1.9.x" (was "gx18-mcp/v1.x.x" before CI fix in 27c06be)
     const latestTag = release.tag_name.replace(/^gx18-mcp[-\/]/, '');
 
-    if (!isNewer(latestTag, currentVersion)) return;
+    if (!isNewer(latestTag, currentVersion)) return false;
 
     console.log(`\n  [UPDATE] Nova versao: v${currentVersion} -> ${latestTag}`);
     console.log('  Baixando atualizacao...');
@@ -121,7 +126,7 @@ export async function checkAndUpdate(currentVersion: string, exePath: string): P
     const asset = release.assets.find((a) => a.name === ASSET_NAME);
     if (!asset) {
       console.log('  [UPDATE] Asset nao encontrado no release — ignorando.');
-      return;
+      return false;
     }
 
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gx18-update-'));
@@ -131,28 +136,34 @@ export async function checkAndUpdate(currentVersion: string, exePath: string): P
     await download(asset.browser_download_url, zipPath);
     await extractExe(zipPath, newExe);
 
-    // PowerShell script: wait for old process to exit, copy with retry (file may be
-    // briefly locked if the user reopens quickly), relaunch, self-delete.
-    // Runs hidden — no visible cmd windows.
-    const ps1Path = path.join(tmpDir, '_update.ps1');
-    const newExeQ = newExe.replace(/'/g, "''");
-    const exePathQ = exePath.replace(/'/g, "''");
-    const ps1 = [
-      'Start-Sleep -Seconds 3',
-      '$copied = $false',
-      'for ($i = 0; $i -lt 10; $i++) {',
-      '  try {',
-      `    Copy-Item -Force '${newExeQ}' '${exePathQ}' -ErrorAction Stop`,
-      '    $copied = $true; break',
-      '  } catch { Start-Sleep -Seconds 2 }',
-      '}',
-      'if ($copied) {',
-      `  Start-Process '${exePathQ}'`,
-      '}',
-      'Remove-Item -Force $PSCommandPath',
+    // .cmd batch script:
+    //   1. Kill any lingering worker subprocess
+    //   2. Wait ~4s for the main process to fully release the file handle
+    //   3. Retry copy in a tight loop until it succeeds (no fixed retry limit)
+    //   4. Always relaunch — even if copy somehow never succeeds, the user
+    //      gets the old exe back rather than being left with nothing
+    //   5. Self-delete
+    //
+    // Using cmd.exe batch instead of PowerShell to avoid execution policy
+    // restrictions in corporate environments.
+    const cmdPath = path.join(tmpDir, '_update.cmd');
+    const newExeQ = batchQ(newExe);
+    const exePathQ = batchQ(exePath);
+    const cmd = [
+      '@echo off',
+      'taskkill /F /IM Gx18Mcp.SdkWorker.exe /T >nul 2>&1',
+      'ping 127.0.0.1 -n 5 >nul',
+      ':retry',
+      `copy /Y ${newExeQ} ${exePathQ} >nul 2>&1`,
+      'if errorlevel 1 (',
+      '  ping 127.0.0.1 -n 3 >nul',
+      '  goto retry',
+      ')',
+      `start "" ${exePathQ}`,
+      'del "%~f0"',
     ].join('\r\n');
 
-    fs.writeFileSync(ps1Path, ps1, { encoding: 'utf8' });
+    fs.writeFileSync(cmdPath, cmd, { encoding: 'utf8' });
 
     console.log(`  Atualizacao pronta. Reiniciando em ${latestTag}...\n`);
     console.log('  NAO reabra o aplicativo — ele reiniciara automaticamente.\n');
@@ -160,16 +171,13 @@ export async function checkAndUpdate(currentVersion: string, exePath: string): P
     // Write sentinel so the freshly-launched exe skips its own update check.
     try { fs.writeFileSync(SENTINEL, String(Date.now())); } catch { /* non-fatal */ }
 
-    spawn('powershell', [
-      '-WindowStyle', 'Hidden',
-      '-NonInteractive',
-      '-ExecutionPolicy', 'Bypass',
-      '-File', ps1Path,
-    ], { detached: true, stdio: 'ignore' }).unref();
+    spawn('cmd', ['/c', cmdPath], { detached: true, stdio: 'ignore' }).unref();
 
-    // Exit after 1.5s so PowerShell can copy the file.
-    setTimeout(() => process.exit(0), 1500);
+    // Exit after 3s — gives Node.js time to flush and fully release the file handle.
+    setTimeout(() => process.exit(0), 3000);
+    return true;
   } catch {
     // Non-fatal — network errors, 404, parse failures, etc.
+    return false;
   }
 }

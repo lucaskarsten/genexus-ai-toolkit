@@ -91,6 +91,10 @@ Used as the `section` parameter in `gx_read` and `gx_modify`.
 2. gx_find pattern=<name>     → confirm object exists (modify) or doesn't (create)
 ```
 
+> ⚠️ **Before `gx_modify`, `gx_import`, or `gx_export` on an existing object**, run the
+> pre-flight checks in `gx18://docs/write-safety`. Skipping them causes silent failures
+> and NullReference errors that look like bugs but are missing preconditions.
+
 ### Read UC AfterShow / Methods scripts (new tool-based workflow)
 ```
 gx_export name=X type=147

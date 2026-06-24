@@ -177,8 +177,7 @@ program
     try {
       const ui = await startUi({ port: opts.port, open: opts.open });
       console.log(chalk.green(`\ngx18-mcp UI  v${pkg.version}  running at`), ui.url);
-      console.log(chalk.dim(`  Token: ${ui.token}  (paste this if the browser did not open)`));
-      console.log(chalk.dim('  The page can read AND write your KB. Keep this URL private.'));
+      console.log(chalk.dim('  The page can read AND write your KB. Keep the URL private.'));
       console.log(chalk.dim('  Press Ctrl-C to stop.\n'));
     } catch (err) {
       console.error(chalk.red('Failed to start UI:'), String(err));

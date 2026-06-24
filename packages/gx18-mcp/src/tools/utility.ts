@@ -95,15 +95,18 @@ export async function gxDoctor(): Promise<string> {
 export async function gxSql(args: {
   query: string;
   readOnly?: boolean;
+  maxRows?: number;
   confirm?: boolean;
 }): Promise<string> {
   const readOnly = args.readOnly !== false;
   if (!readOnly && args.confirm !== true) {
     throw new Error('gx_sql with readOnly:false requires confirm: true. This operation modifies the KB database.');
   }
+  const maxRows = Math.min(Math.max(args.maxRows ?? 1000, 1), 5000);
   const result = await bridge.send<SqlQueryResult>('sql_query', {
     query: args.query,
     readOnly,
+    maxRows,
   });
   return JSON.stringify(result, null, 2);
 }
@@ -118,7 +121,8 @@ export async function gxReload(): Promise<string> {
 }
 
 export async function gxExport(args: {
-  name: string;
+  name?: string;
+  names?: string[];
   type: number;
   outputDir?: string;
 }): Promise<string> {
@@ -126,22 +130,39 @@ export async function gxExport(args: {
   if (!typeKey) {
     throw new Error(`Unknown EntityTypeId ${args.type} for export. Known: ${Object.keys(ENTITY_TYPE_TO_KEY).join(', ')}.`);
   }
+
+  // Normalise: support both single name and names array.
+  const nameList: string[] = args.names?.length
+    ? args.names
+    : args.name
+      ? [args.name]
+      : [];
+  if (nameList.length === 0) {
+    throw new Error('gx_export requires name or names (array of object names to export).');
+  }
+
   const outputDir = args.outputDir || loadConfig().outputPath;
-  const outputFile = path.resolve(outputDir, `${args.name}.xpz`);
+  const baseName = nameList.length === 1 ? nameList[0] : `${nameList[0]}_and_${nameList.length - 1}_more`;
+  const outputFile = path.resolve(outputDir, `${baseName}.xpz`);
+
+  fs.mkdirSync(outputDir, { recursive: true });
+
+  const payload: Record<string, unknown> = { type: typeKey, outputFile };
+  if (nameList.length === 1) {
+    payload['name'] = nameList[0];
+  } else {
+    payload['names'] = nameList;
+  }
 
   // export_xpz exports via the Knowledge Manager service — a real, importable .xpz archive.
-  fs.mkdirSync(outputDir, { recursive: true });
-  const result = await bridge.send<ExportResult>(
-    'export_xpz',
-    { type: typeKey, name: args.name, outputFile },
-    180000,
-  );
+  const result = await bridge.send<ExportResult>('export_xpz', payload, 180000);
   return JSON.stringify(result, null, 2);
 }
 
 export async function gxReadXpz(args: {
   xpzFile: string;
   scriptName?: string;
+  partFilter?: string;
 }): Promise<string> {
   if (!args.xpzFile) throw new Error('gx_read_xpz requires xpzFile.');
   if (!fs.existsSync(args.xpzFile)) {
@@ -150,30 +171,49 @@ export async function gxReadXpz(args: {
   const result = await bridge.send<ReadXpzResult>('read_xpz', {
     xpzFile: args.xpzFile,
     scriptName: args.scriptName ?? null,
+    partFilter: args.partFilter ?? null,
   }, 30000);
   return JSON.stringify(result, null, 2);
 }
 
 export async function gxPatchXpz(args: {
   xpzFile: string;
-  scriptName: string;
-  content: string;
+  scriptName?: string;
+  content?: string;
+  patches?: Array<{ scriptName: string; content: string }>;
   outputFile?: string;
 }): Promise<string> {
   if (!args.xpzFile) throw new Error('gx_patch_xpz requires xpzFile.');
-  if (!args.scriptName) throw new Error('gx_patch_xpz requires scriptName.');
-  if (args.content == null) throw new Error('gx_patch_xpz requires content (pass empty string to clear).');
   if (!fs.existsSync(args.xpzFile)) {
     throw new Error(`gx_patch_xpz: xpzFile not found: ${args.xpzFile}`);
   }
+
+  // Accept either single scriptName/content or a patches array.
+  const hasPatches = Array.isArray(args.patches) && args.patches.length > 0;
+  const hasSingle = args.scriptName != null;
+  if (!hasPatches && !hasSingle) {
+    throw new Error('gx_patch_xpz requires either scriptName+content (single patch) or patches (array of {scriptName, content}).');
+  }
+  if (hasSingle && args.content == null) {
+    throw new Error('gx_patch_xpz requires content when scriptName is provided (pass empty string to clear).');
+  }
+
   if (args.outputFile) {
     fs.mkdirSync(path.dirname(args.outputFile), { recursive: true });
   }
-  const result = await bridge.send<PatchXpzResult>('patch_xpz', {
+
+  const payload: Record<string, unknown> = {
     xpzFile: args.xpzFile,
-    scriptName: args.scriptName,
-    content: args.content,
     outputFile: args.outputFile ?? null,
-  }, 30000);
+  };
+
+  if (hasPatches) {
+    payload['patches'] = args.patches;
+  } else {
+    payload['scriptName'] = args.scriptName;
+    payload['content'] = args.content;
+  }
+
+  const result = await bridge.send<PatchXpzResult>('patch_xpz', payload, 30000);
   return JSON.stringify(result, null, 2);
 }

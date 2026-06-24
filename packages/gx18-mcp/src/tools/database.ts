@@ -4,6 +4,15 @@ import { MoveResult } from '../sdk-bridge/protocol';
 
 export async function gxDbConnections(): Promise<string> {
   const config = loadConfig();
+
+  let kbPing = false;
+  let oraclePing = false;
+  try {
+    const ping = await bridge.send<{ kbOk: boolean; oracleOk: boolean }>('db_connections', {}, 15000);
+    kbPing = !!ping.kbOk;
+    oraclePing = !!ping.oracleOk;
+  } catch { /* non-fatal — still list connections even if ping fails */ }
+
   const list: object[] = [
     {
       name: 'kb',
@@ -12,6 +21,7 @@ export async function gxDbConnections(): Promise<string> {
       server: config.kbServer,
       database: config.kbDatabase,
       auth: 'integrated',
+      ping: kbPing,
     },
   ];
 
@@ -25,6 +35,7 @@ export async function gxDbConnections(): Promise<string> {
       port: o.port,
       service: o.service,
       user: o.user,
+      ping: oraclePing,
     });
   }
 
@@ -36,6 +47,7 @@ export async function gxDbQuery(args: {
   query: string;
   readOnly?: boolean;
   limit?: number;
+  params?: Record<string, string | number>;
   confirm?: boolean;
 }): Promise<string> {
   const { connection, query } = args;
@@ -62,11 +74,12 @@ export async function gxDbQuery(args: {
   }
 
   if (connection === 'oracle') {
-    // Oracle — route through C# bridge using ODP.NET Managed (supports NNE)
+    // Oracle — route through C# bridge using ODP.NET Managed (supports NNE).
+    // Pass named params to prevent SQL injection via string concatenation.
     const result = await bridge.send<{ rows: object[]; count: number }>(
       'oracle_query',
-      { query, readOnly, limit },
-      120000,  // 2-minute timeout for potentially slow Oracle queries
+      { query, readOnly, limit, params: args.params ?? null },
+      120000,
     );
     return JSON.stringify(
       { connection: 'oracle', rows: result.rows ?? [], count: result.count, truncated: result.count === limit },

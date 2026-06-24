@@ -109,21 +109,51 @@ namespace Gx18Mcp.SdkWorker
             {
                 case "ping":    return Ping();
                 case "whoami":  return _identity.GetInfo(_sdkReady, Environment.GetEnvironmentVariable("GX_KB_PATH"), Environment.GetEnvironmentVariable("GX18_INSTALL_DIR") ?? @"C:\Program Files (x86)\GeneXus\GeneXus18U6");
-                case "find":    return _sql.Find(S(p, "pattern"), N(p, "type"), N(p, "limit", 50), S(p, "module"), S(p, "exclude"));
+                case "find":
+                {
+                    // "type" may be a single number OR an array of EntityTypeIds.
+                    if (p.ContainsKey("type") && p["type"] is object[] typeIds && typeIds.Length > 0)
+                    {
+                        var types = new int[typeIds.Length];
+                        for (int i = 0; i < typeIds.Length; i++) types[i] = Convert.ToInt32(typeIds[i]);
+                        return _sql.FindMulti(S(p, "pattern"), types, N(p, "limit", 50), S(p, "module"), S(p, "exclude"));
+                    }
+                    return _sql.Find(S(p, "pattern"), N(p, "type"), N(p, "limit", 50), S(p, "module"), S(p, "exclude"));
+                }
                 case "list":    return _sql.List(N(p, "type"), S(p, "module"), N(p, "limit", 100), N(p, "offset", 0), S(p, "exclude"));
                 case "get":     return _sql.Get(S(p, "name"), N(p, "type"));
                 case "read_source":    return _sql.ReadSource(N(p, "entityTypeId"), N(p, "entityId"));
                 case "read_properties": return _sql.ReadProperties(S(p, "name"), N(p, "type"));
                 case "read_structure":  return _sql.ReadStructure(S(p, "name"));
-                case "sql_query": return _sql.Query(S(p, "query"), B(p, "readOnly", true));
+                case "sql_query": return _sql.Query(S(p, "query"), B(p, "readOnly", true), N(p, "maxRows", 1000));
+                case "db_connections": return new { kbOk = _sql.TestConnection(), oracleOk = _oracle != null && _oracle.TestConnection() };
                 case "oracle_query":
+                {
                     if (_oracle == null) throw new Exception("Oracle not configured — set ORACLE_HOST in .env");
-                    return _oracle.Query(S(p, "query"), B(p, "readOnly", true), N(p, "limit", 100));
+                    var oracleParams = p.ContainsKey("params") ? p["params"] as Dictionary<string, object> : null;
+                    return _oracle.Query(S(p, "query"), B(p, "readOnly", true), N(p, "limit", 100), oracleParams);
+                }
                 case "export":   return _sql.Export(S(p, "name"), N(p, "type"), S(p, "outputDir", Environment.GetEnvironmentVariable("GX_OUTPUT_PATH") ?? @".\output"));
                 case "read_xpz":
-                    return Gx18Mcp.SdkWorker.Sdk.XpzHelper.ReadXpz(S(p, "xpzFile"), S(p, "scriptName"));
+                    return Gx18Mcp.SdkWorker.Sdk.XpzHelper.ReadXpz(S(p, "xpzFile"), S(p, "scriptName"), S(p, "partFilter"));
                 case "patch_xpz":
+                {
+                    // Multi-patch: if "patches" array is present, use batch mode.
+                    if (p.ContainsKey("patches") && p["patches"] is object[] patchArr && patchArr.Length > 0)
+                    {
+                        var patchList = new List<KeyValuePair<string, string>>();
+                        foreach (var item in patchArr)
+                        {
+                            if (item is Dictionary<string, object> pd)
+                                patchList.Add(new KeyValuePair<string, string>(
+                                    pd.ContainsKey("scriptName") ? pd["scriptName"]?.ToString() : null,
+                                    pd.ContainsKey("content") ? pd["content"]?.ToString() ?? "" : ""));
+                            else throw new Exception("Each patch must be an object with scriptName and content.");
+                        }
+                        return Gx18Mcp.SdkWorker.Sdk.XpzHelper.PatchXpzBatch(S(p, "xpzFile"), patchList, S(p, "outputFile"));
+                    }
                     return Gx18Mcp.SdkWorker.Sdk.XpzHelper.PatchXpz(S(p, "xpzFile"), S(p, "scriptName"), S(p, "content"), S(p, "outputFile"));
+                }
                 case "create":
                 {
                     var sections = new Dictionary<string, object>();
@@ -132,7 +162,18 @@ namespace Gx18Mcp.SdkWorker
                     return EnsureSdk().CreateByKey(S(p, "type"), S(p, "name"), S(p, "module"), sections);
                 }
                 case "modify":   return EnsureSdk().ModifyByKey(S(p, "name"), S(p, "type"), S(p, "section"), S(p, "content"));
-                case "export_xpz": return EnsureSdk().ExportXpz(S(p, "type"), S(p, "name"), S(p, "outputFile"));
+                case "export_xpz":
+                {
+                    // Multi-object export: if "names" array is present, use batch mode.
+                    if (p.ContainsKey("names") && p["names"] is object[] nameArr && nameArr.Length > 0)
+                    {
+                        var typeKey = S(p, "type");
+                        var items = new List<(string, string)>();
+                        foreach (var n in nameArr) items.Add((typeKey, n?.ToString() ?? ""));
+                        return EnsureSdk().ExportXpzBatch(items, S(p, "outputFile"));
+                    }
+                    return EnsureSdk().ExportXpz(S(p, "type"), S(p, "name"), S(p, "outputFile"));
+                }
                 case "import": return EnsureSdk().ImportXpz(S(p, "xpzFile"), S(p, "type"), S(p, "name"), B(p, "fullOverwrite", true));
                 case "set_property": return EnsureSdk().SetProperty(S(p, "name"), S(p, "type"), S(p, "property"), S(p, "value"));
                 case "rename":   return EnsureSdk().Rename(S(p, "name"), S(p, "type"), S(p, "newName"));
@@ -142,6 +183,7 @@ namespace Gx18Mcp.SdkWorker
                 case "variable_list":   return EnsureSdk().VariableList(S(p, "name"), S(p, "type"));
                 case "variable_add":    return EnsureSdk().VariableAdd(S(p, "name"), S(p, "type"), S(p, "varName"), S(p, "dataType"), N(p, "length"), N(p, "decimals"), B(p, "isCollection", false));
                 case "variable_delete": return EnsureSdk().VariableDelete(S(p, "name"), S(p, "type"), S(p, "varName"));
+                case "variable_update": return EnsureSdk().VariableUpdate(S(p, "name"), S(p, "type"), S(p, "varName"), S(p, "dataType"), N(p, "length", -1), N(p, "decimals", -1), p.ContainsKey("isCollection") ? p["isCollection"] : null);
                 case "search":   return _sql.Search(S(p, "pattern"), N(p, "type"), S(p, "section"), N(p, "limit", 20), S(p, "module"), S(p, "exclude"));
                 case "analyze":  return _sql.Analyze(S(p, "name"), N(p, "type"), S(p, "action", "usedby"), N(p, "limit", 50), S(p, "exclude"));
                 case "history":  return _sql.GetHistory(S(p, "name"), N(p, "type"), N(p, "limit", 10));
@@ -256,6 +298,7 @@ namespace Gx18Mcp.SdkWorker
 
         private static object Ping() => new {
             ok = true,
+            protocolVersion = "1.0",
             sdkReady = _sdkReady,
             sqlReady = true,   // lazy — TestConnection() is slow (SQL Server auto-start); use sql_query to verify
             user = WindowsIdentity.GetCurrent().Name,
