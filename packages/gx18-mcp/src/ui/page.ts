@@ -1147,7 +1147,7 @@ function chatPaste(e) {
       api('POST', '/api/chat/image', { data: base64, mimeType: mime }).then(function(r) {
         if (r.status !== 200) return;
         _pendingImagePath = r.body.path;
-        el('chat-img-label').textContent = '&#128247; ' + r.body.path.split(/[/\\]/).pop();
+        el('chat-img-label').textContent = '&#128247; ' + r.body.path.split(/[\/\\]/).pop();
         el('chat-img-preview').style.display = '';
       });
     };
