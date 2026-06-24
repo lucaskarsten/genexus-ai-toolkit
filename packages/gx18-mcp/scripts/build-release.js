@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 
 const root = path.join(__dirname, '..');
+const { version } = require('../package.json');
 
 // Create README.txt
 const readme = `GeneXus AI Toolkit — gx18-mcp
@@ -31,13 +32,21 @@ if (fs.existsSync(workerDst)) {
 }
 fs.cpSync(workerSrc, workerDst, { recursive: true });
 
-// Create zip via PowerShell
-const zipPath = path.join(root, 'release', 'GeneXusAIToolkit-windows.zip');
+// Rename exe to versioned filename
+const exeSrc = path.join(root, 'release', 'GeneXusAIToolkit.exe');
+const exeVersioned = path.join(root, 'release', `GeneXusAIToolkit-${version}.exe`);
+if (fs.existsSync(exeVersioned)) fs.rmSync(exeVersioned);
+fs.copyFileSync(exeSrc, exeVersioned);
+
+// Create versioned zip via PowerShell
+const zipPath = path.join(root, 'release', `GeneXusAIToolkit-${version}-windows.zip`);
 if (fs.existsSync(zipPath)) fs.rmSync(zipPath);
 
 execSync(
-  `Compress-Archive -Path "${path.join(root, 'release', 'GeneXusAIToolkit.exe')}","${workerDst}","${path.join(root, 'release', 'README.txt')}" -DestinationPath "${zipPath}" -Force`,
+  `Compress-Archive -Path "${exeVersioned}","${workerDst}","${path.join(root, 'release', 'README.txt')}" -DestinationPath "${zipPath}" -Force`,
   { shell: 'powershell.exe', stdio: 'inherit' }
 );
 
-console.log('Release zip created:', zipPath);
+console.log(`Release ${version} created:`);
+console.log('  exe:', exeVersioned);
+console.log('  zip:', zipPath);
