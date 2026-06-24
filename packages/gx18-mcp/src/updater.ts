@@ -110,8 +110,8 @@ export async function checkAndUpdate(currentVersion: string, exePath: string): P
       `https://api.github.com/repos/${REPO}/releases/latest`,
     ) as GhRelease;
 
-    // Tag format: "gx18-mcp/v1.4.3"
-    const latestTag = release.tag_name.replace(/^gx18-mcp\//, '');
+    // Tag format: "gx18-mcp-v1.9.x" (was "gx18-mcp/v1.x.x" before CI fix in 27c06be)
+    const latestTag = release.tag_name.replace(/^gx18-mcp[-\/]/, '');
 
     if (!isNewer(latestTag, currentVersion)) return;
 
