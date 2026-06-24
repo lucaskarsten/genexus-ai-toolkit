@@ -1,6 +1,7 @@
+import fs from 'fs';
 import { bridge } from '../sdk-bridge/bridge';
 import { CreateResult, ModifyResult, SetPropertyResult, RenameResult, WriteResult, ImportResult } from '../sdk-bridge/protocol';
-import { SUPPORTED_WRITE_TYPES, SECTION_FIELDS, ENTITY_TYPE_TO_KEY } from '../domain/entity-types';
+import { SUPPORTED_WRITE_TYPES, SECTION_FIELDS, ENTITY_TYPE_TO_KEY, OBJECT_TYPES } from '../domain/entity-types';
 
 // Re-exported for backward compatibility and the contract tests; defined in domain/entity-types.
 export { SUPPORTED_WRITE_TYPES, SECTION_FIELDS, ENTITY_TYPE_TO_KEY };
@@ -77,8 +78,24 @@ export async function gxModify(args: {
 
   const typeKey = ENTITY_TYPE_TO_KEY[args.type];
   if (!typeKey || !SUPPORTED_WRITE_TYPES.includes(typeKey)) {
+    const supportedMap = Object.entries(ENTITY_TYPE_TO_KEY)
+      .map(([id, key]) => `${key}=${id}`)
+      .join(', ');
     throw new Error(
-      `Write not yet supported for EntityTypeId ${args.type}. Currently supported: ${SUPPORTED_WRITE_TYPES.join(', ')}.`
+      `gx_modify: unsupported EntityTypeId ${args.type}. ` +
+      `Supported types (key=EntityTypeId): ${supportedMap}.`
+    );
+  }
+
+  const typeSpec = OBJECT_TYPES.find(t => t.key === typeKey);
+  const validSections = typeSpec?.sections.map(s => s.key) ?? [];
+  if (validSections.length > 0 && !validSections.includes(args.section.toLowerCase())) {
+    const ucHint = typeKey === 'usercontrol'
+      ? ' To edit AfterShow/Methods scripts, use gx_export → patch CDATA → gx_import.'
+      : '';
+    throw new Error(
+      `gx_modify: section '${args.section}' is not valid for type '${typeKey}' ` +
+      `(EntityTypeId ${args.type}). Valid sections: ${validSections.join(', ')}.${ucHint}`
     );
   }
 
@@ -95,7 +112,7 @@ export async function gxModify(args: {
 
 export async function gxImport(args: {
   xpzFile: string;
-  type: string;
+  type?: string;
   name: string;
   fullOverwrite?: boolean;
   confirm?: boolean;
@@ -104,6 +121,9 @@ export async function gxImport(args: {
 
   if (!args.xpzFile) throw new Error('gx_import requires xpzFile (path to the .xpz to import).');
   if (!args.name) throw new Error('gx_import requires name (the primary object, for post-import UserId verification).');
+  if (!fs.existsSync(args.xpzFile)) {
+    throw new Error(`gx_import: xpzFile not found: ${args.xpzFile}`);
+  }
 
   // Import is often the first write in a fresh worker → it pays the SDK cold-start (~10-15s)
   // on top of the import itself. Give it a generous timeout (the default 30s is not enough cold).
@@ -117,6 +137,13 @@ export async function gxImport(args: {
   // Same authoritative guard as create/modify — the native GX18 import stamps the Windows user;
   // if a foreign UserId landed on the object, fail loudly before it pollutes Team Development.
   assertWriteOk(result);
+  if (!result.ok) {
+    throw new Error(
+      `gx_import: ImportFile returned ok:false — the import did not apply.\n` +
+      `Check that lastUpdate was bumped and checksum was zeroed in the XPZ.\n` +
+      `Object: '${result.name}' (${args.type ?? 'unknown'}), xpzFile: ${result.xpzFile}`
+    );
+  }
   return JSON.stringify(result, null, 2);
 }
 

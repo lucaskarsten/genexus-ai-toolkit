@@ -139,7 +139,8 @@ namespace Gx18Mcp.SdkWorker.Sdk
 
             var obj = ResolveByName(concrete, model, name);
             if (obj == null) throw new Exception(
-                $"Object '{name}' not found (type '{typeKey}'). Names are case-insensitive. Use gx_find to locate the exact name.");
+                $"Object '{name}' not found (type '{typeKey}', EntityTypeId {spec.EntityTypeId}). " +
+                $"Names are case-insensitive. Run gx_find with pattern '{name}' to confirm the exact name.");
 
             var sections = new Dictionary<string, object> { { section, content } };
             try
@@ -151,9 +152,16 @@ namespace Gx18Mcp.SdkWorker.Sdk
             {
                 var inner = ex is System.Reflection.TargetInvocationException tie && tie.InnerException != null
                     ? tie.InnerException : ex;
-                throw new Exception(
-                    $"Failed to save '{name}' (type '{typeKey}', section '{section}'): {inner.GetType().Name}: {inner.Message}",
-                    inner);
+                var msg = $"Failed to save '{name}' (type '{typeKey}', section '{section}'): {inner.GetType().Name}: {inner.Message}";
+                if (typeKey.Equals("dso", StringComparison.OrdinalIgnoreCase) &&
+                    (inner.Message.IndexOf("import", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                     inner.Message.IndexOf("valid", StringComparison.OrdinalIgnoreCase) >= 0))
+                {
+                    msg += "\nHint: DSO @import must use the friendly DSO name (e.g. `@import DsoBase;`), " +
+                           "not the GUID form (`@import @<guid>@`). " +
+                           "The GUID form is internal — the SDK resolves it on save from the friendly name.";
+                }
+                throw new Exception(msg, inner);
             }
 
             int id = Convert.ToInt32(GetProp(obj, "Id"));
@@ -171,7 +179,14 @@ namespace Gx18Mcp.SdkWorker.Sdk
                 var content = kv.Value.ToString();
                 if (string.IsNullOrEmpty(content)) continue;
                 if (!spec.Sections.TryGetValue(kv.Key, out var sec))
-                    throw new Exception($"Section '{kv.Key}' not supported for this type. Valid: {string.Join(", ", spec.Sections.Keys)}");
+                {
+                    var hint = spec.TypeName.IndexOf("UserControl", StringComparison.OrdinalIgnoreCase) >= 0
+                        ? " AfterShow/Methods scripts are not writable via gx_modify — use gx_export → patch CDATA → gx_import."
+                        : "";
+                    throw new Exception(
+                        $"Section '{kv.Key}' not supported for type '{spec.TypeName.Split('.').Last()}'. " +
+                        $"Valid sections: {string.Join(", ", spec.Sections.Keys)}.{hint}");
+                }
 
                 var part = GetProp(obj, sec.PartProp);
                 if (part == null) throw new Exception($"Part '{sec.PartProp}' is null");
@@ -486,6 +501,10 @@ namespace Gx18Mcp.SdkWorker.Sdk
 
         // Export one object (by name+type) to an .xpz file via the Knowledge Manager service.
         // Doubles as a validation: a successful export proves the object is well-formed in the KB.
+        // NOTE: Console.Out is swapped to Console.Error during the SDK call to prevent GX log output
+        // from corrupting the JSON-RPC stdout stream. This is safe only because the worker is
+        // contractually single-threaded (one IPC call processed at a time). Do not introduce
+        // concurrency without replacing this with a captured-at-boot stdout handle.
         public object ExportXpz(string typeKey, string name, string outputFile)
         {
             var spec = Spec(typeKey);
@@ -554,8 +573,8 @@ namespace Gx18Mcp.SdkWorker.Sdk
         // This is the NATIVE GX18 import path (IKnowledgeManagerService.ImportFile) — NOT the
         // gxnext mass-import that caused the revision storm. Because the worker opened the KB as
         // the Windows user, the SDK stamps the real UserId (e.g. 321) on the imported revisions.
-        // SPIKE-ONLY for now: returns the recent EntityVersion rows of the named object so the
-        // caller can assert UserId + revision count. Validate on a clone before exposing as a tool.
+        // Returns the recent EntityVersion rows of the named object so the TS-side assertWriteOk
+        // guard can verify the stamped UserId and confirm the import is bound to the correct author.
         public object ImportXpz(string xpzFile, string typeKey, string name, bool fullOverwrite)
         {
             if (string.IsNullOrEmpty(xpzFile) || !System.IO.File.Exists(xpzFile))
@@ -602,9 +621,14 @@ namespace Gx18Mcp.SdkWorker.Sdk
 
             // Verify the imported object's author by name (avoids the webpanel 43/148 hint mismatch:
             // the object's own versions carry its name; its parts have different names like "Procedure, Rules").
-            var safeName = (name ?? "").Replace("'", "''");
-            var sql = $"SELECT TOP 5 EntityTypeId, EntityId, EntityVersionId, UserId FROM EntityVersion WHERE EntityVersionName='{safeName}' ORDER BY EntityVersionId DESC";
-            var res = _sql.Query(sql, true);
+            // Scope the UserId check to the correct EntityTypeId when we know the type.
+            // EntityVersionId is not global, so type-scoping is required for a reliable result.
+            int filterTypeId = 0;
+            try { if (!string.IsNullOrEmpty(typeKey)) filterTypeId = Spec(typeKey).EntityTypeId; } catch { /* unknown typeKey */ }
+            var verifyQuery = filterTypeId > 0
+                ? "SELECT TOP 5 EntityTypeId, EntityId, EntityVersionId, UserId FROM EntityVersion WHERE EntityVersionName=@name AND EntityTypeId=" + filterTypeId + " ORDER BY EntityVersionId DESC"
+                : "SELECT TOP 5 EntityTypeId, EntityId, EntityVersionId, UserId FROM EntityVersion WHERE EntityVersionName=@name ORDER BY EntityVersionId DESC";
+            var res = _sql.QueryByName(verifyQuery, name);
             var rows = GetProp(res, "rows") as List<object>;
 
             int? userId = null;
