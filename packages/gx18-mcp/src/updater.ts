@@ -131,21 +131,31 @@ export async function checkAndUpdate(currentVersion: string, exePath: string): P
     await download(asset.browser_download_url, zipPath);
     await extractExe(zipPath, newExe);
 
-    // PowerShell script: sleep 3s (process exits in ~1.5s), swap, relaunch, self-delete.
+    // PowerShell script: wait for old process to exit, copy with retry (file may be
+    // briefly locked if the user reopens quickly), relaunch, self-delete.
     // Runs hidden — no visible cmd windows.
     const ps1Path = path.join(tmpDir, '_update.ps1');
     const newExeQ = newExe.replace(/'/g, "''");
     const exePathQ = exePath.replace(/'/g, "''");
     const ps1 = [
       'Start-Sleep -Seconds 3',
-      `Copy-Item -Force '${newExeQ}' '${exePathQ}'`,
-      `Start-Process '${exePathQ}'`,
-      "Remove-Item -Force $PSCommandPath",
+      '$copied = $false',
+      'for ($i = 0; $i -lt 10; $i++) {',
+      '  try {',
+      `    Copy-Item -Force '${newExeQ}' '${exePathQ}' -ErrorAction Stop`,
+      '    $copied = $true; break',
+      '  } catch { Start-Sleep -Seconds 2 }',
+      '}',
+      'if ($copied) {',
+      `  Start-Process '${exePathQ}'`,
+      '}',
+      'Remove-Item -Force $PSCommandPath',
     ].join('\r\n');
 
     fs.writeFileSync(ps1Path, ps1, { encoding: 'utf8' });
 
     console.log(`  Atualizacao pronta. Reiniciando em ${latestTag}...\n`);
+    console.log('  NAO reabra o aplicativo — ele reiniciara automaticamente.\n');
 
     // Write sentinel so the freshly-launched exe skips its own update check.
     try { fs.writeFileSync(SENTINEL, String(Date.now())); } catch { /* non-fatal */ }
