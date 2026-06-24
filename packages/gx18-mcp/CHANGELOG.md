@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.9.0](https://github.com/lucaskarsten/genexus-ai-toolkit/compare/gx18-mcp-v1.8.0...gx18-mcp-v1.9.0) (2026-06-24)
+
+
+### Features
+
+* **gx18-mcp:** add gx_read_xpz/gx_patch_xpz tools and module/exclude filters ([fb6c795](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/fb6c795be8b85edec3b08efb271b4bb16e0b5a87))
+* **gx18-mcp:** harden gx_modify, add analysis/integration tools and examples ([671c7cc](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/671c7cc391e88c449a0e23d44b2b711f6de81fe3))
+
+
+### Bug Fixes
+
+* **gx18-mcp:** improve error messages and input validation in gx_modify and gx_import ([9a7e9f7](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/9a7e9f77c6d104532ffcec703afa8722e1c32aa3))
+
+
+### Documentation
+
+* **gx18-mcp:** add xpz-workflow and genexus-knowledge resources, expand server instructions ([baf8667](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/baf8667ad5654d801e21316dfb69aaf7926fdc45))
+
 ## [1.8.0](https://github.com/lucaskarsten/genexus-ai-toolkit/compare/gx18-mcp-v1.7.3...gx18-mcp-v1.8.0) (2026-06-23)
 
 
