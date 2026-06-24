@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.3](https://github.com/lucaskarsten/genexus-ai-toolkit/compare/gx18-mcp-v1.9.2...gx18-mcp-v1.9.3) (2026-06-24)
+
+
+### Bug Fixes
+
+* **gx18-mcp:** fix SyntaxError in chat image path — use String.fromCharCode(92) ([098ac9d](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/098ac9d6d5f385946610f065823c39e99740cbe6))
+
 ## [1.9.2](https://github.com/lucaskarsten/genexus-ai-toolkit/compare/gx18-mcp-v1.9.1...gx18-mcp-v1.9.2) (2026-06-24)
 
 
