@@ -32,4 +32,4 @@ jobs:
       - name: Upload release zip
         uses: softprops/action-gh-release@v2
         with:
-          files: packages/gx18-mcp/release/GeneXusAIToolkit-windows.zip
+          files: packages/gx18-mcp/release/GeneXusAIToolkit-*-windows.zip

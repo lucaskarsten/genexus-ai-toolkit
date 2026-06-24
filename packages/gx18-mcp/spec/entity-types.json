@@ -170,13 +170,20 @@
     }
   },
   "read": {
-    "$comment": "Used by gx_read to locate a sub-component part. componentTypeBySection maps a section name to the sub-component EntityTypeId; defaultSectionByType picks a section when none is given; fallbackSection is the last resort.",
+    "$comment": "Used by gx_read to locate a sub-component part. componentTypeBySection maps a section name to the sub-component EntityTypeId; defaultSectionByType picks a section when none is given; fallbackSection is the last resort. componentTypeBySectionPerType overrides the global map for specific EntityTypeIds.",
     "componentTypeBySection": {
       "source": 69,
       "rules": 69,
       "events": 64,
       "layout": 74,
       "variables": 72
+    },
+    "componentTypeBySectionPerType": {
+      "147": {
+        "source": 148,
+        "template": 148,
+        "properties": 149
+      }
     },
     "defaultSectionByType": {
       "34": "source",

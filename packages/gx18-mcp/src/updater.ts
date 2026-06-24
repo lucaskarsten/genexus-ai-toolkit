@@ -33,7 +33,6 @@ export function justUpdated(): boolean {
 }
 
 const REPO = 'lucaskarsten/genexus-ai-toolkit';
-const ASSET_NAME = 'GeneXusAIToolkit-windows.zip';
 const EXE_NAME = 'GeneXusAIToolkit.exe';
 
 interface GhRelease {
@@ -123,7 +122,11 @@ export async function checkAndUpdate(currentVersion: string, exePath: string): P
     console.log(`\n  [UPDATE] Nova versao: v${currentVersion} -> ${latestTag}`);
     console.log('  Baixando atualizacao...');
 
-    const asset = release.assets.find((a) => a.name === ASSET_NAME);
+    const versionNum = latestTag.replace(/^v/, '');
+    const assetName = release.assets.some((a) => a.name === `GeneXusAIToolkit-${versionNum}-windows.zip`)
+      ? `GeneXusAIToolkit-${versionNum}-windows.zip`
+      : 'GeneXusAIToolkit-windows.zip';
+    const asset = release.assets.find((a) => a.name === assetName);
     if (!asset) {
       console.log('  [UPDATE] Asset nao encontrado no release — ignorando.');
       return false;

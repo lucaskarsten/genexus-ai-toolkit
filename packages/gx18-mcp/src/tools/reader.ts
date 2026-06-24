@@ -1,6 +1,6 @@
 import { bridge } from '../sdk-bridge/bridge';
 import { EntityDetail, ReadSourceResult, ReadStructureResult } from '../sdk-bridge/protocol';
-import { SECTION_TYPE, defaultSection } from '../domain/entity-types';
+import { SECTION_TYPE, sectionType, ALL_SECTION_NAMES, defaultSection } from '../domain/entity-types';
 
 // Re-exported for backward compatibility and the contract tests; defined in domain/entity-types.
 export { SECTION_TYPE, defaultSection };
@@ -16,10 +16,10 @@ export async function gxRead(args: {
   });
 
   const section = args.section ?? defaultSection(args.type);
-  const targetTypeId = SECTION_TYPE[section];
+  const targetTypeId = sectionType(args.type, section);
   if (!targetTypeId) {
     throw new Error(
-      `Unknown section: '${section}'. Valid values: source, events, rules, layout, variables`
+      `Unknown section: '${section}'. Valid values: ${ALL_SECTION_NAMES.join(', ')}`
     );
   }
 

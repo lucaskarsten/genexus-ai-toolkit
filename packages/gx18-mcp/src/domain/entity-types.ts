@@ -49,6 +49,28 @@ export const SECTION_TYPE: Record<string, number> = (() => {
   return m;
 })();
 
+// Per-type overrides: objectTypeId -> { sectionName -> componentEntityTypeId }
+const SECTION_TYPE_PER_TYPE: Record<number, Record<string, number>> = (() => {
+  const m: Record<number, Record<string, number>> = {};
+  const perType = (spec.read as Record<string, unknown>).componentTypeBySectionPerType as Record<string, Record<string, number>> | undefined;
+  if (perType) {
+    for (const [k, v] of Object.entries(perType)) m[Number(k)] = v;
+  }
+  return m;
+})();
+
+// Resolve section name to component EntityTypeId, with per-type override support.
+export function sectionType(objectTypeId: number, section: string): number | undefined {
+  return SECTION_TYPE_PER_TYPE[objectTypeId]?.[section] ?? SECTION_TYPE[section];
+}
+
+// Valid section names (global + all per-type keys).
+export const ALL_SECTION_NAMES: string[] = (() => {
+  const names = new Set(Object.keys(SECTION_TYPE));
+  for (const v of Object.values(SECTION_TYPE_PER_TYPE)) for (const k of Object.keys(v)) names.add(k);
+  return [...names].sort();
+})();
+
 const DEFAULT_SECTION_BY_TYPE: Record<number, string> = (() => {
   const m: Record<number, string> = {};
   for (const [k, v] of Object.entries(spec.read.defaultSectionByType)) m[Number(k)] = v as string;
