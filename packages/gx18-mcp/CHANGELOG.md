@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.9.2](https://github.com/lucaskarsten/genexus-ai-toolkit/compare/gx18-mcp-v1.9.1...gx18-mcp-v1.9.2) (2026-06-24)
+
+
+### Bug Fixes
+
+* **gx18-mcp:** fix auto-update broken by tag format change ([0cdfefb](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/0cdfefb3b078dd8ad82e82a013de5a423be2428d))
+* replace /^gx18-mcp[-\/]/ to handle both formats. ([0cdfefb](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/0cdfefb3b078dd8ad82e82a013de5a423be2428d))
+
 ## [1.9.1](https://github.com/lucaskarsten/genexus-ai-toolkit/compare/gx18-mcp-v1.9.0...gx18-mcp-v1.9.1) (2026-06-24)
 
 
