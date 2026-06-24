@@ -508,14 +508,6 @@ namespace Gx18Mcp.SdkWorker.Sdk
         // Export a single object. For multi-object export use ExportXpzBatch.
         public object ExportXpz(string typeKey, string name, string outputFile)
         {
-            // Type 43 (WebPanel/WebComponent): SDK fails headlessly — bypass entirely here too,
-            // before ExportXpzBatch can attempt any SDK initialisation.
-            var spec = Spec(typeKey);
-            if (spec.EntityTypeId == 43)
-            {
-                Console.Error.WriteLine($"[gx18-worker] ExportXpz: type 43 ({name}) → SQL XPZ builder.");
-                return _sql.SqlExportXpz(name, 43, outputFile);
-            }
             return ExportXpzBatch(new[] { (typeKey, name) }, outputFile);
         }
 
@@ -526,16 +518,16 @@ namespace Gx18Mcp.SdkWorker.Sdk
             var itemList = new List<(string typeKey, string name)>(items);
             if (itemList.Count == 0) throw new Exception("ExportXpzBatch: items list is empty");
 
-            // GX18 SDK fails for WebPanel/WebComponent (EntityTypeId 43) in headless mode at multiple
-            // points: Services.GetService<IKnowledgeManagerService>(), ResolveByName, and Export all
-            // throw NullReferenceException because theme/layout services require the IDE. Skip the SDK
-            // entirely for type 43 — must be before ANY assembly or service lookup.
+            // GX18 SDK fails for WebPanel/WebComponent (EntityTypeId 43) and UserControl (147) in
+            // headless mode: Services.GetService<IKnowledgeManagerService>(), ResolveByName, and Export
+            // all throw NullReferenceException because theme/layout services require the IDE.
+            // Skip the SDK entirely for these types — must be before ANY assembly or service lookup.
             var firstType43Name = itemList[0].name;
             var firstType43Spec = Spec(itemList[0].typeKey);
-            if (firstType43Spec.EntityTypeId == 43)
+            if (firstType43Spec.EntityTypeId == 43 || firstType43Spec.EntityTypeId == 147)
             {
-                Console.Error.WriteLine($"[gx18-worker] Type 43 ({firstType43Name}): using SQL XPZ builder (SDK unsupported headless).");
-                return _sql.SqlExportXpz(firstType43Name, 43, outputFile);
+                Console.Error.WriteLine($"[gx18-worker] Type {firstType43Spec.EntityTypeId} ({firstType43Name}): using SQL XPZ builder (SDK unsupported headless).");
+                return _sql.SqlExportXpz(firstType43Name, firstType43Spec.EntityTypeId, outputFile);
             }
 
             var kb = _session.KnowledgeBase;

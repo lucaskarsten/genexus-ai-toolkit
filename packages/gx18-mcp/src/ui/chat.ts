@@ -34,6 +34,7 @@ export async function streamChat(
     '--print', userMessage,
     '--output-format', 'stream-json',
     '--verbose',
+    '--dangerously-skip-permissions',
   ];
 
   // nexa skills: use saved override if set, else use detected path when it exists

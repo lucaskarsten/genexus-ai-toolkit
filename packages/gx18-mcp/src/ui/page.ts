@@ -168,11 +168,20 @@ pre.out.err{border-color:var(--fail);color:#ffb4ae;}
 .chat-msgs{flex:1;overflow-y:auto;display:flex;flex-direction:column;
            gap:14px;padding:4px 2px;margin-bottom:12px;}
 .chat-bubble{max-width:90%;padding:12px 16px;border-radius:12px;font-size:13px;line-height:1.6;
-             white-space:pre-wrap;word-break:break-word;}
-.chat-bubble.user{background:#1a2a50;border:1px solid #2a4080;align-self:flex-end;color:#ccd9ff;}
+             word-break:break-word;}
+.chat-bubble.user{background:#1a2a50;border:1px solid #2a4080;align-self:flex-end;color:#ccd9ff;
+                  white-space:pre-wrap;}
 .chat-bubble.assistant{background:var(--panel);border:1px solid var(--line);align-self:flex-start;
                        color:var(--fg);max-width:95%;}
 .chat-bubble.thinking{color:var(--muted);font-style:italic;}
+.chat-bubble.assistant h3,.chat-bubble.assistant h4,.chat-bubble.assistant h5{margin:.6em 0 .3em;color:var(--fg);font-weight:600;}
+.chat-bubble.assistant h3{font-size:1.05em;}.chat-bubble.assistant h4{font-size:1em;}.chat-bubble.assistant h5{font-size:.95em;}
+.chat-bubble.assistant strong{color:#e8d5a0;font-weight:600;}
+.chat-bubble.assistant em{color:#b0c8e0;font-style:italic;}
+.chat-bubble.assistant code{background:#1a1e2a;border:1px solid var(--line);border-radius:3px;padding:1px 5px;font-family:var(--mono);font-size:.9em;color:#a8d8a8;}
+.chat-bubble.assistant pre{background:#0d1117;border:1px solid var(--line);border-radius:6px;padding:10px 12px;overflow-x:auto;margin:.5em 0;}
+.chat-bubble.assistant pre code{background:none;border:none;padding:0;color:#c9d1d9;}
+.chat-bubble.assistant li{display:list-item;list-style-type:disc;margin:.2em 0 .2em 1.4em;}
 .chat-tool{background:#0f1a10;border:1px solid #1a3020;border-radius:8px;margin:6px 0;
            font-size:12px;overflow:hidden;}
 .chat-tool summary{padding:6px 10px;cursor:pointer;color:var(--ok);font-family:var(--mono);}
@@ -1169,7 +1178,7 @@ function chatSend() {
             td.innerHTML = '<summary><span class="tool-spinner"></span>' + escHtml(label) + '</summary>' +
               '<div class="tool-body muted">Executando…</div>';
             toolsContainer.appendChild(td);
-            if (!toolsContainer.parentNode) aDiv.insertAdjacentElement('afterend', toolsContainer);
+            if (!toolsContainer.parentNode) aDiv.insertAdjacentElement('beforebegin', toolsContainer);
             _pendingTools.push({ id: ev.id, name: ev.name, result: '', isError: false });
             chatStatus('tool', label);
           } else if (ev.type === 'tool_result') {
@@ -1193,7 +1202,8 @@ function chatSend() {
           } else if (ev.type === 'done') {
             typingStop(aDiv);
             chatStatus('done', 'Pronto');
-            if (firstChunk) { aDiv.classList.remove('thinking'); aDiv.textContent = ev.fullText||'(no response)'; }
+            aDiv.classList.remove('thinking');
+            aDiv.innerHTML = renderMarkdown(ev.fullText || '(no response)');
             if (ev.sessionId) _chatSessionId = ev.sessionId;
             // Persist this turn to the conversation
             var conv = currentConv();
@@ -1232,6 +1242,29 @@ function chatScrollBottom() {
   var msgs = el('chat-msgs');
   if (msgs) requestAnimationFrame(function() { msgs.scrollTop = msgs.scrollHeight; });
 }
+function renderMarkdown(text) {
+  var s = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // Fenced code blocks — backticks escaped as \`, \s\S replaced with [^], \n doubled
+  s = s.replace(/\`\`\`[a-zA-Z0-9_]*\\n?([^]*?)\`\`\`/gm, function(_,c){ return '<pre><code>'+c.replace(/\\n$/,'')+'</code></pre>'; });
+  // Inline code — backtick and \n escaped
+  s = s.replace(/\`([^\`\\n]+)\`/g, '<code>$1</code>');
+  // Bold — * replaced with [*] to avoid invalid \* escape
+  s = s.replace(/[*][*]([^*\\n]+)[*][*]/g, '<strong>$1</strong>');
+  // Italic
+  s = s.replace(/[*]([^*\\n]+)[*]/g, '<em>$1</em>');
+  s = s.replace(/_([^_\\n]+)_/g, '<em>$1</em>');
+  // Headers — # replaced with [#] to be safe
+  s = s.replace(/^[#][#][#] (.+)$/gm, '<h5>$1</h5>');
+  s = s.replace(/^[#][#] (.+)$/gm, '<h4>$1</h4>');
+  s = s.replace(/^[#] (.+)$/gm, '<h3>$1</h3>');
+  // Lists
+  s = s.replace(/^[-*] (.+)$/gm, '<li>$1</li>');
+  // Line breaks
+  s = s.replace(/\\n/g, '<br>');
+  // Restore actual newlines inside pre blocks (avoid </> escape by using [/])
+  s = s.replace(/<pre><code>([^]*?)<[/]code><[/]pre>/g, function(_,c){ return '<pre><code>'+c.replace(/<br>/g,'\\n')+'</code></pre>'; });
+  return s;
+}
 function chatAppendBubble(role, text) {
   var msgs = el('chat-msgs');
   var div = document.createElement('div');
@@ -1244,6 +1277,13 @@ function chatAppendBubble(role, text) {
 
 function chatDone() {
   chatStatus(null, '');
+  document.querySelectorAll('.chat-tool.running').forEach(function(t) {
+    t.classList.remove('running');
+    var sp = t.querySelector('.tool-spinner');
+    if (sp) sp.remove();
+    var tb = t.querySelector('.tool-body');
+    if (tb && tb.textContent === 'Executando…') { tb.textContent = '(interrompido)'; tb.className = 'tool-body err'; }
+  });
   _chatBusy = false;
   _chatAbort = null;
   el('chat-send').style.display = '';

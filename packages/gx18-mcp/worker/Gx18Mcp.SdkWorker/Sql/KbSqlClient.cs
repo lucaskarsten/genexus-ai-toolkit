@@ -5,6 +5,7 @@ using System.Data.SqlClient;
 using System.IO;
 using System.IO.Compression;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Xml;
 
 namespace Gx18Mcp.SdkWorker.Sql
@@ -1034,11 +1035,19 @@ namespace Gx18Mcp.SdkWorker.Sql
                 { 69, "9b0a32a3-de6d-4be1-a4dd-1b85d3741534" },  // Rules
                 { 72, "e4c4ade7-53f0-4a56-bdfd-843735b66f47" },  // Variables
                 { 74, "d24a58ad-57ba-41b7-9e6e-eaca3543c778" },  // WebForm
+                // UserControl parts (confirmed from IDE-exported UCSeletorLoja.xpz, FoccoLojas_03)
+                { 148, "3dd92fe7-b095-44d3-9fa0-8488fa3f0c67" },  // UC ScreenTemplate
+                { 149, "8e9e4a7c-a4d3-4c36-8e8e-fb6702402f63" },  // UC Properties (Definition XML)
             };
             // Code parts: tokenized source stored as GX tokens → TokensToText → wrap in <Source><![CDATA[]]></Source>
             var codeParts = new HashSet<int> { 57, 64, 67, 69 };
-            // Layout parts: decompressed blob IS the XML (e.g. <GxMultiForm>) → wrap in <Source><![CDATA[]]></Source>
-            var layoutParts = new HashSet<int> { 74 };
+            // Layout parts: decompressed blob IS the content → wrap in <Source><![CDATA[]]></Source>
+            var layoutParts = new HashSet<int> { 74, 148 };  // 149 handled by definitionParts below
+            // Parts that need an extra <Properties> element after <Source> (UC ScreenTemplate pattern)
+            var needsPartProperties = new HashSet<int> { 148 };
+            // Definition parts: UC Properties blob — embed <Definition> XML directly (no <Source> wrapper);
+            // <Script> element content is wrapped in CDATA for gx_read_xpz/gx_patch_xpz compatibility.
+            var definitionParts = new HashSet<int> { 149 };
             // Structure parts: decompressed blob IS raw XML (<Variable>, <Help>, <Properties/>) → embed directly
 
             // 1. Object metadata
@@ -1064,7 +1073,7 @@ namespace Gx18Mcp.SdkWorker.Sql
                 entityVersionId = r.GetInt32(1);
                 description = r.GetString(2);
                 entityVersionProperties = r.GetString(3);
-                entityGuid = r.GetGuid(4).ToString();
+                entityGuid = r.GetString(4);
             }
             timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ");
 
@@ -1129,12 +1138,37 @@ namespace Gx18Mcp.SdkWorker.Sql
                 }
                 else if (layoutParts.Contains(partTypeId))
                 {
-                    // Layout parts: decompressed blob IS the content (e.g. GxMultiForm XML) → CDATA
+                    // Layout parts: decompressed blob IS the content (e.g. GxMultiForm XML, UC template/properties) → CDATA
                     string content = "";
                     if (blob != null && blob.Length > 11)
                         content = Decompress(blob);
                     partsSb.AppendLine($"      <Part type=\"{partGuid}\">");
                     partsSb.AppendLine($"        <Source><![CDATA[{EscapeCdata(content)}]]></Source>");
+                    if (needsPartProperties.Contains(partTypeId))
+                        partsSb.AppendLine($"        <Properties><Property><Name>IsDefault</Name><Value>False</Value></Property></Properties>");
+                    partsSb.AppendLine($"      </Part>");
+                }
+                else if (definitionParts.Contains(partTypeId))
+                {
+                    // UC Properties: embed <Definition> XML directly (matches IDE XPZ format).
+                    // Wrap each <Script> element's content in CDATA so gx_read_xpz / gx_patch_xpz
+                    // can find and patch scripts by name.
+                    string content = "";
+                    if (blob != null && blob.Length > 11)
+                    {
+                        content = Decompress(blob);
+                        content = Regex.Replace(content,
+                            @"(<Script\b[^>]*>)([\s\S]*?)(</Script>)",
+                            m =>
+                            {
+                                var body = m.Groups[2].Value;
+                                if (body.TrimStart().StartsWith("<![CDATA[")) return m.Value;
+                                return m.Groups[1].Value + "<![CDATA[" + body + "]]>" + m.Groups[3].Value;
+                            });
+                    }
+                    partsSb.AppendLine($"      <Part type=\"{partGuid}\">");
+                    if (!string.IsNullOrEmpty(content)) partsSb.Append(content);
+                    partsSb.AppendLine();
                     partsSb.AppendLine($"      </Part>");
                 }
                 else
@@ -1157,6 +1191,15 @@ namespace Gx18Mcp.SdkWorker.Sql
             var csb = new System.Data.SqlClient.SqlConnectionStringBuilder(_connectionString);
             string kbName = csb.InitialCatalog;
 
+            // Object type GUID varies by EntityTypeId (confirmed from IDE-exported XPZ files)
+            var objectTypeGuidMap = new Dictionary<int, string>
+            {
+                { 43,  "c9584656-94b6-4ccd-890f-332d11fc2c25" },  // WebPanel / WebComponent
+                { 147, "562f4793-aabe-449f-8821-fc77e550698e" },  // UserControl
+            };
+            string objectTypeGuid = objectTypeGuidMap.TryGetValue(entityTypeId, out var g)
+                ? g : "c9584656-94b6-4ccd-890f-332d11fc2c25";
+
             // 6. Assemble XPZ XML
             string xpzXml = $"<?xml version=\"1.0\" encoding=\"utf-8\"?>\r\n" +
                 $"<ExportFile>\r\n" +
@@ -1164,12 +1207,12 @@ namespace Gx18Mcp.SdkWorker.Sql
                 $"  <Source kb=\"{EscapeAttr(kbName)}\" UNCPath=\"\" />\r\n" +
                 $"  <Dependencies />\r\n" +
                 $"  <ObjectsIdentityMapping>\r\n" +
-                $"    <ObjectIdentity Type=\"c9584656-94b6-4ccd-890f-332d11fc2c25\" Name=\"{EscapeAttr(name)}\" parent=\"{EscapeAttr(moduleName)}\">\r\n" +
+                $"    <ObjectIdentity Type=\"{objectTypeGuid}\" Name=\"{EscapeAttr(name)}\" parent=\"{EscapeAttr(moduleName)}\">\r\n" +
                 $"      <Guid>{entityGuid}</Guid>\r\n" +
                 $"    </ObjectIdentity>\r\n" +
                 $"  </ObjectsIdentityMapping>\r\n" +
                 $"  <Objects>\r\n" +
-                $"    <Object parentGuid=\"{parentGuid}\" user=\"\" versionDate=\"{timestamp}\" lastUpdate=\"{timestamp}\" checksum=\"{new string('0', 32)}\" fullyQualifiedName=\"{EscapeAttr(name)}\" moduleGuid=\"\" guid=\"{entityGuid}\" name=\"{EscapeAttr(name)}\" type=\"c9584656-94b6-4ccd-890f-332d11fc2c25\" description=\"{EscapeAttr(description)}\" parent=\"{EscapeAttr(moduleName)}\" parentType=\"00000000-0000-0000-0000-000000000008\">\r\n" +
+                $"    <Object parentGuid=\"{parentGuid}\" user=\"\" versionDate=\"{timestamp}\" lastUpdate=\"{timestamp}\" checksum=\"{new string('0', 32)}\" fullyQualifiedName=\"{EscapeAttr(name)}\" moduleGuid=\"\" guid=\"{entityGuid}\" name=\"{EscapeAttr(name)}\" type=\"{objectTypeGuid}\" description=\"{EscapeAttr(description)}\" parent=\"{EscapeAttr(moduleName)}\" parentType=\"00000000-0000-0000-0000-000000000008\">\r\n" +
                 partsSb.ToString().Replace("\r\n", "\n").Replace("\n", "\r\n") +
                 $"      {objProps}\r\n" +
                 $"    </Object>\r\n" +
@@ -1193,9 +1236,10 @@ namespace Gx18Mcp.SdkWorker.Sql
             File.WriteAllBytes(outputFile, zipBytes);
 
             long fileSize = new FileInfo(outputFile).Length;
-            return new { ok = true, name, type = "webpanel", outputFile, fileExists = true, bytes = fileSize,
+            string typeName = entityTypeId == 147 ? "usercontrol" : "webpanel";
+            return new { ok = true, name, type = typeName, outputFile, fileExists = true, bytes = fileSize,
                 exportedNames = new[] { name }, fallback = "sql",
-                note = "Exported via SQL blob reader (SDK Export unavailable for WebPanel in headless mode)" };
+                note = $"Exported via SQL blob reader (SDK Export unavailable for EntityTypeId {entityTypeId} in headless mode)" };
         }
     }
 }

@@ -80,8 +80,10 @@ const TOOLS: Tool[] = [
     name: 'gx_read',
     description:
       'Read the source code of a GeneXus KB object section. ' +
-      'Sections: source (Procedure code / UC template), events (WebPanel/UC events), ' +
+      'Sections vary by type — common ones: source (Procedure code), events (WebPanel/WBC events), ' +
       'rules (Transaction/Procedure rules), layout (WebForm), variables. ' +
+      'UserControl-specific: template (HTML/CSS screen template, section=template), ' +
+      'properties (property definitions XML, section=properties). ' +
       'Returns the reconstructed plain-text source. ' +
       'NEVER read the generated Java in javaoracle/ or render.js in static/ — use this tool instead. ' +
       'IMPORTANT: UserControl AfterShow and Methods scripts are NOT included in any gx_read section — ' +
@@ -93,7 +95,9 @@ const TOOLS: Tool[] = [
         type: { type: 'number', description: 'EntityTypeId' },
         section: {
           type: 'string',
-          description: 'Section to read: source, events, rules, layout, variables (defaults by object type)',
+          description:
+            'Section to read (defaults by object type). Common: source, events, rules, layout, variables. ' +
+            'UserControl (type=147): template (HTML/CSS), properties (property definitions).',
         },
       },
       required: ['name', 'type'],

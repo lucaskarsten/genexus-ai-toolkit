@@ -46,8 +46,11 @@ export async function run(): Promise<void> {
 2. gx_find — confirm object exists (modify) or doesn't exist (create)
 3. write tool with confirm:true
 
+## UC template and properties
+gx_read CAN access these: section=template (HTML/CSS) and section=properties (property definitions XML) for type=147.
+
 ## UC AfterShow/Methods scripts
-gx_read cannot access these. Use: gx_export → gx_read_xpz → gx_patch_xpz → gx_import(confirm:true)
+gx_read CANNOT access these. Use: gx_export → gx_read_xpz → gx_patch_xpz → gx_import(confirm:true)
 See resource gx18://docs/xpz-workflow for the full annotated workflow.
 
 ## Critical safety rule

@@ -32,9 +32,10 @@ Use sempre a ferramenta mais direta. A coluna "NUNCA usar" indica o caminho long
 | Buscar objeto por nome | `gx_find` | SQL manual em EntityVersion |
 | Listar objetos de um módulo | `gx_list` | `gx_find` sem filtro de módulo |
 | Ler source de procedure / WBP | `gx_read type=34/148 section=source` | Ler Java gerado em `javaoracle/` |
-| Ler template de UC | `gx_read type=147 section=source` | Ler `render.js` em `static/` (gerado, sobrescrito no build) |
+| Ler template de UC (HTML/CSS) | `gx_read type=147 section=template` | `section=source` (mapeava para tipo errado) ou `render.js` em `static/` (gerado, sobrescrito no build) |
+| Ler definições de propriedades de UC | `gx_read type=147 section=properties` | — |
 | Ler scripts AfterShow / Methods de UC | `gx_export` → abrir .xpz | `gx_read` (não captura essas partes) |
-| Ler propriedades de objeto | `gx_properties` | `gx_read section=properties` (retorna definições, não valores) |
+| Ler propriedades de objeto | `gx_properties` | `gx_read section=properties` em tipo não-UC (retorna definições, não valores) |
 | Ver estrutura de Transaction | `gx_structure` | SQL manual em EntityVersionComposition |
 | Verificar usuário antes de escrever | `gx_whoami` | Assumir UserId correto sem checar |
 | Criar objeto novo na KB | `gx_create confirm:true` | Gerar para `output/` quando a intenção é escrever na KB |
@@ -53,7 +54,8 @@ Use sempre a ferramenta mais direta. A coluna "NUNCA usar" indica o caminho long
 **Sequências obrigatórias:**
 - Antes de qualquer write → `gx_whoami` primeiro (confirma UserId correto)
 - Antes de criar objeto → `gx_find <name>` (confirma que não existe)
-- Para ler scripts de UC (AfterShow/Methods) → `gx_export` → abrir .xpz (NÃO `gx_read`)
+- Para ler template/properties de UC → `gx_read type=147 section=template` ou `section=properties`
+- Para ler scripts de UC (AfterShow/Methods) → `gx_export` → abrir .xpz (NÃO `gx_read` — essas partes são CDATA no XPZ)
 - Para editar objeto existente → `gx_modify` (NÃO `gx_import`)
 - Para editar scripts de UC → `gx_export` → patch CDATA → `gx_import` (NÃO `gx_modify`)
 - Após `gx_sql readOnly:false` que altera metadados da KB (INSERT/UPDATE em tabelas como EntityVersion, ModelEntityVersion, propriedades) → `gx_reload` para que o worker SDK releia a KB do banco; sem isso, operações SDK subsequentes usam o modelo em cache e não enxergam as mudanças
