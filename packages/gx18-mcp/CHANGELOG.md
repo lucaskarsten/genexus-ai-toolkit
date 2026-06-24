@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.4](https://github.com/lucaskarsten/genexus-ai-toolkit/compare/gx18-mcp-v1.9.3...gx18-mcp-v1.9.4) (2026-06-24)
+
+
+### Bug Fixes
+
+* **gx18-mcp:** retry copy in auto-update PS1 if exe is locked ([604de64](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/604de646809e40f2d44030281443f9482016afd9))
+
 ## [1.9.3](https://github.com/lucaskarsten/genexus-ai-toolkit/compare/gx18-mcp-v1.9.2...gx18-mcp-v1.9.3) (2026-06-24)
 
 
