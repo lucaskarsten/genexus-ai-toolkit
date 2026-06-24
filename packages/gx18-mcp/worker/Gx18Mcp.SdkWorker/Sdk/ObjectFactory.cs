@@ -522,6 +522,8 @@ namespace Gx18Mcp.SdkWorker.Sdk
             var kb = _session.KnowledgeBase;
             if (kb == null) throw new Exception("KB not open");
             var model = _session.KbType.GetProperty("DesignModel").GetValue(kb);
+            if (model == null) throw new Exception(
+                "DesignModel is null — worker KB session is stale. Kill the worker (Stop-Process Gx18Mcp.SdkWorker -Force) and retry.");
 
             var common = Assembly.Load("Artech.Architecture.Common");
             var servicesType = common.GetType("Artech.Architecture.Common.Services.Services");
@@ -545,6 +547,20 @@ namespace Gx18Mcp.SdkWorker.Sdk
             }
             if (export == null) throw new Exception("IKnowledgeManagerService.Export(model,objects,file,options) not found");
 
+            var firstName = itemList.Count > 0 ? itemList[0].name : "";
+            var firstType = itemList.Count > 0 ? itemList[0].typeKey : "";
+            var firstSpec = itemList.Count > 0 ? Spec(itemList[0].typeKey) : null;
+
+            // GX18 SDK Export for WebPanel/WebComponent (EntityTypeId 43) fails in headless mode:
+            // both ResolveByName and IKnowledgeManagerService.Export throw NullReferenceException
+            // because theme/layout services are not initialized without the IDE.
+            // Skip the entire SDK path and use SQL blob XPZ construction for this type.
+            if (firstSpec != null && firstSpec.EntityTypeId == 43)
+            {
+                Console.Error.WriteLine($"[gx18-worker] Type 43 detected ({firstName}): skipping SDK Export, using SQL XPZ builder.");
+                return _sql.SqlExportXpz(firstName, 43, outputFile);
+            }
+
             var objectsParam = export.GetParameters()[1].ParameterType;
             var elemType = objectsParam.IsGenericType ? objectsParam.GetGenericArguments()[0] : kbObjectType;
             var listType = typeof(List<>).MakeGenericType(elemType);
@@ -556,6 +572,7 @@ namespace Gx18Mcp.SdkWorker.Sdk
             {
                 var spec = Spec(typeKey);
                 var concrete = Resolve(spec);
+                if (concrete == null) throw new Exception($"Cannot resolve SDK type for '{typeKey}'");
                 var obj = ResolveByName(concrete, model, name);
                 if (obj == null) throw new Exception($"Object not found: {name} ({typeKey})");
                 object element = elemType.IsInstanceOfType(obj) ? obj : GetProp(obj, "Key");
@@ -574,8 +591,6 @@ namespace Gx18Mcp.SdkWorker.Sdk
             finally { Console.SetOut(savedOut); }
 
             long size = System.IO.File.Exists(outputFile) ? new System.IO.FileInfo(outputFile).Length : 0;
-            var firstName = itemList.Count > 0 ? itemList[0].name : "";
-            var firstType = itemList.Count > 0 ? itemList[0].typeKey : "";
             return new { ok, name = firstName, type = firstType, outputFile, fileExists = System.IO.File.Exists(outputFile), bytes = size, exportedNames };
         }
 
@@ -598,6 +613,8 @@ namespace Gx18Mcp.SdkWorker.Sdk
             var kb = _session.KnowledgeBase;
             if (kb == null) throw new Exception("KB not open");
             var model = _session.KbType.GetProperty("DesignModel").GetValue(kb);
+            if (model == null) throw new Exception(
+                "DesignModel is null — worker KB session is stale. Kill the worker (Stop-Process Gx18Mcp.SdkWorker -Force) and retry.");
 
             var common = Assembly.Load("Artech.Architecture.Common");
             var servicesType = common.GetType("Artech.Architecture.Common.Services.Services");

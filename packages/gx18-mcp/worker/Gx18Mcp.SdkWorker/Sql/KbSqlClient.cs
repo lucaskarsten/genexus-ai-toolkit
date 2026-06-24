@@ -1015,5 +1015,187 @@ namespace Gx18Mcp.SdkWorker.Sql
 
             return new { entityTypeId, module, findings, total = findings.Count };
         }
+
+        // --- SQL-based XPZ export for object types whose SDK Export fails headlessly ---
+        // Constructs a valid, importable XPZ by reading blobs directly from the KB SQL database.
+        // Confirmed part-type GUIDs come from real IDE-exported XPZ files (FoccoLojas_02).
+        public object SqlExportXpz(string name, int entityTypeId, string outputFile)
+        {
+            if (string.IsNullOrEmpty(name)) throw new Exception("name is required");
+
+            // Part GUID map: EntityTypeId → XPZ <Part type="..."> GUID
+            var partGuids = new Dictionary<int, string>
+            {
+                { 57, "763f0d8b-d8ac-4db4-8dd4-de8979f2b5b9" },  // Conditions
+                { 62, "babf62c5-0111-49e9-a1c3-cc004d90900a" },  // Documentation
+                { 64, "c44bd5ff-f918-415b-98e6-aca44fed84fa" },  // Events
+                { 65, "ad3ca970-19d0-44e1-a7b7-db05556e820c" },  // Help
+                { 67, "528d1c06-a9c2-420d-bd35-21dca83f12ff" },  // ProcedureSource
+                { 69, "9b0a32a3-de6d-4be1-a4dd-1b85d3741534" },  // Rules
+                { 72, "e4c4ade7-53f0-4a56-bdfd-843735b66f47" },  // Variables
+                { 74, "d24a58ad-57ba-41b7-9e6e-eaca3543c778" },  // WebForm
+            };
+            // Code parts: tokenized source stored as GX tokens → TokensToText → wrap in <Source><![CDATA[]]></Source>
+            var codeParts = new HashSet<int> { 57, 64, 67, 69 };
+            // Layout parts: decompressed blob IS the XML (e.g. <GxMultiForm>) → wrap in <Source><![CDATA[]]></Source>
+            var layoutParts = new HashSet<int> { 74 };
+            // Structure parts: decompressed blob IS raw XML (<Variable>, <Help>, <Properties/>) → embed directly
+
+            // 1. Object metadata
+            int entityId = 0, entityVersionId = 0;
+            string description = "", timestamp = "", entityVersionProperties = "", entityGuid = "";
+            var safeName = name.Replace("'", "''");
+            using (var conn = Open())
+            using (var cmd = new SqlCommand($@"
+                SELECT ev.EntityId, ev.EntityVersionId,
+                       ISNULL(ev.EntityVersionDescription, ''),
+                       ISNULL(ev.EntityVersionProperties, ''),
+                       e.EntityGuid
+                FROM EntityVersion ev
+                JOIN Entity e ON e.EntityTypeId = ev.EntityTypeId AND e.EntityId = ev.EntityId
+                WHERE ev.EntityTypeId = {entityTypeId} AND ev.EntityVersionName = N'{safeName}'
+                  AND ev.EntityVersionId = (SELECT MAX(v2.EntityVersionId) FROM EntityVersion v2
+                                             WHERE v2.EntityTypeId = {entityTypeId} AND v2.EntityId = ev.EntityId)", conn))
+            using (var r = cmd.ExecuteReader())
+            {
+                if (!r.Read())
+                    throw new Exception($"Object '{name}' (EntityTypeId {entityTypeId}) not found in KB. Run gx_find to confirm the exact name.");
+                entityId = r.GetInt32(0);
+                entityVersionId = r.GetInt32(1);
+                description = r.GetString(2);
+                entityVersionProperties = r.GetString(3);
+                entityGuid = r.GetGuid(4).ToString();
+            }
+            timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ");
+
+            // 2. Module name and GUID
+            string moduleName = "", parentGuid = "";
+            using (var conn = Open())
+            using (var cmd = new SqlCommand($@"
+                SELECT ISNULL(ev2.EntityVersionName, ''), ISNULL(CAST(e2.EntityGuid AS varchar(40)), '')
+                FROM ModelEntityVersion mev
+                JOIN EntityVersion ev2 ON ev2.EntityTypeId = 100 AND ev2.EntityId = mev.ModelParentEntityId
+                     AND ev2.EntityVersionId = (SELECT MAX(v2.EntityVersionId) FROM EntityVersion v2
+                                                 WHERE v2.EntityTypeId = 100 AND v2.EntityId = mev.ModelParentEntityId)
+                JOIN Entity e2 ON e2.EntityTypeId = 100 AND e2.EntityId = mev.ModelParentEntityId
+                WHERE mev.EntityTypeId = {entityTypeId} AND mev.EntityId = {entityId}
+                  AND mev.ModelId = (SELECT TOP 1 ModelId FROM ModelEntityVersion
+                                     WHERE EntityTypeId = {entityTypeId} AND EntityId = {entityId})", conn))
+            using (var r = cmd.ExecuteReader())
+            {
+                if (r.Read()) { moduleName = r.GetString(0); parentGuid = r.GetString(1); }
+            }
+
+            // 3. Parts
+            var partList = new List<(int typeId, int compEntityId)>();
+            using (var conn = Open())
+            using (var cmd = new SqlCommand($@"
+                SELECT evc.ComponentEntityTypeId, evc.ComponentEntityId
+                FROM EntityVersionComposition evc
+                WHERE evc.CompoundEntityTypeId = {entityTypeId}
+                  AND evc.CompoundEntityId = {entityId}
+                  AND evc.CompoundEntityVersionId = {entityVersionId}
+                ORDER BY evc.ComponentEntityTypeId", conn))
+            using (var r = cmd.ExecuteReader())
+            {
+                while (r.Read()) partList.Add((r.GetInt32(0), r.GetInt32(1)));
+            }
+
+            // 4. Build Part XML
+            Func<string, string> EscapeCdata = s => (s ?? "").Replace("]]>", "]]]]><![CDATA[>");
+            Func<string, string> EscapeAttr = s => (s ?? "").Replace("&", "&amp;").Replace("\"", "&quot;").Replace("<", "&lt;").Replace(">", "&gt;");
+
+            var partsSb = new StringBuilder();
+            foreach (var (partTypeId, compEntityId) in partList)
+            {
+                if (!partGuids.TryGetValue(partTypeId, out var partGuid)) continue;
+
+                var blob = ReadBlob(partTypeId, compEntityId);
+
+                if (codeParts.Contains(partTypeId))
+                {
+                    // Code parts: TokensToText on decompressed blob → CDATA
+                    string content = "";
+                    if (blob != null && blob.Length > 11)
+                    {
+                        var xml = Decompress(blob);
+                        content = TokensToText(xml);
+                        if (string.IsNullOrEmpty(content)) content = xml; // fallback
+                    }
+                    partsSb.AppendLine($"      <Part type=\"{partGuid}\">");
+                    partsSb.AppendLine($"        <Source><![CDATA[{EscapeCdata(content)}]]></Source>");
+                    partsSb.AppendLine($"        <Properties><Property><Name>IsDefault</Name><Value>False</Value></Property></Properties>");
+                    partsSb.AppendLine($"      </Part>");
+                }
+                else if (layoutParts.Contains(partTypeId))
+                {
+                    // Layout parts: decompressed blob IS the content (e.g. GxMultiForm XML) → CDATA
+                    string content = "";
+                    if (blob != null && blob.Length > 11)
+                        content = Decompress(blob);
+                    partsSb.AppendLine($"      <Part type=\"{partGuid}\">");
+                    partsSb.AppendLine($"        <Source><![CDATA[{EscapeCdata(content)}]]></Source>");
+                    partsSb.AppendLine($"      </Part>");
+                }
+                else
+                {
+                    // Structure parts (Variables, Help, Documentation): decompressed blob IS raw XML
+                    string content = "";
+                    if (blob != null && blob.Length > 11)
+                        content = Decompress(blob);
+                    partsSb.AppendLine($"      <Part type=\"{partGuid}\">");
+                    if (!string.IsNullOrEmpty(content)) partsSb.Append(content);
+                    partsSb.AppendLine();
+                    partsSb.AppendLine($"      </Part>");
+                }
+            }
+
+            // 5. Object-level Properties (pass-through from EntityVersionProperties)
+            string objProps = string.IsNullOrEmpty(entityVersionProperties) ? "<Properties />" : entityVersionProperties;
+
+            // KB name from connection string
+            var csb = new System.Data.SqlClient.SqlConnectionStringBuilder(_connectionString);
+            string kbName = csb.InitialCatalog;
+
+            // 6. Assemble XPZ XML
+            string xpzXml = $"<?xml version=\"1.0\" encoding=\"utf-8\"?>\r\n" +
+                $"<ExportFile>\r\n" +
+                $"  <KMW kbname=\"{EscapeAttr(kbName)}\" />\r\n" +
+                $"  <Source kb=\"{EscapeAttr(kbName)}\" UNCPath=\"\" />\r\n" +
+                $"  <Dependencies />\r\n" +
+                $"  <ObjectsIdentityMapping>\r\n" +
+                $"    <ObjectIdentity Type=\"c9584656-94b6-4ccd-890f-332d11fc2c25\" Name=\"{EscapeAttr(name)}\" parent=\"{EscapeAttr(moduleName)}\">\r\n" +
+                $"      <Guid>{entityGuid}</Guid>\r\n" +
+                $"    </ObjectIdentity>\r\n" +
+                $"  </ObjectsIdentityMapping>\r\n" +
+                $"  <Objects>\r\n" +
+                $"    <Object parentGuid=\"{parentGuid}\" user=\"\" versionDate=\"{timestamp}\" lastUpdate=\"{timestamp}\" checksum=\"{new string('0', 32)}\" fullyQualifiedName=\"{EscapeAttr(name)}\" moduleGuid=\"\" guid=\"{entityGuid}\" name=\"{EscapeAttr(name)}\" type=\"c9584656-94b6-4ccd-890f-332d11fc2c25\" description=\"{EscapeAttr(description)}\" parent=\"{EscapeAttr(moduleName)}\" parentType=\"00000000-0000-0000-0000-000000000008\">\r\n" +
+                partsSb.ToString().Replace("\r\n", "\n").Replace("\n", "\r\n") +
+                $"      {objProps}\r\n" +
+                $"    </Object>\r\n" +
+                $"  </Objects>\r\n" +
+                $"</ExportFile>";
+
+            // 7. Write ZIP (BOM UTF-8 + CRLF)
+            Directory.CreateDirectory(Path.GetDirectoryName(outputFile) ?? ".");
+            var bomUtf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: true);
+            byte[] zipBytes;
+            using (var ms = new MemoryStream())
+            {
+                using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
+                {
+                    var entry = zip.CreateEntry(name + ".xml", CompressionLevel.Optimal);
+                    using (var writer = new StreamWriter(entry.Open(), bomUtf8))
+                    { writer.NewLine = "\r\n"; writer.Write(xpzXml); }
+                }
+                zipBytes = ms.ToArray();
+            }
+            File.WriteAllBytes(outputFile, zipBytes);
+
+            long fileSize = new FileInfo(outputFile).Length;
+            return new { ok = true, name, type = "webpanel", outputFile, fileExists = true, bytes = fileSize,
+                exportedNames = new[] { name }, fallback = "sql",
+                note = "Exported via SQL blob reader (SDK Export unavailable for WebPanel in headless mode)" };
+        }
     }
 }

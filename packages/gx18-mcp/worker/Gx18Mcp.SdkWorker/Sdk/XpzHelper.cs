@@ -9,6 +9,29 @@ namespace Gx18Mcp.SdkWorker.Sdk
 {
     internal static class XpzHelper
     {
+        // Maps <Part type="GUID"> GUIDs to friendly section names.
+        // Confirmed from real IDE-exported XPZ files (FoccoLojas_02, June 2026).
+        private static readonly Dictionary<string, string> PartGuidToName =
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "763f0d8b-d8ac-4db4-8dd4-de8979f2b5b9", "Conditions" },
+                { "babf62c5-0111-49e9-a1c3-cc004d90900a", "Documentation" },
+                { "c44bd5ff-f918-415b-98e6-aca44fed84fa", "Events" },
+                { "ad3ca970-19d0-44e1-a7b7-db05556e820c", "Help" },
+                { "528d1c06-a9c2-420d-bd35-21dca83f12ff", "ProcedureSource" },
+                { "9b0a32a3-de6d-4be1-a4dd-1b85d3741534", "Rules" },
+                { "e4c4ade7-53f0-4a56-bdfd-843735b66f47", "Variables" },
+                { "d24a58ad-57ba-41b7-9e6e-eaca3543c778", "WebForm" },
+            };
+
+        private static readonly Dictionary<string, string> PartNameToGuid =
+            new Func<Dictionary<string, string>>(() =>
+            {
+                var d = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var kv in PartGuidToName) d[kv.Value] = kv.Key;
+                return d;
+            })();
+
         public static object ReadXpz(string xpzFile, string scriptName, string partFilter = null)
         {
             if (!File.Exists(xpzFile))
@@ -16,36 +39,45 @@ namespace Gx18Mcp.SdkWorker.Sdk
 
             string xml = ReadXmlFromZip(xpzFile);
 
+            // UC format: <Script Name="AfterShow"><![CDATA[...]]></Script>
             var scriptRx = new Regex(
                 @"<Script\b[^>]*\bName=""([^""]+)""[^>]*><!\[CDATA\[([\s\S]*?)\]\]></Script>",
                 RegexOptions.Compiled);
 
+            // WebPanel/WBC format (SQL-exported): <Part type="GUID"><Source><![CDATA[...]]></Source>
+            var partSourceRx = new Regex(
+                @"<Part\b[^>]*\btype=""([^""]+)""[^>]*>\s*<Source><!\[CDATA\[([\s\S]*?)\]\]></Source>",
+                RegexOptions.Compiled);
+
             var scripts = new List<object>();
             bool found = false;
-            foreach (Match m in scriptRx.Matches(xml))
-            {
-                string sName = m.Groups[1].Value;
-                string sBody = m.Groups[2].Value;
 
-                // Apply partFilter: skip scripts whose name doesn't contain the filter substring.
+            void AddEntry(string sName, string sBody)
+            {
                 if (!string.IsNullOrEmpty(partFilter) &&
                     string.IsNullOrEmpty(scriptName) &&
                     sName.IndexOf(partFilter, StringComparison.OrdinalIgnoreCase) < 0)
-                    continue;
+                    return;
 
                 bool isTarget = !string.IsNullOrEmpty(scriptName) &&
                                 string.Equals(sName, scriptName, StringComparison.OrdinalIgnoreCase);
-
                 if (isTarget) found = true;
 
                 if (string.IsNullOrEmpty(scriptName))
-                {
                     scripts.Add(new { name = sName, length = sBody.Length });
-                }
                 else if (isTarget)
-                {
                     scripts.Add(new { name = sName, length = sBody.Length, content = sBody });
-                }
+            }
+
+            foreach (Match m in scriptRx.Matches(xml))
+                AddEntry(m.Groups[1].Value, m.Groups[2].Value);
+
+            foreach (Match m in partSourceRx.Matches(xml))
+            {
+                string guid = m.Groups[1].Value;
+                string body = m.Groups[2].Value;
+                string sName = PartGuidToName.TryGetValue(guid, out var n) ? n : guid;
+                AddEntry(sName, body);
             }
 
             if (!string.IsNullOrEmpty(scriptName) && !found)
@@ -106,20 +138,40 @@ namespace Gx18Mcp.SdkWorker.Sdk
                         $"Patch for script '{patch.Key}' contains ']]>' which is the CDATA closing marker. " +
                         "Refactor the script to avoid the literal ']]>' sequence.");
 
+                // Try UC format first: <Script Name="X"><![CDATA[...]]></Script>
                 var scriptRx2 = new Regex(
                     @"<Script\b[^>]*\bName=""" + Regex.Escape(patch.Key) + @"""[^>]*><!\[CDATA\[([\s\S]*?)\]\]></Script>",
                     RegexOptions.Compiled);
                 var origMatch2 = scriptRx2.Match(xml2);
-                if (!origMatch2.Success)
-                    throw new Exception($"Script '{patch.Key}' not found in XPZ XML. Use gx_read_xpz to list available scripts.");
 
-                int origLen = origMatch2.Groups[1].Value.Length;
-                var replaceRx2 = new Regex(
-                    @"(<Script\b[^>]*\bName=""" + Regex.Escape(patch.Key) + @"""[^>]*>)<!\[CDATA\[[\s\S]*?\]\]>(</Script>)",
-                    RegexOptions.Compiled);
-                xml2 = replaceRx2.Replace(xml2,
-                    m => m.Groups[1].Value + "<![CDATA[" + patch.Value + "]]>" + m.Groups[2].Value);
-                patchResults.Add(new { scriptName = patch.Key, originalLength = origLen, newLength = (patch.Value ?? "").Length });
+                if (origMatch2.Success)
+                {
+                    int origLen2 = origMatch2.Groups[1].Value.Length;
+                    var replaceRx2 = new Regex(
+                        @"(<Script\b[^>]*\bName=""" + Regex.Escape(patch.Key) + @"""[^>]*>)<!\[CDATA\[[\s\S]*?\]\]>(</Script>)",
+                        RegexOptions.Compiled);
+                    xml2 = replaceRx2.Replace(xml2,
+                        m => m.Groups[1].Value + "<![CDATA[" + patch.Value + "]]>" + m.Groups[2].Value);
+                    patchResults.Add(new { scriptName = patch.Key, originalLength = origLen2, newLength = (patch.Value ?? "").Length });
+                }
+                else if (PartNameToGuid.TryGetValue(patch.Key, out var partGuid2))
+                {
+                    // WebPanel/WBC format: <Part type="GUID"><Source><![CDATA[...]]></Source>
+                    var partOrigRx2 = new Regex(
+                        @"(<Part\b[^>]*\btype=""" + Regex.Escape(partGuid2) + @"""[^>]*>\s*<Source>)<!\[CDATA\[([\s\S]*?)\]\]>(</Source>)",
+                        RegexOptions.Compiled);
+                    var partOrigMatch2 = partOrigRx2.Match(xml2);
+                    if (!partOrigMatch2.Success)
+                        throw new Exception($"Part '{patch.Key}' (GUID {partGuid2}) not found as <Source> element in XPZ XML. Use gx_read_xpz to list available sections.");
+                    int origLen3 = partOrigMatch2.Groups[2].Value.Length;
+                    xml2 = partOrigRx2.Replace(xml2,
+                        m => m.Groups[1].Value + "<![CDATA[" + patch.Value + "]]>" + m.Groups[3].Value);
+                    patchResults.Add(new { scriptName = patch.Key, originalLength = origLen3, newLength = (patch.Value ?? "").Length });
+                }
+                else
+                {
+                    throw new Exception($"Script/part '{patch.Key}' not found in XPZ XML. Use gx_read_xpz to list available scripts. Known part names: {string.Join(", ", PartNameToGuid.Keys)}.");
+                }
             }
 
             // Bump lastUpdate + zero checksum once after all patches applied
@@ -168,17 +220,6 @@ namespace Gx18Mcp.SdkWorker.Sdk
             string entryName;
             string xml = ReadXmlEntry(xpzFile, out entryName);
 
-            // Capture original length
-            var origRx = new Regex(
-                @"<Script\b[^>]*\bName=""" + Regex.Escape(scriptName) + @"""[^>]*><!\[CDATA\[([\s\S]*?)\]\]></Script>",
-                RegexOptions.Compiled);
-            var origMatch = origRx.Match(xml);
-            if (!origMatch.Success)
-                throw new Exception("Script '" + scriptName + "' not found in XPZ XML. Use gx_read_xpz to list available scripts.");
-            int originalLength = origMatch.Groups[1].Value.Length;
-
-            // GeneXus does not merge adjacent CDATA sections — ']]>' in script content
-            // would corrupt the XPZ XML. Require the caller to refactor the script instead.
             if ((content ?? "").Contains("]]>"))
                 throw new Exception(
                     "content contains ']]>' which is the CDATA closing marker and cannot be embedded " +
@@ -186,12 +227,41 @@ namespace Gx18Mcp.SdkWorker.Sdk
                     "(e.g. split the string constant across two lines or use a variable).");
             string safeCdata = content ?? "";
 
-            // Replace the CDATA body, preserving the opening/closing Script tags
-            var replaceRx = new Regex(
-                @"(<Script\b[^>]*\bName=""" + Regex.Escape(scriptName) + @"""[^>]*>)<!\[CDATA\[[\s\S]*?\]\]>(</Script>)",
+            // Try UC format: <Script Name="X"><![CDATA[...]]></Script>
+            var origRx = new Regex(
+                @"<Script\b[^>]*\bName=""" + Regex.Escape(scriptName) + @"""[^>]*><!\[CDATA\[([\s\S]*?)\]\]></Script>",
                 RegexOptions.Compiled);
-            string patchedXml = replaceRx.Replace(xml,
-                m => m.Groups[1].Value + "<![CDATA[" + safeCdata + "]]>" + m.Groups[2].Value);
+            var origMatch = origRx.Match(xml);
+            int originalLength;
+            string patchedXml;
+
+            if (origMatch.Success)
+            {
+                originalLength = origMatch.Groups[1].Value.Length;
+                var replaceRx = new Regex(
+                    @"(<Script\b[^>]*\bName=""" + Regex.Escape(scriptName) + @"""[^>]*>)<!\[CDATA\[[\s\S]*?\]\]>(</Script>)",
+                    RegexOptions.Compiled);
+                patchedXml = replaceRx.Replace(xml,
+                    m => m.Groups[1].Value + "<![CDATA[" + safeCdata + "]]>" + m.Groups[2].Value);
+            }
+            else if (PartNameToGuid.TryGetValue(scriptName, out var partGuid))
+            {
+                // WebPanel/WBC format: <Part type="GUID"><Source><![CDATA[...]]></Source>
+                var partOrigRx = new Regex(
+                    @"(<Part\b[^>]*\btype=""" + Regex.Escape(partGuid) + @"""[^>]*>\s*<Source>)<!\[CDATA\[([\s\S]*?)\]\]>(</Source>)",
+                    RegexOptions.Compiled);
+                var partOrigMatch = partOrigRx.Match(xml);
+                if (!partOrigMatch.Success)
+                    throw new Exception($"Part '{scriptName}' (GUID {partGuid}) not found as <Source> element in XPZ XML. Use gx_read_xpz to list available sections.");
+                originalLength = partOrigMatch.Groups[2].Value.Length;
+                patchedXml = partOrigRx.Replace(xml,
+                    m => m.Groups[1].Value + "<![CDATA[" + safeCdata + "]]>" + m.Groups[3].Value);
+            }
+            else
+            {
+                throw new Exception("Script '" + scriptName + "' not found in XPZ XML. Use gx_read_xpz to list available scripts. " +
+                    $"Known part names for WebPanel XPZ: {string.Join(", ", PartNameToGuid.Keys)}.");
+            }
 
             // Bump lastUpdate on <Object ...> element
             var now = DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmss");

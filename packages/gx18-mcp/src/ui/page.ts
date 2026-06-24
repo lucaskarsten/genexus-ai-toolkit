@@ -1091,7 +1091,7 @@ function chatSend() {
   if (!text && !_pendingImagePath) return;
   // Append image reference so Claude can Read() it
   if (_pendingImagePath) {
-    text = (text ? text + '\n\n' : '') + '[Imagem anexada: ' + _pendingImagePath + ']';
+    text = (text ? text + '\\n\\n' : '') + '[Imagem anexada: ' + _pendingImagePath + ']';
     clearChatImage();
   }
   el('chat-in').value = '';
