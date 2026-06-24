@@ -36,8 +36,8 @@ describe.skipIf(!SPIKE_AVAILABLE)('tools: export-import round-trip', () => {
   });
 
   it('export — gera .xpz em C:\\tmp\\', async () => {
-    const r = await callBridge<any>('export', {
-      typeKey: 'procedure',
+    const r = await callBridge<any>('export_xpz', {
+      type: 'procedure',
       name: objName,
       outputFile: xpzFile,
     });
@@ -70,5 +70,43 @@ describe.skipIf(!SPIKE_AVAILABLE)('tools: export-import round-trip', () => {
     });
     const versions: any[] = Array.isArray(r) ? r : (r.versions ?? r.history ?? []);
     expect(versions.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('read_xpz — lista scripts do .xpz', async () => {
+    const r = await callBridge<any>('read_xpz', { xpzFile });
+    expect(r.ok).toBe(true);
+    expect(Array.isArray(r.scripts)).toBe(true);
+    expect(r.scriptCount).toBeGreaterThanOrEqual(1);
+    expect(r.scripts[0]).toHaveProperty('name');
+    expect(r.scripts[0]).toHaveProperty('length');
+    // listing mode: content must NOT be present
+    expect(r.scripts[0].content).toBeUndefined();
+  });
+
+  it('patch_xpz — escreve XPZ patchado e conteúdo é verificável', async () => {
+    const listR = await callBridge<any>('read_xpz', { xpzFile });
+    if (listR.scriptCount === 0) return; // no scripts to patch, skip
+    const targetScript: string = listR.scripts[0].name;
+    const patchedFile = xpzFile.replace('.xpz', '_patched.xpz');
+
+    const r = await callBridge<any>('patch_xpz', {
+      xpzFile,
+      scriptName: targetScript,
+      content: '// patched by integration test',
+    });
+    expect(r.ok).toBe(true);
+    expect(r.patched).toBe(true);
+    expect(r.outputFile).toBe(patchedFile);
+    expect(fs.existsSync(r.outputFile)).toBe(true);
+
+    // Verify the patched content is readable
+    const readR = await callBridge<any>('read_xpz', {
+      xpzFile: r.outputFile,
+      scriptName: targetScript,
+    });
+    expect(readR.ok).toBe(true);
+    expect(readR.scripts[0].content).toContain('// patched by integration test');
+
+    if (fs.existsSync(patchedFile)) fs.unlinkSync(patchedFile);
   });
 });
