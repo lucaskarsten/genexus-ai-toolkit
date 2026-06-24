@@ -1,4 +1,3 @@
-import crypto from 'crypto';
 import http from 'http';
 import { spawn } from 'child_process';
 
@@ -72,10 +71,9 @@ function listenOn(server: http.Server, port: number): Promise<void> {
 
 export async function startUi(opts: UiServerOptions = {}): Promise<RunningUi> {
   const readonly = isReadonly();
-  const token = crypto.randomBytes(16).toString('hex'); // 32-char hex session token
 
   let boundPort = 0;
-  const ctx: ApiCtx = { readonly, port: 0, token };
+  const ctx: ApiCtx = { readonly, port: 0 };
 
   const server = http.createServer((req, res) => {
     void handleRequest(req, res, ctx);
@@ -197,16 +195,13 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
       return;
     }
 
-    const requestToken = (req.headers['x-auth-token'] as string | undefined)
-      ?? req.headers.authorization?.replace(/^Bearer\s+/i, '');
-
     let body: unknown;
     if (method === 'POST') {
       try { body = await readBody(req); }
       catch (err) { send(res, 400, { error: err instanceof Error ? err.message : String(err) }); return; }
     }
     try {
-      const result = await handleApi(ctx, method, pathname, requestToken, body);
+      const result = await handleApi(ctx, method, pathname, body);
       send(res, result.status, result.body);
     } catch (err) {
       send(res, 500, { error: err instanceof Error ? err.message : String(err) });
