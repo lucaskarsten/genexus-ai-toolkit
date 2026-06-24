@@ -1,6 +1,8 @@
 import { Resource } from '@modelcontextprotocol/sdk/types.js';
 import quickReference from './docs/quick-reference.md';
 import usageGuide from './docs/usage-guide.md';
+import xpzWorkflow from './docs/xpz-workflow.md';
+import genexusKnowledge from './docs/genexus-knowledge.md';
 import spec from '../spec/entity-types.json';
 
 // Both .md imports are resolved by esbuild at build time (loader: { '.md': 'text' })
@@ -9,6 +11,8 @@ import spec from '../spec/entity-types.json';
 const QUICK_REFERENCE_URI = 'gx18://docs/quick-reference';
 const USAGE_GUIDE_URI = 'gx18://docs/usage-guide';
 const ENTITY_TYPES_URI = 'gx18://docs/entity-types';
+const XPZ_WORKFLOW_URI = 'gx18://docs/xpz-workflow';
+const GENEXUS_KNOWLEDGE_URI = 'gx18://docs/genexus-knowledge';
 
 export const RESOURCES: Resource[] = [
   {
@@ -33,6 +37,24 @@ export const RESOURCES: Resource[] = [
     description:
       'All supported object types with their EntityTypeId, SDK type, write support status, ' +
       'and available sections. Derived from the canonical entity-types.json spec.',
+    mimeType: 'text/markdown',
+  },
+  {
+    uri: XPZ_WORKFLOW_URI,
+    name: 'XPZ Round-Trip Workflow',
+    description:
+      'Full annotated guide for the gx_export → gx_read_xpz → gx_patch_xpz → gx_import round-trip. ' +
+      'The only path to read or edit UserControl AfterShow and Methods scripts. ' +
+      'Covers pitfalls (CDATA ]]> restriction, fullOverwrite requirement, build-after-import).',
+    mimeType: 'text/markdown',
+  },
+  {
+    uri: GENEXUS_KNOWLEDGE_URI,
+    name: 'GeneXus 18 Platform Knowledge',
+    description:
+      'GeneXus 18 platform reference for LLMs: object model, event lifecycle (Start/Refresh/Load/OnMessage), ' +
+      'procedure and WebPanel syntax, UserControl AfterShow/MutationObserver patterns, DSO styles, ' +
+      'Submit async pattern, special variables, module structure, and KB SQL key tables.',
     mimeType: 'text/markdown',
   },
 ];
@@ -93,6 +115,10 @@ export function readResource(uri: string): { contents: ResourceContents[] } | nu
       return { contents: [{ uri, mimeType: 'text/markdown', text: usageGuide }] };
     case ENTITY_TYPES_URI:
       return { contents: [{ uri, mimeType: 'text/markdown', text: buildEntityTypesDoc() }] };
+    case XPZ_WORKFLOW_URI:
+      return { contents: [{ uri, mimeType: 'text/markdown', text: xpzWorkflow }] };
+    case GENEXUS_KNOWLEDGE_URI:
+      return { contents: [{ uri, mimeType: 'text/markdown', text: genexusKnowledge }] };
     default:
       return null;
   }
