@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.1](https://github.com/lucaskarsten/genexus-ai-toolkit/compare/gx18-mcp-v1.9.0...gx18-mcp-v1.9.1) (2026-06-24)
+
+
+### Bug Fixes
+
+* **gx18-mcp:** escape forward slash in chat image path regex ([04b2162](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/04b2162727b3977179c24041c95fe3b8692289bc))
+
 ## [1.9.0](https://github.com/lucaskarsten/genexus-ai-toolkit/compare/gx18-mcp-v1.8.0...gx18-mcp-v1.9.0) (2026-06-24)
 
 
