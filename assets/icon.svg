@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#60C8F5"/>
+      <stop offset="100%" stop-color="#2E8FD4"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="128" height="128" rx="24" fill="url(#bg)"/>
+
+  <!-- Ears (behind head) -->
+  <ellipse cx="24" cy="74" rx="16" ry="28" fill="#C8BAA0" transform="rotate(-10, 24, 74)"/>
+  <ellipse cx="104" cy="74" rx="16" ry="28" fill="#C8BAA0" transform="rotate(10, 104, 74)"/>
+
+  <!-- Head -->
+  <circle cx="64" cy="60" r="40" fill="#F4EFE6" stroke="#D8CEBC" stroke-width="1.5"/>
+
+  <!-- Muzzle -->
+  <ellipse cx="64" cy="78" rx="20" ry="16" fill="#FDFAF7"/>
+
+  <!-- Cheek blush -->
+  <circle cx="37" cy="70" r="10" fill="#F9A8D4" opacity="0.35"/>
+  <circle cx="91" cy="70" r="10" fill="#F9A8D4" opacity="0.35"/>
+
+  <!-- Eyebrows -->
+  <path d="M41,44 Q48,41 55,44" stroke="#A89278" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <path d="M73,44 Q80,41 87,44" stroke="#A89278" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+  <!-- Eyes -->
+  <circle cx="48" cy="55" r="10" fill="#2D1B0E"/>
+  <circle cx="80" cy="55" r="10" fill="#2D1B0E"/>
+  <!-- Eye highlights -->
+  <circle cx="51" cy="51" r="3.5" fill="white"/>
+  <circle cx="83" cy="51" r="3.5" fill="white"/>
+
+  <!-- Nose -->
+  <ellipse cx="64" cy="74" rx="10" ry="7" fill="#1C1108"/>
+  <ellipse cx="61" cy="71" rx="2.5" ry="1.8" fill="white" opacity="0.3"/>
+
+  <!-- Mouth -->
+  <path d="M56,83 Q64,89 72,83" stroke="#8B4513" stroke-width="2" fill="none" stroke-linecap="round"/>
+
+  <!-- Tongue -->
+  <ellipse cx="64" cy="91" rx="10" ry="7" fill="#F472B6"/>
+  <line x1="64" y1="85" x2="64" y2="97" stroke="#DB2777" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

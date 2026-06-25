@@ -1,66 +1,182 @@
 #!/usr/bin/env node
-// Generates a valid 32x32 32bpp ICO file at assets/icon.ico
+// Generates assets/icon.ico (32×32 32bpp) — Nara the labrador
+// Also generates src/ui/favicon-b64.ts for the web UI favicon
 // No npm dependencies — pure Buffer manipulation
+'use strict'
 
-'use strict';
+const fs   = require('fs')
+const path = require('path')
 
-const fs = require('fs');
-const path = require('path');
+const W = 32, H = 32
+const rgba = new Uint8ClampedArray(W * H * 4)
 
-const WIDTH = 32;
-const HEIGHT = 32;
-const BPP = 32;
+// ── Pixel helpers ─────────────────────────────────────────────────────────────
 
-// BITMAPINFOHEADER (40 bytes)
-const dibHeader = Buffer.alloc(40);
-dibHeader.writeUInt32LE(40, 0);          // biSize
-dibHeader.writeInt32LE(WIDTH, 4);        // biWidth
-dibHeader.writeInt32LE(HEIGHT * 2, 8);   // biHeight (doubled for ICO)
-dibHeader.writeUInt16LE(1, 12);          // biPlanes
-dibHeader.writeUInt16LE(BPP, 14);        // biBitCount
-dibHeader.writeUInt32LE(0, 16);          // biCompression (BI_RGB)
-dibHeader.writeUInt32LE(WIDTH * HEIGHT * 4, 20); // biSizeImage
-dibHeader.writeInt32LE(0, 24);           // biXPelsPerMeter
-dibHeader.writeInt32LE(0, 28);           // biYPelsPerMeter
-dibHeader.writeUInt32LE(0, 32);          // biClrUsed
-dibHeader.writeUInt32LE(0, 36);          // biClrImportant
-
-// Pixel data: BGRA, bottom-up, solid color B=0xFF G=0x8C R=0x4F A=0xFF
-// Color: #4F8CFF (nice blue)
-const pixelData = Buffer.alloc(WIDTH * HEIGHT * 4);
-for (let i = 0; i < WIDTH * HEIGHT; i++) {
-  pixelData[i * 4 + 0] = 0xFF; // B
-  pixelData[i * 4 + 1] = 0x8C; // G
-  pixelData[i * 4 + 2] = 0x4F; // R
-  pixelData[i * 4 + 3] = 0xFF; // A
+function px(x, y, r, g, b, a = 255) {
+  x = Math.round(x); y = Math.round(y)
+  if (x < 0 || x >= W || y < 0 || y >= H) return
+  const i = (y * W + x) * 4
+  const ea = a / 255, ia = 1 - ea
+  rgba[i]   = rgba[i]   * ia + r * ea
+  rgba[i+1] = rgba[i+1] * ia + g * ea
+  rgba[i+2] = rgba[i+2] * ia + b * ea
+  rgba[i+3] = 255
 }
 
-// AND mask (128 bytes = 32 * 32 / 8): all zeros (fully opaque)
-const andMask = Buffer.alloc(128, 0);
+function circle(cx, cy, rad, r, g, b, a = 255) {
+  for (let dy = -rad-1; dy <= rad+1; dy++) {
+    for (let dx = -rad-1; dx <= rad+1; dx++) {
+      const d = Math.sqrt(dx*dx + dy*dy)
+      const aa = Math.max(0, Math.min(1, rad + 0.5 - d))
+      if (aa > 0) px(cx+dx, cy+dy, r, g, b, a * aa)
+    }
+  }
+}
 
-const imageData = Buffer.concat([dibHeader, pixelData, andMask]);
-const bytesInRes = imageData.length; // 40 + 4096 + 128 = 4264
+function ellipse(cx, cy, rx, ry, r, g, b, a = 255) {
+  cx = Math.round(cx); cy = Math.round(cy)
+  const mx = Math.ceil(rx + 1), my = Math.ceil(ry + 1)
+  const sc = Math.min(rx, ry)
+  for (let dy = -my; dy <= my; dy++) {
+    for (let dx = -mx; dx <= mx; dx++) {
+      const nd = Math.sqrt((dx/rx)*(dx/rx) + (dy/ry)*(dy/ry))
+      const aa = Math.max(0, Math.min(1, (1 - nd) * sc + 0.5))
+      if (aa > 0) px(cx+dx, cy+dy, r, g, b, a * aa)
+    }
+  }
+}
 
-// ICONDIR header (6 bytes)
-const iconDir = Buffer.alloc(6);
-iconDir.writeUInt16LE(0, 0);   // reserved
-iconDir.writeUInt16LE(1, 2);   // type = 1 (ICO)
-iconDir.writeUInt16LE(1, 4);   // count = 1
+function ellipseRot(cx, cy, rx, ry, angle, r, g, b, a = 255) {
+  const cos = Math.cos(-angle), sin = Math.sin(-angle)
+  const mx = Math.ceil(Math.max(rx, ry) + 1)
+  const sc = Math.min(rx, ry)
+  for (let dy = -mx; dy <= mx; dy++) {
+    for (let dx = -mx; dx <= mx; dx++) {
+      const rdx = dx * cos - dy * sin
+      const rdy = dx * sin + dy * cos
+      const nd = Math.sqrt((rdx/rx)*(rdx/rx) + (rdy/ry)*(rdy/ry))
+      const aa = Math.max(0, Math.min(1, (1 - nd) * sc + 0.5))
+      if (aa > 0) px(Math.round(cx)+dx, Math.round(cy)+dy, r, g, b, a * aa)
+    }
+  }
+}
 
-// ICONDIRENTRY (16 bytes)
-const dirEntry = Buffer.alloc(16);
-dirEntry.writeUInt8(WIDTH, 0);         // width (0 = 256)
-dirEntry.writeUInt8(HEIGHT, 1);        // height
-dirEntry.writeUInt8(0, 2);             // colorCount
-dirEntry.writeUInt8(0, 3);             // reserved
-dirEntry.writeUInt16LE(1, 4);          // planes
-dirEntry.writeUInt16LE(BPP, 6);        // bitCount
-dirEntry.writeUInt32LE(bytesInRes, 8); // bytesInRes
-dirEntry.writeUInt32LE(6 + 16, 12);   // imageOffset (after ICONDIR + ICONDIRENTRY)
+// ── Background (linear gradient top-left #60C8F5 → bottom-right #2E8FD4) ─────
 
-const ico = Buffer.concat([iconDir, dirEntry, imageData]);
+for (let y = 0; y < H; y++) {
+  for (let x = 0; x < W; x++) {
+    const t = (x + y) / (W + H - 2)
+    px(x, y,
+      Math.round(96  + (46  - 96)  * t),
+      Math.round(200 + (143 - 200) * t),
+      Math.round(245 + (212 - 245) * t))
+  }
+}
 
-const outPath = path.join(__dirname, '..', 'assets', 'icon.ico');
-fs.mkdirSync(path.dirname(outPath), { recursive: true });
-fs.writeFileSync(outPath, ico);
-console.log('Generated:', outPath, `(${ico.length} bytes)`);
+// ── Nara (labrador, 32×32 — all coords scaled from 128px SVG by ×0.25) ───────
+
+const DEG = Math.PI / 180
+
+// Ears (behind head — draw first so head covers inner edge)
+ellipseRot( 6, 18.5, 4, 7, -10*DEG, 200, 186, 160)
+ellipseRot(26, 18.5, 4, 7,  10*DEG, 200, 186, 160)
+
+// Head
+circle(16, 15, 10, 244, 239, 230)
+
+// Muzzle (lighter area)
+ellipse(16, 19.5, 5, 4, 253, 250, 247)
+
+// Cheeks blush (subtle)
+circle( 9.25, 17.5, 2.5, 249, 168, 212, 90)
+circle(22.75, 17.5, 2.5, 249, 168, 212, 90)
+
+// Eyes
+circle(12, 13.75, 2.5, 45, 27, 14)
+circle(20, 13.75, 2.5, 45, 27, 14)
+// Eye highlights
+circle(12.75, 12.75, 0.9, 255, 255, 255)
+circle(20.75, 12.75, 0.9, 255, 255, 255)
+
+// Nose
+ellipse(16, 18.5, 2.5, 1.75, 28, 17, 8)
+
+// Tongue
+ellipse(16, 22.75, 2.5, 1.75, 244, 114, 182)
+
+// ── Rounded-rect clip (r=5) applied last so it always masks corners ───────────
+
+const RX = 5
+for (let y = 0; y < H; y++) {
+  for (let x = 0; x < W; x++) {
+    const cx = x < RX ? RX : x > W-1-RX ? W-1-RX : x
+    const cy = y < RX ? RX : y > H-1-RX ? H-1-RX : y
+    if ((x !== cx || y !== cy) && Math.hypot(x-cx, y-cy) > RX)
+      rgba[(y*W+x)*4+3] = 0
+  }
+}
+
+// ── ICO encoding ──────────────────────────────────────────────────────────────
+
+const dibHeader = Buffer.alloc(40)
+dibHeader.writeUInt32LE(40, 0)
+dibHeader.writeInt32LE(W, 4)
+dibHeader.writeInt32LE(H * 2, 8)   // doubled for ICO format
+dibHeader.writeUInt16LE(1, 12)
+dibHeader.writeUInt16LE(32, 14)    // 32bpp
+dibHeader.writeUInt32LE(0, 16)     // BI_RGB
+dibHeader.writeUInt32LE(W * H * 4, 20)
+
+const pixelData = Buffer.alloc(W * H * 4)
+for (let y = 0; y < H; y++) {
+  for (let x = 0; x < W; x++) {
+    const srcRow = H - 1 - y   // ICO is bottom-up
+    const src = (srcRow * W + x) * 4
+    const dst = (y * W + x) * 4
+    pixelData[dst + 0] = rgba[src + 2]   // B
+    pixelData[dst + 1] = rgba[src + 1]   // G
+    pixelData[dst + 2] = rgba[src + 0]   // R
+    pixelData[dst + 3] = rgba[src + 3]   // A
+  }
+}
+
+const andMask    = Buffer.alloc(128, 0)
+const imageData  = Buffer.concat([dibHeader, pixelData, andMask])
+const bytesInRes = imageData.length
+
+const iconDir = Buffer.alloc(6)
+iconDir.writeUInt16LE(0, 0)
+iconDir.writeUInt16LE(1, 2)   // type = ICO
+iconDir.writeUInt16LE(1, 4)   // count = 1
+
+const dirEntry = Buffer.alloc(16)
+dirEntry.writeUInt8(W, 0)
+dirEntry.writeUInt8(H, 1)
+dirEntry.writeUInt8(0, 2)
+dirEntry.writeUInt8(0, 3)
+dirEntry.writeUInt16LE(1, 4)
+dirEntry.writeUInt16LE(32, 6)
+dirEntry.writeUInt32LE(bytesInRes, 8)
+dirEntry.writeUInt32LE(6 + 16, 12)
+
+const ico = Buffer.concat([iconDir, dirEntry, imageData])
+
+const outIco = path.join(__dirname, '..', 'assets', 'icon.ico')
+fs.mkdirSync(path.dirname(outIco), { recursive: true })
+fs.writeFileSync(outIco, ico)
+console.log(`Generated: ${outIco}  (${ico.length} bytes)`)
+
+// ── favicon-b64.ts for the web UI ─────────────────────────────────────────────
+
+const svgPath = path.join(__dirname, '..', '..', '..', 'assets', 'icon.svg')
+if (fs.existsSync(svgPath)) {
+  const b64 = Buffer.from(fs.readFileSync(svgPath)).toString('base64')
+  const ts = [
+    '// Auto-generated by scripts/gen-icon.js — do not edit manually',
+    `export const FAVICON_SVG_DATA = 'data:image/svg+xml;base64,${b64}'`,
+    '',
+  ].join('\n')
+  const tsPath = path.join(__dirname, '..', 'src', 'ui', 'favicon-b64.ts')
+  fs.writeFileSync(tsPath, ts, 'utf8')
+  console.log(`Generated: ${tsPath}`)
+}
