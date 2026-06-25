@@ -4,10 +4,15 @@
       <stop offset="0%" stop-color="#60C8F5"/>
       <stop offset="100%" stop-color="#2E8FD4"/>
     </linearGradient>
+    <clipPath id="clip">
+      <circle cx="64" cy="64" r="64"/>
+    </clipPath>
   </defs>
 
-  <!-- Background -->
-  <rect width="128" height="128" rx="24" fill="url(#bg)"/>
+  <!-- Background circle -->
+  <circle cx="64" cy="64" r="64" fill="url(#bg)"/>
+
+  <g clip-path="url(#clip)">
 
   <!-- Ears (behind head) -->
   <ellipse cx="24" cy="74" rx="16" ry="28" fill="#C8BAA0" transform="rotate(-10, 24, 74)"/>
@@ -44,4 +49,9 @@
   <!-- Tongue -->
   <ellipse cx="64" cy="91" rx="10" ry="7" fill="#F472B6"/>
   <line x1="64" y1="85" x2="64" y2="97" stroke="#DB2777" stroke-width="1.5" stroke-linecap="round"/>
+
+  </g>
+
+  <!-- Subtle inner ring for badge depth -->
+  <circle cx="64" cy="64" r="62" fill="none" stroke="white" stroke-width="2.5" opacity="0.18"/>
 </svg>

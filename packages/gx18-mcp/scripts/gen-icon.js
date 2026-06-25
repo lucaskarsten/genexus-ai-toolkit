@@ -104,15 +104,27 @@ ellipse(16, 18.5, 2.5, 1.75, 28, 17, 8)
 // Tongue
 ellipse(16, 22.75, 2.5, 1.75, 244, 114, 182)
 
-// ── Rounded-rect clip (r=5) applied last so it always masks corners ───────────
+// ── Circular clip with AA edge ────────────────────────────────────────────────
 
-const RX = 5
+const CR = W / 2
 for (let y = 0; y < H; y++) {
   for (let x = 0; x < W; x++) {
-    const cx = x < RX ? RX : x > W-1-RX ? W-1-RX : x
-    const cy = y < RX ? RX : y > H-1-RX ? H-1-RX : y
-    if ((x !== cx || y !== cy) && Math.hypot(x-cx, y-cy) > RX)
+    const d = Math.sqrt((x - CR + 0.5) ** 2 + (y - CR + 0.5) ** 2)
+    if (d >= CR) {
       rgba[(y*W+x)*4+3] = 0
+    } else if (d > CR - 1.5) {
+      rgba[(y*W+x)*4+3] = Math.round((CR - d) / 1.5 * rgba[(y*W+x)*4+3])
+    }
+  }
+}
+
+// Inner ring (badge highlight)
+const ringR = CR - 1.5, ringSW = 1.2
+for (let y = 0; y < H; y++) {
+  for (let x = 0; x < W; x++) {
+    const d = Math.sqrt((x - CR + 0.5) ** 2 + (y - CR + 0.5) ** 2)
+    const aa = Math.max(0, Math.min(1, ringSW * 0.5 + 0.5 - Math.abs(d - ringR)))
+    if (aa > 0) px(x, y, 255, 255, 255, 255 * aa * 0.18)
   }
 }
 
