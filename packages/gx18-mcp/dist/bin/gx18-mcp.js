@@ -19934,13 +19934,30 @@ var init_entity_types = __esm({
 });
 
 // src/domain/entity-types.ts
+function resolveTypeKey(type) {
+  if (typeof type === "string") {
+    const key2 = type.toLowerCase();
+    if (key2 in KEY_TO_ENTITY_TYPE2)
+      return key2;
+    const known = Object.keys(KEY_TO_ENTITY_TYPE2).join(", ");
+    throw new Error(
+      `Unknown type name "${type}". Use a numeric EntityTypeId (e.g. 34=procedure, 147=usercontrol) or one of: ${known}.`
+    );
+  }
+  const key = ENTITY_TYPE_TO_KEY[type];
+  if (!key) {
+    const known = Object.entries(ENTITY_TYPE_TO_KEY).map(([n, k]) => `${k}=${n}`).join(", ");
+    throw new Error(`Unknown EntityTypeId ${type}. Known: ${known}.`);
+  }
+  return key;
+}
 function sectionType(objectTypeId, section) {
   return SECTION_TYPE_PER_TYPE[objectTypeId]?.[section] ?? SECTION_TYPE[section];
 }
 function defaultSection(type) {
   return DEFAULT_SECTION_BY_TYPE[type] ?? FALLBACK_SECTION;
 }
-var OBJECT_TYPES, SUPPORTED_WRITE_TYPES, SECTION_FIELDS, ENTITY_TYPE_TO_KEY, SECTION_TYPE, SECTION_TYPE_PER_TYPE, ALL_SECTION_NAMES, DEFAULT_SECTION_BY_TYPE, FALLBACK_SECTION;
+var OBJECT_TYPES, SUPPORTED_WRITE_TYPES, SECTION_FIELDS, ENTITY_TYPE_TO_KEY, KEY_TO_ENTITY_TYPE2, SECTION_TYPE, SECTION_TYPE_PER_TYPE, ALL_SECTION_NAMES, DEFAULT_SECTION_BY_TYPE, FALLBACK_SECTION;
 var init_entity_types2 = __esm({
   "src/domain/entity-types.ts"() {
     "use strict";
@@ -19960,6 +19977,9 @@ var init_entity_types2 = __esm({
         m[Number(k)] = v;
       return m;
     })();
+    KEY_TO_ENTITY_TYPE2 = Object.fromEntries(
+      Object.entries(ENTITY_TYPE_TO_KEY).map(([num, key]) => [key, Number(num)])
+    );
     SECTION_TYPE = (() => {
       const m = {};
       for (const [k, v] of Object.entries(entity_types_default.read.componentTypeBySection))
@@ -20096,11 +20116,10 @@ async function gxModify(args) {
     throw new Error("gx_modify: section is required.");
   if (args.content == null)
     throw new Error("gx_modify: content is required (pass empty string to clear a section).");
-  const typeKey = ENTITY_TYPE_TO_KEY[args.type];
-  if (!typeKey || !SUPPORTED_WRITE_TYPES.includes(typeKey)) {
-    const supportedMap = Object.entries(ENTITY_TYPE_TO_KEY).map(([id, key]) => `${key}=${id}`).join(", ");
+  const typeKey = resolveTypeKey(args.type);
+  if (!SUPPORTED_WRITE_TYPES.includes(typeKey)) {
     throw new Error(
-      `gx_modify: unsupported EntityTypeId ${args.type}. Supported types (key=EntityTypeId): ${supportedMap}.`
+      `gx_modify: type '${typeKey}' is not writable. Writable types: ${SUPPORTED_WRITE_TYPES.join(", ")}.`
     );
   }
   const typeSpec = OBJECT_TYPES.find((t) => t.key === typeKey);
@@ -20108,7 +20127,7 @@ async function gxModify(args) {
   if (validSections.length > 0 && !validSections.includes(args.section.toLowerCase())) {
     const ucHint = typeKey === "usercontrol" ? " To edit AfterShow/Methods scripts, use gx_export \u2192 patch CDATA \u2192 gx_import." : "";
     throw new Error(
-      `gx_modify: section '${args.section}' is not valid for type '${typeKey}' (EntityTypeId ${args.type}). Valid sections: ${validSections.join(", ")}.${ucHint}`
+      `gx_modify: section '${args.section}' is not valid for type '${typeKey}'. Valid sections: ${validSections.join(", ")}.${ucHint}`
     );
   }
   if (args.section.toLowerCase() === "layout") {
@@ -20146,7 +20165,7 @@ async function gxImport(args) {
   }
   const result = await bridge.send("import", {
     xpzFile: args.xpzFile,
-    type: (args.type ?? "").toLowerCase(),
+    type: args.type != null ? resolveTypeKey(args.type) : "",
     name: args.name,
     fullOverwrite: args.fullOverwrite !== false
   }, 18e4);
@@ -20162,12 +20181,7 @@ Object: '${result.name}' (${args.type ?? "unknown"}), xpzFile: ${result.xpzFile}
 }
 async function gxSetProperty(args) {
   requireConfirm(args.confirm, "gx_set_property");
-  const typeKey = ENTITY_TYPE_TO_KEY[args.type];
-  if (!typeKey) {
-    throw new Error(
-      `gx_set_property: unknown EntityTypeId ${args.type}. Known: ${Object.keys(ENTITY_TYPE_TO_KEY).join(", ")}.`
-    );
-  }
+  const typeKey = resolveTypeKey(args.type);
   const result = await bridge.send("set_property", {
     name: args.name,
     type: typeKey,
@@ -20179,12 +20193,7 @@ async function gxSetProperty(args) {
 }
 async function gxRename(args) {
   requireConfirm(args.confirm, "gx_rename");
-  const typeKey = ENTITY_TYPE_TO_KEY[args.type];
-  if (!typeKey) {
-    throw new Error(
-      `gx_rename: unknown EntityTypeId ${args.type}. Known: ${Object.keys(ENTITY_TYPE_TO_KEY).join(", ")}.`
-    );
-  }
+  const typeKey = resolveTypeKey(args.type);
   const result = await bridge.send("rename", {
     name: args.name,
     type: typeKey,
@@ -20202,10 +20211,10 @@ async function gxDelete(args) {
       );
     }
   }
-  const typeKey = args.type.toLowerCase();
+  const typeKey = resolveTypeKey(args.type);
   if (!SUPPORTED_WRITE_TYPES.includes(typeKey)) {
     throw new Error(
-      `gx_delete: unsupported type '${args.type}'. Supported: ${SUPPORTED_WRITE_TYPES.join(", ")}.`
+      `gx_delete: unsupported type '${typeKey}'. Supported: ${SUPPORTED_WRITE_TYPES.join(", ")}.`
     );
   }
   const result = await bridge.send("delete", {
@@ -20216,10 +20225,10 @@ async function gxDelete(args) {
   return JSON.stringify(result, null, 2);
 }
 async function gxVariable(args) {
-  const typeKey = args.type.toLowerCase();
+  const typeKey = resolveTypeKey(args.type);
   if (!SUPPORTED_WRITE_TYPES.includes(typeKey)) {
     throw new Error(
-      `gx_variable: unsupported type '${args.type}'. Supported: ${SUPPORTED_WRITE_TYPES.join(", ")}.`
+      `gx_variable: unsupported type '${typeKey}'. Supported: ${SUPPORTED_WRITE_TYPES.join(", ")}.`
     );
   }
   const action = (args.action ?? "list").toLowerCase();
@@ -20274,7 +20283,7 @@ async function gxVariable(args) {
 async function gxClone(args) {
   requireConfirm(args.confirm, "gx_clone");
   const r = await bridge.send("clone", {
-    typeKey: args.type,
+    typeKey: resolveTypeKey(args.type),
     sourceName: args.name,
     targetName: args.newName,
     module: args.module
@@ -20286,13 +20295,14 @@ async function gxBulkModify(args) {
   requireConfirm(args.confirm, "gx_bulk_modify");
   if (!Array.isArray(args.names) || args.names.length === 0)
     throw new Error("names must be a non-empty array");
+  const typeKey = resolveTypeKey(args.type);
   const succeeded = [];
   const failed = [];
   for (const name of args.names) {
     try {
       const r = await bridge.send("modify", {
         name,
-        type: args.type,
+        type: typeKey,
         section: args.section,
         content: args.content
       }, 18e4);
@@ -20420,12 +20430,7 @@ async function gxSaveConfig(args) {
   }, null, 2);
 }
 async function gxValidate(args) {
-  const typeKey = ENTITY_TYPE_TO_KEY[args.type];
-  if (!typeKey) {
-    throw new Error(
-      `gx_validate: unknown EntityTypeId ${args.type}. Known: ${Object.keys(ENTITY_TYPE_TO_KEY).join(", ")}.`
-    );
-  }
+  const typeKey = resolveTypeKey(args.type);
   const result = await bridge.send("validate", {
     name: args.name,
     type: typeKey
@@ -20572,7 +20577,7 @@ async function gxPatchXpz(args) {
   const result = await bridge.send("patch_xpz", payload, 3e4);
   return JSON.stringify(result, null, 2);
 }
-var import_path2, import_fs5, KEY_TO_ENTITY_TYPE;
+var import_path2, import_fs5;
 var init_utility = __esm({
   "src/tools/utility.ts"() {
     "use strict";
@@ -20582,9 +20587,6 @@ var init_utility = __esm({
     init_config();
     init_writer();
     init_doctor();
-    KEY_TO_ENTITY_TYPE = Object.fromEntries(
-      Object.entries(ENTITY_TYPE_TO_KEY).map(([num, key]) => [key, Number(num)])
-    );
   }
 });
 

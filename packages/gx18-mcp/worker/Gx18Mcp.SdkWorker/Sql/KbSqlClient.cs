@@ -229,6 +229,59 @@ namespace Gx18Mcp.SdkWorker.Sql
                 return reader.ReadToEnd();
         }
 
+        // Writes the events blob for a WebPanel/WBC (EntityTypeId 43) or procedure (34) directly via SQL,
+        // bypassing the SDK compiler. Uses GeneXus blob format 0x02 (raw UTF-8), which Decompress() handles.
+        // Caller must gx_reload after this write to invalidate the SDK in-memory model.
+        public string WriteEventsBlob(int compoundEntityTypeId, int compoundEntityId, string newText)
+        {
+            int eventsEntityId = -1, eventsEntityVersionId = -1;
+            const string findSql = @"
+                SELECT evc.ComponentEntityId, evc.ComponentEntityVersionId
+                FROM EntityVersionComposition evc
+                WHERE evc.CompoundEntityTypeId = @ct AND evc.CompoundEntityId = @cid
+                  AND evc.ComponentEntityTypeId = 64
+                  AND evc.CompoundEntityVersionId = (
+                      SELECT MAX(ev2.EntityVersionId) FROM EntityVersion ev2
+                      WHERE ev2.EntityTypeId = @ct AND ev2.EntityId = @cid
+                  )";
+            using (var conn = Open())
+            using (var cmd = new SqlCommand(findSql, conn))
+            {
+                cmd.Parameters.AddWithValue("@ct", compoundEntityTypeId);
+                cmd.Parameters.AddWithValue("@cid", compoundEntityId);
+                using (var r = cmd.ExecuteReader())
+                {
+                    if (!r.Read()) throw new Exception(
+                        $"Events part (type 64) not found in composition for object type={compoundEntityTypeId} id={compoundEntityId}");
+                    eventsEntityId = r.GetInt32(0);
+                    eventsEntityVersionId = r.GetInt32(1);
+                }
+            }
+            byte[] current = ReadBlob(64, eventsEntityId);
+            if (current == null || current.Length < 7)
+                throw new Exception($"Events blob missing or too short (entity 64/{eventsEntityId})");
+            var textBytes = Encoding.UTF8.GetBytes(newText);
+            var newBlob = new byte[7 + textBytes.Length];
+            Array.Copy(current, 0, newBlob, 0, 6);
+            newBlob[6] = 0x02;
+            Array.Copy(textBytes, 0, newBlob, 7, textBytes.Length);
+            const string updateSql =
+                "UPDATE EntityVersion SET EntityVersionData = @blob " +
+                "WHERE EntityTypeId=64 AND EntityId=@id AND EntityVersionId=@vid";
+            using (var conn = Open())
+            using (var cmd = new SqlCommand(updateSql, conn))
+            {
+                cmd.Parameters.AddWithValue("@id", eventsEntityId);
+                cmd.Parameters.AddWithValue("@vid", eventsEntityVersionId);
+                var p = cmd.Parameters.Add("@blob", SqlDbType.VarBinary, -1);
+                p.Value = newBlob;
+                int rows = cmd.ExecuteNonQuery();
+                if (rows == 0) throw new Exception(
+                    $"UPDATE affected 0 rows for Events entity 64/{eventsEntityId} version {eventsEntityVersionId}");
+            }
+            return $"events-blob-written:64/{eventsEntityId}@{eventsEntityVersionId} ({newBlob.Length} bytes, raw-utf8)";
+        }
+
         private string TokensToText(string xml)
         {
             if (string.IsNullOrEmpty(xml)) return "";

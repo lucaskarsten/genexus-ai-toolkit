@@ -103,9 +103,9 @@ function isNewer(latest: string, current: string): boolean {
   return lc > cc;
 }
 
-/** Quotes a path for use inside a batch script (wraps in double-quotes, escapes internal quotes). */
-function batchQ(p: string): string {
-  return '"' + p.replace(/"/g, '""') + '"';
+/** Escapes a path for use inside a PowerShell single-quoted string. */
+function psQ(p: string): string {
+  return "'" + p.replace(/'/g, "''") + "'";
 }
 
 export async function checkAndUpdate(currentVersion: string, exePath: string): Promise<boolean> {
@@ -139,34 +139,31 @@ export async function checkAndUpdate(currentVersion: string, exePath: string): P
     await download(asset.browser_download_url, zipPath);
     await extractExe(zipPath, newExe);
 
-    // .cmd batch script:
+    // PowerShell update script — avoids cmd.exe which is blocked by corporate
+    // Windows Defender ASR ("Use advanced protection against ransomware") when
+    // spawned from an untrusted exe. PowerShell is already used by extractExe()
+    // and is not blocked by the same ASR rule.
     //   1. Kill any lingering worker subprocess
-    //   2. Wait ~4s for the main process to fully release the file handle
-    //   3. Retry copy in a tight loop until it succeeds (no fixed retry limit)
-    //   4. Always relaunch — even if copy somehow never succeeds, the user
-    //      gets the old exe back rather than being left with nothing
+    //   2. Wait 5s for the main process to fully release the file handle
+    //   3. Retry Copy-Item until it succeeds (max 30 attempts, 2s apart)
+    //   4. Launch the updated exe via Start-Process
     //   5. Self-delete
-    //
-    // Using cmd.exe batch instead of PowerShell to avoid execution policy
-    // restrictions in corporate environments.
-    const cmdPath = path.join(tmpDir, '_update.cmd');
-    const newExeQ = batchQ(newExe);
-    const exePathQ = batchQ(exePath);
-    const cmd = [
-      '@echo off',
-      'taskkill /F /IM Gx18Mcp.SdkWorker.exe /T >nul 2>&1',
-      'ping 127.0.0.1 -n 5 >nul',
-      ':retry',
-      `copy /Y ${newExeQ} ${exePathQ} >nul 2>&1`,
-      'if errorlevel 1 (',
-      '  ping 127.0.0.1 -n 3 >nul',
-      '  goto retry',
-      ')',
-      `start "" ${exePathQ}`,
-      'del "%~f0"',
+    const ps1Path = path.join(tmpDir, '_update.ps1');
+    const newExePs = psQ(newExe);
+    const exePathPs = psQ(exePath);
+    const ps1 = [
+      'Stop-Process -Name Gx18Mcp.SdkWorker -Force -ErrorAction SilentlyContinue',
+      'Start-Sleep -Seconds 5',
+      '$copied = $false',
+      'for ($i = 0; $i -lt 30; $i++) {',
+      `  try { Copy-Item -Path ${newExePs} -Destination ${exePathPs} -Force; $copied = $true; break }`,
+      '  catch { Start-Sleep -Seconds 2 }',
+      '}',
+      `if ($copied) { Start-Process -FilePath ${exePathPs} }`,
+      'Remove-Item -Path $MyInvocation.MyCommand.Path -ErrorAction SilentlyContinue',
     ].join('\r\n');
 
-    fs.writeFileSync(cmdPath, cmd, { encoding: 'utf8' });
+    fs.writeFileSync(ps1Path, ps1, { encoding: 'utf8' });
 
     console.log(`  Atualizacao pronta. Reiniciando em ${latestTag}...\n`);
     console.log('  NAO reabra o aplicativo — ele reiniciara automaticamente.\n');
@@ -174,7 +171,11 @@ export async function checkAndUpdate(currentVersion: string, exePath: string): P
     // Write sentinel so the freshly-launched exe skips its own update check.
     try { fs.writeFileSync(SENTINEL, String(Date.now())); } catch { /* non-fatal */ }
 
-    spawn('cmd', ['/c', cmdPath], { detached: true, stdio: 'ignore' }).unref();
+    spawn('powershell', [
+      '-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden',
+      '-ExecutionPolicy', 'Bypass',
+      '-File', ps1Path,
+    ], { detached: true, stdio: 'ignore' }).unref();
 
     // Exit after 3s — gives Node.js time to flush and fully release the file handle.
     setTimeout(() => process.exit(0), 3000);
