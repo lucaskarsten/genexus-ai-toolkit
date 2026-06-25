@@ -1,5 +1,42 @@
 # Changelog
 
+## [2.0.0] — 2026-06-25
+
+### 🚀 Major Release — Usabilidade em Destaque
+
+Esta versão marca a chegada à maturidade do **gx18-mcp**: de um servidor MCP experimental com 19 ferramentas a uma plataforma completa com **47 ferramentas**, UI de chat profissional, round-trip XPZ para scripts de UC, clone SQL de WBC/WBP, suite de benchmark e proteção avançada de integridade de KB.
+
+### Features
+
+* **gx18-mcp:** 47 ferramentas MCP — `gx_clone`, `gx_bulk_modify`, `gx_compare`, `gx_diff`, `gx_lint`, `gx_stats`, `gx_modules`, `gx_attribute`, `gx_dead_code`, `gx_patch_xpz` e mais
+* **gx18-mcp:** `gx_modify script:AfterShow` e `script:<Method>` — edita scripts de UC via SQL blob sem abrir o IDE
+* **gx18-mcp:** `gx_clone` para WebComponent e WebPanel via SQL 100% — sem NullRef headless
+* **gx18-mcp:** Chat UI com Markdown rendering, paste de imagens, animações e streaming
+* **gx18-mcp:** 8 MCP Resources embarcados disponíveis via `gx18://docs/<nome>` para qualquer cliente
+* **gx18-mcp:** Suite de benchmark completa (47 ferramentas × 12 objetos, drift detection)
+* **gx18-mcp:** Nara the labrador como mascote — identidade visual renovada
+* **assets:** `icon-source.png` — ícone Nara em alta resolução adicionado ao repositório
+* **benchmark:** fixtures de captura para todas as 47 ferramentas com objetos representativos
+* **scripts:** pipeline de build de instalador standalone e launcher C#
+
+### Bug Fixes
+
+* **gx18-mcp:** `gx_import` para type=43 (WBP/WBC) bloqueado — previne corrupção de blobs tokenizados
+* **gx18-mcp:** `gx_modify events/rules/conditions` para WBP/WBC bloqueado — source bruto corrompia token XML
+* **gx18-mcp:** `WriteTextPartBlob` generalizado com `componentEntityTypeId` como parâmetro
+* **gx18-mcp:** `NullOutDocumentationBlob` — zera blob de Documentation antes de salvar layout via SDK
+* **gx18-mcp:** `PatchUCScriptBlob` — escape correto de `]]>` em CDATA
+* **gx18-mcp:** `Decompress` — flag 0x01 = GZip (11 bytes header), flag 0x02 = raw UTF-8 (7 bytes)
+* **gx18-mcp:** `resolveTypeKey("webcomponent")` agora encontra alias em `OBJECT_TYPES` corretamente
+* **gx18-mcp:** `gx_bulk_modify` continua em falhas individuais — retorna `succeeded[]` + `failed[]`
+* **gx18-mcp:** `gx_variable update` rejeita chamada sem campos para atualizar
+* **gx18-mcp:** `gx_move` — timeout de 180s no bridge call
+* **gx18-mcp:** `gx_find` label na UI corrigida: `'query'` → `'pattern'`
+* **gx18-mcp:** dead code `sdk-bridge/guard.ts` removido
+* **gx18-mcp:** `protocol.ts` — `PingResult` duplicado removido
+
+---
+
 ## [1.5.0](https://github.com/lucaskarsten/genexus-ai-toolkit/compare/v1.4.0...v1.5.0) (2026-06-23)
 
 
@@ -24,17 +61,9 @@
 * **gx18-mcp:** exe now opens UI on double-click instead of stdio mode ([9626447](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/96264470585ce24192634e157eaca4f761c1c24b))
 * **gx18-mcp:** fix UI token login on new install (v1.7.2) ([d32ea20](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/d32ea20970d198f281bd1d4d8f4c7f11d75d0fea))
 * **gx18-mcp:** gx_search procedure source + gx_validate no crash headless ([7610a46](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/7610a46d52c1b2809c44443ce232c1fabdbe4141))
-* **gx18-mcp:** gx_search procedure source + gx_validate no crash headless ([02685f8](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/02685f8146804cbb5e86e0ccbfcf47817defb381))
 * **gx18-mcp:** remove TypeScript casts from inline browser JS in page.ts ([747c034](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/747c034044d4125101d698027a98893e2a610e8d))
 * **gx18-mcp:** resolve worker path correctly inside pkg standalone exe ([7192f10](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/7192f106615fa03e838a75069cd72045fb6f2b50))
 * **gx18-mcp:** sentinel guard prevents update loop on fresh launch ([935fcfd](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/935fcfd96d80a9425308a3f8a88130d0b2ab96c3))
-* **gx18-mcp:** v1.4.6 — stop update loop, hide swap window`n`nBump version to 1.4.6 to match tag series (1.0.0 was always older than`nany tag, causing infinite download loop on every startup).`n`nReplace bat+tasklist loop with hidden PowerShell script: sleeps 3s,`ncopies new exe, relaunches, self-deletes. No visible cmd windows.`n`nCo-Authored-By: Claude Sonnet 4.6 &lt;noreply@anthropic.com&gt; ([6b607ec](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/6b607ec5490af80205de4b1b93e0a48a11ad83d9))
-* **gx18-mcp:** v1.4.9 — CI auto-syncs version from tag, breaking update loop ([9c79dc6](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/9c79dc659841200443e0ec4596551e7565b61cd5))
-* **gx18-mcp:** worker build error + onboarding docs + server version ([15ca632](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/15ca632933db418f5740dba1dca96ed287a283c7))
-
-
-### Performance Improvements
-
 * **gx18-mcp:** fix progressive slowdown — worker auto-recycle + resource leak fixes (v1.7.0) ([51ae47d](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/51ae47d969e36ef3ce0a1e0d0aeecf37718318ce))
 
 ## [1.4.0](https://github.com/lucaskarsten/genexus-ai-toolkit/compare/v1.3.0...v1.4.0) (2026-06-22)
@@ -62,10 +91,10 @@
 
 ### Documentation
 
-* warn about gxnext + GX18 KB incompatibility — `open_knowledge_base` and all write tools create false revisions under the wrong username; includes safe/forbidden tool table and alternatives ([6fd41aa](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/6fd41aa))
-* add complete SQL recovery procedure for gxnext damage on GX18 KB — 5-step guide with identification queries, MEV revert, EVC restore from backup, orphan cleanup, and 7-error diagnostic table ([6fd41aa](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/6fd41aa))
-* document gxnext operational pitfalls — server startup troubleshooting, `import_text_to_kb` rootDirectory pattern ([6fd41aa](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/6fd41aa))
-* document DSO cross-DSO scoped selector silent removal — compiler discards `.classA .classB` when classes belong to different DSOs, with correct alternatives ([6fd41aa](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/6fd41aa))
+* warn about gxnext + GX18 KB incompatibility ([6fd41aa](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/6fd41aa))
+* add complete SQL recovery procedure for gxnext damage on GX18 KB ([6fd41aa](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/6fd41aa))
+* document gxnext operational pitfalls ([6fd41aa](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/6fd41aa))
+* document DSO cross-DSO scoped selector silent removal ([6fd41aa](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/6fd41aa))
 
 ## [1.2.0](https://github.com/lucaskarsten/genexus-ai-toolkit/compare/v1.1.0...v1.2.0) (2026-06-18)
 
@@ -82,4 +111,3 @@
 
 * expand toolkit with specialized agents, WBP coverage, and consistency pass ([4a52caf](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/4a52cafc61b9f2f74862fb9cf9af4bd981fbcc9d))
 * plug-and-play MCP setup, LLM engineering best practices, full English docs ([e4f3601](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/e4f3601f40e76ec33fd160d011007d0e47d9731f))
-* plug-and-play MCP, LLM engineering best practices, full English docs ([35fd26e](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/35fd26e8139b7e0a92652d8599e8a4a8932180ef))

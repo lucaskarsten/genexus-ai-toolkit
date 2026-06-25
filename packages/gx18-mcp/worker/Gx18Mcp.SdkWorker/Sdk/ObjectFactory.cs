@@ -96,6 +96,36 @@ namespace Gx18Mcp.SdkWorker.Sdk
         {
             if (string.IsNullOrEmpty(name)) throw new Exception("name is required");
             var spec = Spec(typeKey);
+
+            // WebPanel/WebComponent: SDK WebPanel.Save() hangs headlessly — WinFormPart generation
+            // blocks waiting for layout/theme services that require the IDE (message pump / COM init).
+            // Solution: build a minimal blank XPZ and import via IKnowledgeManagerService.ImportFile,
+            // which is proven to work headlessly and stamps the correct Windows UserId.
+            if (spec.EntityTypeId == 43)
+            {
+                bool isComponent = typeKey.Equals("webcomponent", StringComparison.OrdinalIgnoreCase);
+                int folderId = ResolveModuleFolderId(module);
+                string eventsContent = null, rulesContent = null, conditionsContent = null, layoutContent = null;
+                if (sections != null)
+                {
+                    if (sections.TryGetValue("events",     out var ev) && ev != null) eventsContent     = ev.ToString();
+                    if (sections.TryGetValue("rules",      out var ru) && ru != null) rulesContent      = ru.ToString();
+                    if (sections.TryGetValue("conditions", out var co) && co != null) conditionsContent = co.ToString();
+                    if (sections.TryGetValue("layout",     out var la) && la != null) layoutContent     = la.ToString();
+                }
+                var tempXpz = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"{name}_{Guid.NewGuid():N}.xpz");
+                Console.Error.WriteLine($"[gx18-worker] type=43 create '{name}' (isComponent={isComponent}, folderId={folderId}): using XPZ import path");
+                try
+                {
+                    BuildBlankWebPanelXpz(name, isComponent, folderId, eventsContent, rulesContent, conditionsContent, layoutContent, tempXpz);
+                    return ImportXpz(tempXpz, typeKey, name, fullOverwrite: false);
+                }
+                finally
+                {
+                    try { System.IO.File.Delete(tempXpz); } catch { }
+                }
+            }
+
             var concrete = Resolve(spec);
             var kb = _session.KnowledgeBase;
             if (kb == null) throw new Exception("KB not open");
@@ -105,35 +135,7 @@ namespace Gx18Mcp.SdkWorker.Sdk
                 ?? FindStaticCreate(concrete, model.GetType());
             if (createMethod == null) throw new Exception($"{concrete.Name}.Create(KBModel) not found");
 
-            // Guard BEFORE creating the in-memory object so no zombie is left on rejection.
-            // events/rules/conditions for type=43 require the IDE tokenizer — raw source corrupts the blob.
-            if (spec.EntityTypeId == 43 && sections != null)
-            {
-                foreach (var blocked in new[] { "events", "rules", "conditions" })
-                    if (sections.ContainsKey(blocked))
-                        throw new Exception(
-                            $"gx_create: section '{blocked}' cannot be set at creation time for webpanel/webcomponent. " +
-                            "The SDK cannot tokenize raw source headless; writing it produces a corrupted blob " +
-                            "that the IDE rejects with 'src0009: Cannot deserialize tokens'.\n" +
-                            "Create the empty shell first, then open in GX18 IDE to add events/rules/conditions. " +
-                            "Use gx_modify section=layout after creation to set the layout.");
-            }
-
             var obj = createMethod.Invoke(null, new[] { model });
-
-            // Force a globally-safe EntityId for webpanel/webcomponent.
-            // The SDK allocates max(EntityId per-type)+1, but EntityId is a shared global sequence;
-            // collision causes DuplicateKeyException on the part insert.
-            if (spec.EntityTypeId == 43)
-            {
-                var globalMax = _sql.ScalarLong("SELECT MAX(EntityId) FROM Entity");
-                var idProp = FindProp(obj.GetType(), "Id");
-                if (idProp != null && idProp.CanWrite)
-                {
-                    idProp.SetValue(obj, (int)(globalMax + 1));
-                    Console.Error.WriteLine($"[gx18-worker] type=43 create '{name}': forced EntityId to {globalMax + 1}");
-                }
-            }
 
             SetProp(obj, "Name", name);
             AssignModule(obj, model, module);
@@ -148,31 +150,7 @@ namespace Gx18Mcp.SdkWorker.Sdk
                 if (!string.IsNullOrEmpty(verr)) throw new Exception("Validation: " + verr);
             }
 
-            if (spec.EntityTypeId == 43)
-            {
-                try { InvokeSave(obj); }
-                catch (Exception ex)
-                {
-                    var inner = ex is TargetInvocationException tie && tie.InnerException != null ? tie.InnerException : ex;
-                    bool isDupe = inner.GetType().Name.IndexOf("DuplicateKey", StringComparison.OrdinalIgnoreCase) >= 0
-                               || inner.Message.IndexOf("duplicate", StringComparison.OrdinalIgnoreCase) >= 0;
-                    // Best-effort zombie eviction so next retry has a clean in-memory model.
-                    try { obj.GetType().GetMethod("Delete", Type.EmptyTypes)?.Invoke(obj, null); } catch { }
-                    if (isDupe)
-                        throw new Exception(
-                            $"gx_create '{name}' (webpanel/webcomponent): DuplicateKey on save — " +
-                            "likely a zombie object from a previous failed create in the SDK's in-memory model. " +
-                            "Call gx_reload to reset the worker, then retry gx_create.", inner);
-                    throw new Exception(
-                        $"gx_create '{name}' (webpanel/webcomponent) failed: {inner.GetType().Name}: {inner.Message}\n" +
-                        "If this is a NullReferenceException, call gx_reload and retry. " +
-                        "If it persists, create the object via the GX18 IDE and use gx_modify/gx_clone for editing.", inner);
-                }
-            }
-            else
-            {
-                InvokeSave(obj);
-            }
+            InvokeSave(obj);
 
             int newId = Convert.ToInt32(GetProp(obj, "Id"));
             return VerifyUserId(spec.EntityTypeId, newId, name, "create");
@@ -475,6 +453,87 @@ namespace Gx18Mcp.SdkWorker.Sdk
             var p = webPanel.GetType().GetProperty("IsWebComponent");
             if (p != null && p.CanWrite) { p.SetValue(webPanel, true); return; }
             // Fallback: set via SetPropertyValue("ComponentType"/"Type") if present — best effort.
+        }
+
+        // ---- WebPanel/WebComponent XPZ creation helpers ----
+
+        // Part-type GUIDs — constants in the GX18 SDK; same across all KB instances.
+        private const string WpTypeGuid      = "c9584656-94b6-4ccd-890f-332d11fc2c25";
+        private const string WpPartConditions = "763f0d8b-d8ac-4db4-8dd4-de8979f2b5b9";
+        private const string WpPartDocs       = "babf62c5-0111-49e9-a1c3-cc004d90900a";
+        private const string WpPartEvents     = "c44bd5ff-f918-415b-98e6-aca44fed84fa";
+        private const string WpPartHelp       = "ad3ca970-19d0-44e1-a7b7-db05556e820c";
+        private const string WpPartRules      = "9b0a32a3-de6d-4be1-a4dd-1b85d3741534";
+        private const string WpPartVariables  = "e4c4ade7-53f0-4a56-bdfd-843735b66f47";
+        private const string WpPartWebForm    = "d24a58ad-57ba-41b7-9e6e-eaca3543c778";
+        private const string WpBlankForm      = "<GxMultiForm rootId=\"1\" version=\"html:15.0.0;layout:17.11.0\"><Form id=\"1\" type=\"html\"><BODY class=\"Form\" bottomMargin=\"0\" leftMargin=\"0\" topMargin=\"0\" rightMargin=\"0\"><P /></BODY></Form></GxMultiForm>";
+
+        private void BuildBlankWebPanelXpz(string name, bool isComponent, int folderId,
+            string events, string rules, string conditions, string layout, string outputFile)
+        {
+            var guid   = Guid.NewGuid().ToString().ToLowerInvariant();
+            var now    = DateTime.UtcNow.ToString("o");
+            var kbName = Environment.GetEnvironmentVariable("GX_KB_DATABASE") ?? "GX_KB";
+            // XML-safe name (object names should be alphanumeric but guard anyway)
+            var safeName = name.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;");
+            // CDATA escape: ]]> must become ]]]]><![CDATA[>
+            Func<string, string> cd = s => (s ?? "").Replace("]]>", "]]]]><![CDATA[>");
+
+            var x = new System.Text.StringBuilder();
+            x.Append("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n");
+            x.Append("<ExportFile>\n");
+            x.Append($"  <KMW kbname=\"{kbName}\" />\n");
+            x.Append($"  <Source kb=\"{kbName}\" UNCPath=\"\" />\n");
+            x.Append("  <Dependencies />\n");
+            x.Append("  <ObjectsIdentityMapping>\n");
+            x.Append($"    <ObjectIdentity Type=\"{WpTypeGuid}\" Name=\"{safeName}\" parent=\"\">\n");
+            x.Append($"      <Guid>{guid}</Guid>\n");
+            x.Append("    </ObjectIdentity>\n");
+            x.Append("  </ObjectsIdentityMapping>\n");
+            x.Append("  <Objects>\n");
+            x.Append($"    <Object parentGuid=\"\" user=\"\" versionDate=\"{now}\" lastUpdate=\"{now}\" checksum=\"00000000000000000000000000000000\" fullyQualifiedName=\"{safeName}\" moduleGuid=\"\" guid=\"{guid}\" name=\"{safeName}\" type=\"{WpTypeGuid}\" description=\"\" parent=\"\" parentType=\"00000000-0000-0000-0000-000000000008\">\n");
+            x.Append($"      <Part type=\"{WpPartConditions}\"><Source><![CDATA[{cd(conditions)}]]></Source><Properties><Property><Name>IsDefault</Name><Value>False</Value></Property></Properties></Part>\n");
+            x.Append($"      <Part type=\"{WpPartDocs}\"></Part>\n");
+            x.Append($"      <Part type=\"{WpPartEvents}\"><Source><![CDATA[{cd(events)}]]></Source><Properties><Property><Name>IsDefault</Name><Value>False</Value></Property></Properties></Part>\n");
+            x.Append($"      <Part type=\"{WpPartHelp}\"></Part>\n");
+            x.Append($"      <Part type=\"{WpPartRules}\"><Source><![CDATA[{cd(rules)}]]></Source><Properties><Property><Name>IsDefault</Name><Value>False</Value></Property></Properties></Part>\n");
+            x.Append($"      <Part type=\"{WpPartVariables}\"><Variables /></Part>\n");
+            var formContent = string.IsNullOrEmpty(layout) ? WpBlankForm : layout;
+            x.Append($"      <Part type=\"{WpPartWebForm}\"><Source><![CDATA[{cd(formContent)}]]></Source></Part>\n");
+            x.Append("      <Properties>\n");
+            x.Append($"        <Property><Name>Name</Name><Value>{safeName}</Value></Property>\n");
+            x.Append("        <Property><Name>Description</Name><Value></Value></Property>\n");
+            x.Append($"        <Property><Name>IsMain</Name><Value>{(isComponent ? "False" : "True")}</Value></Property>\n");
+            if (isComponent) x.Append("        <Property><Name>WEB_COMP</Name><Value>Yes</Value></Property>\n");
+            x.Append("        <Property><Name>FolderType</Name><Value>00000000-0000-0000-0000-000000000008</Value></Property>\n");
+            x.Append($"        <Property><Name>FolderId</Name><Value>{folderId}</Value></Property>\n");
+            x.Append("        <Property><Name>IsDefault</Name><Value>False</Value></Property>\n");
+            x.Append("      </Properties>\n");
+            x.Append("    </Object>\n");
+            x.Append("  </Objects>\n");
+            x.Append("</ExportFile>");
+
+            var xmlBytes = new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: true).GetBytes(x.ToString());
+            using (var fs = new System.IO.FileStream(outputFile, System.IO.FileMode.Create, System.IO.FileAccess.Write))
+            using (var zip = new System.IO.Compression.ZipArchive(fs, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
+            {
+                var entry = zip.CreateEntry($"{name}.xml", System.IO.Compression.CompressionLevel.Fastest);
+                using (var es = entry.Open())
+                {
+                    es.Write(xmlBytes, 0, xmlBytes.Length);
+                }
+            }
+        }
+
+        private int ResolveModuleFolderId(string moduleName)
+        {
+            if (string.IsNullOrEmpty(moduleName)) return 1;
+            try
+            {
+                var id = _sql.ScalarLong($"SELECT TOP 1 EntityId FROM EntityVersion WHERE EntityTypeId=100 AND EntityVersionName='{moduleName.Replace("'", "''")}' ORDER BY EntityVersionId DESC");
+                return (int)(id > 0 ? id : 1);
+            }
+            catch { return 1; }
         }
 
         // ---- helpers ----

@@ -63,6 +63,16 @@ export async function runCapture(opts: CaptureOptions): Promise<void> {
   const client = new GxMcpClient();
   await client.connect();
 
+  // Warm up the SDK before hitting any SDK-dependent tools (gx_variable, gx_export, etc.).
+  // The first SDK call after worker start always fails with NullRef (cold-start); the second
+  // succeeds immediately. We pay this cost once here so no matrix cell absorbs it.
+  process.stdout.write('  🔥 warming up SDK...');
+  const warmup = await client.callWithRetry('gx_export', {
+    name: 'UCTooltip',
+    type: 'usercontrol',
+  });
+  process.stdout.write(warmup.isError ? ' ⚠️  (warmup had error, proceeding)\n' : ' ✅\n');
+
   // Map fixtureKey → outputFile for XPZ dependency resolution
   const xpzPaths: Map<string, string> = new Map();
 

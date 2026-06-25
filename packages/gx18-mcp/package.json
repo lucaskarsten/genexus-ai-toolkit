@@ -1,7 +1,7 @@
 {
   "name": "gx18-mcp",
-  "version": "1.9.14",
-  "description": "MCP server for GeneXus 18 â€” native SDK access without UserId corruption",
+  "version": "2.0.0",
+  "description": "MCP server for GeneXus 18 — 47 tools, native SDK write, XPZ round-trip, chat UI, auto-update",
   "keywords": [
     "genexus",
     "mcp",
@@ -66,6 +66,7 @@
     "@types/node": "^20.0.0",
     "@yao-pkg/pkg": "^5.12.1",
     "esbuild": "^0.20.0",
+    "png-to-ico": "^3.0.1",
     "typescript": "^5.4.0",
     "vitest": "^4.1.9"
   },
