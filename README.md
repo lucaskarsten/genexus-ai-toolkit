@@ -3,9 +3,9 @@
 
   <h1>GeneXus AI Toolkit</h1>
 
-  <p><strong>Dê a qualquer LLM expertise profunda em GeneXus 18.</strong><br/>
-  Gere UCs, DSOs, Web Panels e Procedures corretos na primeira tentativa.<br/>
-  Leia e escreva sua Knowledge Base diretamente do Claude, VS Code ou qualquer cliente MCP.</p>
+  <p><strong>Give any LLM deep GeneXus 18 expertise.</strong><br/>
+  Generate correct UCs, DSOs, Web Panels, and Procedures on the first try.<br/>
+  Read and write your Knowledge Base directly from Claude, VS Code, or any MCP client.</p>
 
   <p>
     <a href="https://github.com/lucaskarsten/genexus-ai-toolkit/releases/latest"><img alt="GitHub release" src="https://img.shields.io/github/v/release/lucaskarsten/genexus-ai-toolkit?label=release&color=4CAF50&style=for-the-badge"/></a>
@@ -20,80 +20,79 @@
 
 ---
 
-## 🚀 Versão 2.0 — Um Salto Enorme de Usabilidade
+## 🚀 Version 2.0 — A Massive Usability Leap
 
 <div align="center">
 
 ```
 ╔══════════════════════════════════════════════════════════════════════╗
 ║                                                                      ║
-║   🎉  Chegamos na v2.0 — GeneXus AI Toolkit está maior do que       ║
-║       nunca. 47 ferramentas MCP, UI de chat completa com            ║
-║       Markdown e paste de imagens, round-trip XPZ para scripts      ║
-║       de UC, clone SQL de WBC/WBP, suite de benchmark,             ║
-║       auto-update e muito mais.                                      ║
+║   🎉  We've reached v2.0 — GeneXus AI Toolkit is bigger than        ║
+║       ever. 47 MCP tools, a full chat UI with Markdown and          ║
+║       image paste, XPZ round-trip for UC scripts, SQL clone         ║
+║       for WBC/WBP, benchmark suite, auto-update, and much more.     ║
 ║                                                                      ║
-║   A Nara (nossa labrador) chegou pra ficar. 🐕                       ║
+║   Nara (our labrador) is here to stay. 🐕                            ║
 ║                                                                      ║
 ╚══════════════════════════════════════════════════════════════════════╝
 ```
 
 </div>
 
-### O que há de novo na v2.0
+### What's new in v2.0
 
-| Área | O que mudou |
+| Area | What changed |
 |---|---|
-| 🔧 **47 ferramentas MCP** | De 19 para 47 — `gx_clone`, `gx_bulk_modify`, `gx_compare`, `gx_diff`, `gx_lint`, `gx_stats`, `gx_modules`, `gx_attribute`, `gx_dead_code`, `gx_patch_xpz` e muito mais |
-| 📝 **Scripts de UC via XPZ** | `gx_modify script:AfterShow` e `script:<Method>` — edita scripts de UserControl diretamente sem abrir o IDE |
-| 🏗️ **Clone SQL de WBC/WBP** | `gx_clone` para WebComponent e WebPanel via SQL 100% — sem NullRef headless |
-| 💬 **Chat UI completo** | Markdown rendering, paste de imagens, animações, streaming — interface de chat profissional integrada ao MCP |
-| 📚 **MCP Resources embarcados** | 8 docs técnicos disponíveis como recursos MCP para qualquer cliente — sem precisar copiar arquivos |
-| 🐕 **Mascote Nara** | Identidade visual renovada com Nara a labrador |
-| 📊 **Suite de Benchmark** | 47 ferramentas × 12 objetos — mede performance e detecta regressões automaticamente |
-| ⚡ **Worker auto-recycle** | Elimina o slowdown progressivo — o worker C# recicla automaticamente e não vaza recursos |
-| 🔒 **Proteção de integridade** | `gx_import` e `gx_modify events` bloqueados para WBC/WBP — previne corrupção de blobs tokenizados |
+| 🔧 **47 MCP tools** | From 19 to 47 — `gx_clone`, `gx_bulk_modify`, `gx_compare`, `gx_diff`, `gx_lint`, `gx_stats`, `gx_modules`, `gx_attribute`, `gx_dead_code`, `gx_patch_xpz`, and much more |
+| 📝 **UC scripts via XPZ** | `gx_modify script:AfterShow` and `script:<Method>` — edit UserControl scripts directly without opening the IDE |
+| 🏗️ **SQL Clone for WBC/WBP** | `gx_clone` for WebComponent and WebPanel via 100% SQL — no headless NullRef |
+| 💬 **Full Chat UI** | Markdown rendering, image paste, animations, streaming — professional chat interface integrated with MCP |
+| 📚 **Embedded MCP Resources** | 8 technical docs available as MCP resources to any client — no file copying needed |
+| 🐕 **Nara Mascot** | Refreshed visual identity with Nara the labrador |
+| 📊 **Benchmark Suite** | 47 tools × 12 objects — measures performance and automatically detects regressions |
+| ⚡ **Worker auto-recycle** | Eliminates progressive slowdown — the C# worker recycles automatically and doesn't leak resources |
+| 🔒 **Integrity protection** | `gx_import` and `gx_modify events` blocked for WBC/WBP — prevents corruption of tokenized blobs |
 
 ---
 
-## O que seu AI pode fazer com este toolkit
+## What your AI can do with this toolkit
 
 <table>
 <tr>
-<th>❌ Sem o toolkit</th>
-<th>✅ Com o toolkit</th>
+<th>❌ Without the toolkit</th>
+<th>✅ With the toolkit</th>
 </tr>
 <tr>
-<td>Inventa nomes de API que não existem</td>
-<td>Usa apenas <code>gx.*</code> runtime APIs documentadas</td>
+<td>Invents API names that don't exist</td>
+<td>Uses only documented <code>gx.*</code> runtime APIs</td>
 </tr>
 <tr>
-<td>Gera JS que quebra após AJAX Refresh</td>
-<td>Aplica AfterShow + MutationObserver corretos</td>
+<td>Generates JS that breaks after AJAX Refresh</td>
+<td>Applies correct AfterShow + MutationObserver</td>
 </tr>
 <tr>
-<td>CSS que colide com auto-classes do GeneXus</td>
-<td>Segue convenções BEM e estrutura DSO</td>
+<td>CSS that collides with GeneXus auto-classes</td>
+<td>Follows BEM conventions and DSO structure</td>
 </tr>
 <tr>
-<td>Adivinha tipos de propriedade — quebra decimais silenciosamente</td>
-<td>Sabe que <code>Type="numeric"</code> trunca; usa <code>string</code> + <code>Str()</code></td>
+<td>Guesses property types — silently breaks decimals</td>
+<td>Knows that <code>Type="numeric"</code> truncates; uses <code>string</code> + <code>Str()</code></td>
 </tr>
 <tr>
-<td>Cria objetos com o UserId errado no Team Dev</td>
-<td>SDK GX18 com sua identidade Windows — UserId correto em todo save</td>
+<td>Creates objects with the wrong UserId in Team Dev</td>
+<td>GX18 SDK with your Windows identity — correct UserId on every save</td>
 </tr>
 <tr>
-<td>Editar scripts de UC requer abrir o IDE</td>
-<td><code>gx_modify script:AfterShow</code> edita direto via XPZ round-trip</td>
+<td>Editing UC scripts requires opening the IDE</td>
+<td><code>gx_modify script:AfterShow</code> edits directly via XPZ round-trip</td>
 </tr>
 <tr>
-<td>Análise de impacto manual e demorada</td>
-<td><code>gx_impact</code>, <code>gx_where_used</code>, <code>gx_dead_code</code> — análise instantânea</td>
+<td>Manual and time-consuming impact analysis</td>
+<td><code>gx_impact</code>, <code>gx_where_used</code>, <code>gx_dead_code</code> — instant analysis</td>
 </tr>
 <tr>
-<td>Sem visibilidade sobre diferenças e histórico</td>
-<td><code>gx_diff</code>, <code>gx_history</code>, <code>gx_compare</code> — rastreabilidade completa</td>
+<td>No visibility into differences and history</td>
+<td><code>gx_diff</code>, <code>gx_history</code>, <code>gx_compare</code> — full traceability</td>
 </tr>
 </table>
 
@@ -101,30 +100,30 @@
 
 ## Download & Quick Start
 
-### 🏆 Opção 1 — Standalone exe (recomendado para usuários finais)
+### 🏆 Option 1 — Standalone exe (recommended for end users)
 
-Sem Node.js, Git ou qualquer instalação prévia necessária.
+No Node.js, Git, or any prior installation needed.
 
-1. Baixe `GeneXusAIToolkit-windows.zip` da [última release](https://github.com/lucaskarsten/genexus-ai-toolkit/releases/latest)
-2. Extraia para qualquer pasta (ex.: `C:\Tools\GeneXusAIToolkit\`)
-3. Dê duplo clique em `GeneXusAIToolkit.exe`
-4. O browser abre automaticamente com a UI de setup
-5. Preencha os caminhos da KB e clique em **Save** — o servidor MCP está disponível na porta `7337`
+1. Download `GeneXusAIToolkit-windows.zip` from the [latest release](https://github.com/lucaskarsten/genexus-ai-toolkit/releases/latest)
+2. Extract to any folder (e.g., `C:\Tools\GeneXusAIToolkit\`)
+3. Double-click `GeneXusAIToolkit.exe`
+4. The browser opens automatically with the setup UI
+5. Fill in the KB paths and click **Save** — the MCP server is available on port `7337`
 
-A pasta `worker\` deve ficar ao lado do `.exe`. Não mova o executável sozinho.
+The `worker\` folder must stay next to the `.exe`. Do not move the executable alone.
 
-Na próxima inicialização, o `.exe` verifica atualizações em background — quando há nova versão, baixa e aplica silenciosamente ao fechar.
+On the next launch, the `.exe` checks for updates in the background — when a new version is available, it downloads and applies it silently on close.
 
-### 📦 Opção 2 — npm
+### 📦 Option 2 — npm
 
-Requer Node.js 18+.
+Requires Node.js 18+.
 
 ```bash
 npm install -g gx18-mcp
 gx18-mcp ui
 ```
 
-### 🔧 Opção 3 — Clone (para contribuidores)
+### 🔧 Option 3 — Clone (for contributors)
 
 ```bash
 git clone --recurse-submodules https://github.com/lucaskarsten/genexus-ai-toolkit.git
@@ -136,19 +135,19 @@ node dist/bin/gx18-mcp.js ui
 
 ---
 
-## Conectar ao Claude Desktop, VS Code ou Claude Code
+## Connect to Claude Desktop, VS Code, or Claude Code
 
-Após salvar os caminhos da KB, vá para a aba **Connections** na UI. Cada cliente suportado tem um botão:
+After saving the KB paths, go to the **Connections** tab in the UI. Each supported client has a button:
 
-| Botão | O que faz |
+| Button | What it does |
 |---|---|
-| **Register** (Claude Desktop) | Escreve a entrada `gx18` no `claude_desktop_config.json`. Detecta automaticamente o caminho MS Store e o padrão (`AppData\Roaming\Claude\`). |
-| **Register** (VS Code) | Escreve em `.vscode/mcp.json` no diretório de trabalho atual. |
-| **Register** (Claude Code project) | Escreve em `.mcp.json` no diretório atual — detectado automaticamente quando Claude Code abre a pasta. |
+| **Register** (Claude Desktop) | Writes the `gx18` entry in `claude_desktop_config.json`. Automatically detects the MS Store path and the default path (`AppData\Roaming\Claude\`). |
+| **Register** (VS Code) | Writes to `.vscode/mcp.json` in the current working directory. |
+| **Register** (Claude Code project) | Writes to `.mcp.json` in the current directory — automatically detected when Claude Code opens the folder. |
 
-Após registrar, **reinicie o Claude Desktop ou recarregue a janela do VS Code**.
+After registering, **restart Claude Desktop or reload the VS Code window**.
 
-O comando registrado aponta diretamente para o exe — sem `npx` ou Node.js em runtime:
+The registered command points directly to the exe — no `npx` or Node.js at runtime:
 
 ```json
 {
@@ -163,166 +162,166 @@ O comando registrado aponta diretamente para o exe — sem `npx` ou Node.js em r
 
 ---
 
-## 47 Ferramentas MCP
+## 47 MCP Tools
 
-O servidor `gx18` expõe **47 ferramentas** ao seu cliente AI, organizadas em categorias:
+The `gx18` server exposes **47 tools** to your AI client, organized into categories:
 
-### 🔍 Leitura & Descoberta
+### 🔍 Read & Discovery
 
-| Ferramenta | O que faz |
+| Tool | What it does |
 |---|---|
-| `gx_find` | Busca objetos por nome/padrão na KB |
-| `gx_list` | Lista objetos de um tipo/módulo |
-| `gx_get` | Detalhes completos de um objeto (tipo, módulo, datas) |
-| `gx_read` | Lê source, events, layout, properties, template de um objeto |
-| `gx_properties` | Propriedades SDK de um objeto |
-| `gx_structure` | Estrutura de Transaction (atributos e níveis) |
-| `gx_attribute` | Detalhes de atributos da KB |
-| `gx_variable` | Lê/lista variáveis de um objeto |
-| `gx_modules` | Lista módulos da KB com hierarquia |
-| `gx_whoami` | Usuário Windows atual → UserId na KB |
+| `gx_find` | Search objects by name/pattern in the KB |
+| `gx_list` | List objects of a type/module |
+| `gx_get` | Full details of an object (type, module, dates) |
+| `gx_read` | Reads source, events, layout, properties, template of an object |
+| `gx_properties` | SDK properties of an object |
+| `gx_structure` | Transaction structure (attributes and levels) |
+| `gx_attribute` | KB attribute details |
+| `gx_variable` | Reads/lists variables of an object |
+| `gx_modules` | Lists KB modules with hierarchy |
+| `gx_whoami` | Current Windows user → UserId in the KB |
 
-### 📊 Análise & Qualidade
+### 📊 Analysis & Quality
 
-| Ferramenta | O que faz |
+| Tool | What it does |
 |---|---|
-| `gx_analyze` | Dependências, uses/used-by de um objeto |
-| `gx_where_used` | Onde um objeto é referenciado |
-| `gx_impact` | Impacto de mudanças (cascata) |
-| `gx_dead_code` | Detecta procedures/UCs não referenciados |
-| `gx_search` | Busca full-text no source code da KB |
-| `gx_lint` | Verifica convenções e anti-patterns |
-| `gx_compare` | Compara dois objetos da KB |
-| `gx_diff` | Diff entre versões de um objeto |
-| `gx_stats` | Estatísticas gerais da KB |
-| `gx_history` | Histórico de versões de um objeto |
+| `gx_analyze` | Dependencies, uses/used-by of an object |
+| `gx_where_used` | Where an object is referenced |
+| `gx_impact` | Impact of changes (cascade) |
+| `gx_dead_code` | Detects unreferenced procedures/UCs |
+| `gx_search` | Full-text search in KB source code |
+| `gx_lint` | Checks conventions and anti-patterns |
+| `gx_compare` | Compares two KB objects |
+| `gx_diff` | Diff between versions of an object |
+| `gx_stats` | General KB statistics |
+| `gx_history` | Version history of an object |
 
-### ✏️ Escrita (requer `confirm: true`)
+### ✏️ Write (requires `confirm: true`)
 
-| Ferramenta | O que faz |
+| Tool | What it does |
 |---|---|
-| `gx_create` | Cria objeto novo via SDK GX18 (UserId correto) |
-| `gx_modify` | Edita source/events/layout/template de objeto existente |
-| `gx_set_property` | Altera propriedades individuais |
-| `gx_rename` | Renomeia objeto |
-| `gx_delete` | Remove objeto da KB |
-| `gx_clone` | Clona objeto (100% SQL para WBC/WBP — sem NullRef) |
-| `gx_move` | Move objeto para outro módulo |
-| `gx_bulk_modify` | Modifica múltiplos objetos em lote |
-| `gx_variable` | Cria/atualiza variáveis de um objeto |
+| `gx_create` | Creates a new object via GX18 SDK (correct UserId) |
+| `gx_modify` | Edits source/events/layout/template of an existing object |
+| `gx_set_property` | Changes individual properties |
+| `gx_rename` | Renames an object |
+| `gx_delete` | Removes an object from the KB |
+| `gx_clone` | Clones an object (100% SQL for WBC/WBP — no NullRef) |
+| `gx_move` | Moves an object to another module |
+| `gx_bulk_modify` | Modifies multiple objects in batch |
+| `gx_variable` | Creates/updates variables of an object |
 
 ### 📦 XPZ — Export/Import/Patch
 
-| Ferramenta | O que faz |
+| Tool | What it does |
 |---|---|
-| `gx_export` | Exporta objeto para `.xpz` (inclui UCs via SQL XPZ builder) |
-| `gx_read_xpz` | Lista e lê scripts dentro de um `.xpz` |
-| `gx_patch_xpz` | Aplica patch CDATA num script de `.xpz` |
-| `gx_import` | Importa `.xpz` na KB (UserId-verificado) |
+| `gx_export` | Exports an object to `.xpz` (includes UCs via SQL XPZ builder) |
+| `gx_read_xpz` | Lists and reads scripts inside an `.xpz` |
+| `gx_patch_xpz` | Applies a CDATA patch to a script in an `.xpz` |
+| `gx_import` | Imports a `.xpz` into the KB (UserId-verified) |
 
-### 🗄️ Banco de Dados
+### 🗄️ Database
 
-| Ferramenta | O que faz |
+| Tool | What it does |
 |---|---|
-| `gx_sql` | SQL direto contra a KB (SQL Server) |
-| `gx_db_connections` | Lista conexões de banco configuradas |
-| `gx_db_query` | Query em Oracle via ODP.NET (suporte a NNE) |
+| `gx_sql` | Direct SQL against the KB (SQL Server) |
+| `gx_db_connections` | Lists configured database connections |
+| `gx_db_query` | Oracle query via ODP.NET (NNE support) |
 
-### ⚙️ Configuração & Diagnóstico
+### ⚙️ Configuration & Diagnostics
 
-| Ferramenta | O que faz |
+| Tool | What it does |
 |---|---|
-| `gx_save_config` | Atualiza caminhos da KB e reinicia o worker — direto do chat |
-| `gx_doctor` | Diagnóstico de saúde do servidor e da KB |
-| `gx_reload` | Força reload da KB no worker (após SQL writes diretos) |
-| `gx_validate` | Valida objeto antes de salvar |
+| `gx_save_config` | Updates KB paths and restarts the worker — directly from chat |
+| `gx_doctor` | Server and KB health diagnostics |
+| `gx_reload` | Forces KB reload in the worker (after direct SQL writes) |
+| `gx_validate` | Validates an object before saving |
 
-> Ferramentas de escrita requerem `confirm: true` e ficam desabilitadas no modo somente leitura (`GX18_READONLY=true`).
+> Write tools require `confirm: true` and are disabled in read-only mode (`GX18_READONLY=true`).
 
 ---
 
-## Skills — Carregue expertise GeneXus no seu AI
+## Skills — Load GeneXus expertise into your AI
 
-Skills são arquivos Markdown que você carrega no seu cliente AI. Elas dão ao Claude (ou qualquer LLM) expertise profunda em GeneXus 18 como contexto de sistema.
+Skills are Markdown files you load into your AI client. They give Claude (or any LLM) deep GeneXus 18 expertise as system context.
 
-### `genexus-uc.md` — Especialista em User Controls
+### `genexus-uc.md` — User Controls Specialist
 
-Contexto expert para criar, refatorar e debugar UCs GeneXus 18.
+Expert context for creating, refactoring, and debugging GeneXus 18 UCs.
 
-- AfterShow Pattern A (IIFE + init-guard) e Pattern B (`window["ucInit_"]` + setTimeout)
-- MutationObserver para re-render pós-AJAX Refresh
-- SDT → JSON serialização (`Type="string"` + `decode()`)
+- AfterShow Pattern A (IIFE + init-guard) and Pattern B (`window["ucInit_"]` + setTimeout)
+- MutationObserver for post-AJAX Refresh re-render
+- SDT → JSON serialization (`Type="string"` + `decode()`)
 - Floating dropdown, Control Type, jQuery namespace patterns
-- 5-step decision path executado antes de qualquer geração de código
+- 5-step decision path executed before any code generation
 
 ```bash
 # Claude Code
 cp skills/genexus-uc.md ~/.claude/skills/
 ```
 
-### `genexus-expert.md` — Expert Geral GeneXus 18
+### `genexus-expert.md` — General GeneXus 18 Expert
 
-Cobre todos os tipos de objeto GX18 com padrões testados em produção, mais referência rápida dos construtos GeneXus mais usados (tipos de atributo, rules, triggers) extraídos dos arquivos de referência nexa.
+Covers all GX18 object types with production-tested patterns, plus a quick reference of the most commonly used GeneXus constructs (attribute types, rules, triggers) extracted from the nexa reference files.
 
 ```bash
 cp skills/genexus-expert.md ~/.claude/skills/
 cp skills/genexus-kb-sql.md ~/.claude/skills/
 ```
 
-### `skills/nexa/` — Skill Oficial GeneXus (autoridade de linguagem)
+### `skills/nexa/` — Official GeneXus Skill (language authority)
 
-O submodulo oficial [genexuslabs/genexus-skills](https://github.com/genexuslabs/genexus-skills). 24+ tipos de objetos GeneXus, referência completa de linguagem (rules, events, properties, data types). Carregue quando trabalhar em estrutura de objetos, design de transações, ou qualquer coisa que requeira a spec GeneXus autoritativa.
+The official [genexuslabs/genexus-skills](https://github.com/genexuslabs/genexus-skills) submodule. 24+ GeneXus object types, complete language reference (rules, events, properties, data types). Load it when working on object structure, transaction design, or anything requiring the authoritative GeneXus spec.
 
 ```bash
-# Registrar com Claude Code
+# Register with Claude Code
 claude --add-dir skills/nexa/nexa
 
-# Manter atualizado
+# Keep up to date
 git submodule update --remote skills/nexa
 ```
 
-**ChatGPT / Copilot / outros LLMs:** cole o conteúdo de qualquer arquivo `.md` de skill no system prompt ou custom instructions.
+**ChatGPT / Copilot / other LLMs:** paste the content of any skill `.md` file into the system prompt or custom instructions.
 
 ---
 
-## Recursos MCP Embarcados
+## Embedded MCP Resources
 
-Disponíveis para qualquer cliente MCP via `gx18://docs/<nome>`:
+Available to any MCP client via `gx18://docs/<name>`:
 
-| Recurso | Conteúdo |
+| Resource | Content |
 |---|---|
-| `gx18://docs/quick-reference` | Tabela de decisão tool→tarefa, EntityTypeIds, sequências obrigatórias |
-| `gx18://docs/usage-guide` | Referência completa de ferramentas, anti-patterns, exemplos |
-| `gx18://docs/entity-types` | Todos os tipos com EntityTypeId, SDK type, suporte a escrita |
-| `gx18://docs/write-safety` | Checklist pré-voo obrigatório antes de qualquer operação de escrita |
-| `gx18://docs/xpz-workflow` | Guia completo de round-trip XPZ (scripts AfterShow/Methods de UC) |
-| `gx18://docs/xpz-format-reference` | Schema XML do XPZ, Part GUIDs, tipagem de variáveis |
-| `gx18://docs/genexus-knowledge` | Modelo de objetos, events, sintaxe, padrões canônicos |
-| `gx18://docs/user-controls` | Guia de UC: AfterShow, MutationObserver, jQuery, catálogo de UCs |
+| `gx18://docs/quick-reference` | Tool→task decision table, EntityTypeIds, mandatory sequences |
+| `gx18://docs/usage-guide` | Complete tool reference, anti-patterns, examples |
+| `gx18://docs/entity-types` | All types with EntityTypeId, SDK type, write support |
+| `gx18://docs/write-safety` | Mandatory pre-flight checklist before any write operation |
+| `gx18://docs/xpz-workflow` | Complete XPZ round-trip guide (UC AfterShow/Methods scripts) |
+| `gx18://docs/xpz-format-reference` | XPZ XML schema, Part GUIDs, variable typing |
+| `gx18://docs/genexus-knowledge` | Object model, events, syntax, canonical patterns |
+| `gx18://docs/user-controls` | UC guide: AfterShow, MutationObserver, jQuery, UC catalog |
 
 ---
 
-## O que está incluído
+## What's included
 
 ```
 genexus-ai-toolkit/
 ├── packages/
-│   └── gx18-mcp/              # Servidor MCP GeneXus 18 (npm + exe standalone)
+│   └── gx18-mcp/              # GeneXus 18 MCP server (npm + standalone exe)
 │       ├── src/               # TypeScript source (47 tools, UI, SDK bridge, config)
-│       │   ├── ui/            # Web UI local (chat + dashboard + configuração)
-│       │   ├── sdk-bridge/    # Bridge IPC com o worker C#
-│       │   ├── tools/         # Implementações das 47 ferramentas MCP
-│       │   └── docs/          # 8 docs técnicos embarcados como MCP Resources
-│       ├── benchmark/         # Suite de benchmark (47 tools × 12 objetos)
-│       ├── worker/            # Worker C# (SDK GX18, Oracle ODP.NET, IPC)
-│       └── dist/worker/       # Worker pré-compilado + DLLs Oracle (commitado)
-├── assets/                    # Ícone Nara e assets visuais
-├── skills/                    # Skill files para LLMs
-│   ├── genexus-uc.md          # Especialista em User Controls (GX18)
-│   ├── genexus-expert.md      # Expert geral GX18 + digest de linguagem nexa
-│   ├── genexus-kb-sql.md      # Acesso SQL direto à KB
-│   └── nexa/                  # Skill oficial GeneXus Labs (submodule)
-├── docs/                      # Guias de referência técnica
+│       │   ├── ui/            # Local web UI (chat + dashboard + config)
+│       │   ├── sdk-bridge/    # IPC bridge with the C# worker
+│       │   ├── tools/         # 47 MCP tool implementations
+│       │   └── docs/          # 8 technical docs embedded as MCP Resources
+│       ├── benchmark/         # Benchmark suite (47 tools × 12 objects)
+│       ├── worker/            # C# worker (GX18 SDK, Oracle ODP.NET, IPC)
+│       └── dist/worker/       # Pre-compiled worker + Oracle DLLs (committed)
+├── assets/                    # Nara icon and visual assets
+├── skills/                    # Skill files for LLMs
+│   ├── genexus-uc.md          # User Controls specialist (GX18)
+│   ├── genexus-expert.md      # General GX18 expert + nexa language digest
+│   ├── genexus-kb-sql.md      # Direct SQL access to the KB
+│   └── nexa/                  # Official GeneXus Labs skill (submodule)
+├── docs/                      # Technical reference guides
 │   ├── user-controls-guide.md
 │   ├── bem-css-naming.md
 │   ├── common-pitfalls.md
@@ -331,83 +330,83 @@ genexus-ai-toolkit/
 │   ├── gx18-mcp.md
 │   ├── genexus-for-agents.md
 │   └── llm-engineering.md
-├── .claude/agents/            # Subagentes especializados Claude Code
-│   ├── gx-uc-builder.md       # Criação e modificação de UCs
-│   ├── gx-wbp-builder.md      # Wiring de Web Panels e Web Components
-│   ├── gx-kb-explorer.md      # Leitura de KB via gx18-mcp + SQL
+├── .claude/agents/            # Specialized Claude Code subagents
+│   ├── gx-uc-builder.md       # UC creation and modification
+│   ├── gx-wbp-builder.md      # Web Panel and Web Component wiring
+│   ├── gx-kb-explorer.md      # KB reading via gx18-mcp + SQL
 │   ├── gx-dso-designer.md     # DSO CSS + design tokens
-│   └── gx-reviewer.md         # Revisão de qualidade de código
-├── examples/                  # Templates prontos para uso
-│   ├── user-controls/         # 4 exemplos de UC funcionando
-│   ├── design-system/         # Template DSO + design tokens
-│   ├── web-panels/            # Exemplo WBP com pub/sub
-│   └── templates/             # Scaffolds de UC e DSO
-└── output/                    # Arquivos gerados por AI (gitignored, local)
+│   └── gx-reviewer.md         # Code quality review
+├── examples/                  # Ready-to-use templates
+│   ├── user-controls/         # 4 working UC examples
+│   ├── design-system/         # DSO template + design tokens
+│   ├── web-panels/            # WBP example with pub/sub
+│   └── templates/             # UC and DSO scaffolds
+└── output/                    # AI-generated files (gitignored, local)
 ```
 
 ---
 
-## Clientes AI Suportados
+## Supported AI Clients
 
-| Cliente | Como conectar |
+| Client | How to connect |
 |---|---|
-| **Claude Desktop** | Aba Connections → Register. Detecta automaticamente caminho MS Store. |
-| **VS Code Copilot** | Aba Connections → Register (escreve `.vscode/mcp.json`). Habilite Agent mode no Copilot. |
-| **Claude Code** | Aba Connections → Register (escreve `.mcp.json`). Detectado automaticamente na abertura do projeto. |
-| **Cursor** | Register escreve `.cursor/mcp.json`. Ou copie `.vscode/mcp.json` → `.cursor/mcp.json`. |
-| **OpenAI Codex CLI** | `codex.toml` está incluído no repo — detectado automaticamente no `codex`. |
-| **ChatGPT Desktop** | App settings → MCP → Add `http://localhost:7337/mcp` manualmente. |
+| **Claude Desktop** | Connections tab → Register. Automatically detects the MS Store path. |
+| **VS Code Copilot** | Connections tab → Register (writes `.vscode/mcp.json`). Enable Agent mode in Copilot. |
+| **Claude Code** | Connections tab → Register (writes `.mcp.json`). Automatically detected when the project is opened. |
+| **Cursor** | Register writes `.cursor/mcp.json`. Or copy `.vscode/mcp.json` → `.cursor/mcp.json`. |
+| **OpenAI Codex CLI** | `codex.toml` is included in the repo — automatically detected by `codex`. |
+| **ChatGPT Desktop** | App settings → MCP → Add `http://localhost:7337/mcp` manually. |
 
 ---
 
-## Exemplos de UCs prontos
+## Ready-to-use UC Examples
 
-| UC | O que faz |
+| UC | What it does |
 |----|---|
-| [`UcDropdownMenu`](examples/user-controls/UcDropdownMenu/) | Botão + lista colapsável, itens via JSON, evento OnItemClick |
-| [`UcUserMenu`](examples/user-controls/UcUserMenu/) | Avatar + nome + dropdown com logout/settings |
-| [`UcToastNotification`](examples/user-controls/UcToastNotification/) | Alertas toast (success / error / warning / info) com auto-dismiss e métodos `Show()` / `Hide()` |
-| [`UcNavSearch`](examples/user-controls/UcNavSearch/) | Busca com filtro live, navegação por teclado (setas + Escape), evento OnSelect |
+| [`UcDropdownMenu`](examples/user-controls/UcDropdownMenu/) | Button + collapsible list, items via JSON, OnItemClick event |
+| [`UcUserMenu`](examples/user-controls/UcUserMenu/) | Avatar + name + dropdown with logout/settings |
+| [`UcToastNotification`](examples/user-controls/UcToastNotification/) | Toast alerts (success / error / warning / info) with auto-dismiss and `Show()` / `Hide()` methods |
+| [`UcNavSearch`](examples/user-controls/UcNavSearch/) | Search with live filter, keyboard navigation (arrows + Escape), OnSelect event |
 
-Todos os quatro exemplos seguem os mesmos padrões — são o ground truth que o AI usa ao gerar novos UCs.
+All four examples follow the same patterns — they are the ground truth the AI uses when generating new UCs.
 
 ---
 
-## Documentação de Referência
+## Reference Documentation
 
-| Guia | Quando ler |
+| Guide | When to read |
 |---|---|
-| [user-controls-guide.md](docs/user-controls-guide.md) | Criando ou editando qualquer User Control |
-| [bem-css-naming.md](docs/bem-css-naming.md) | Escrevendo CSS para DSOs |
-| [common-pitfalls.md](docs/common-pitfalls.md) | Debugando um UC que não funciona corretamente |
-| [runtime-api-reference.md](docs/runtime-api-reference.md) | Usando `gx.fx.obs`, `gx.dom`, `gx.grid`, `gx.popup` |
-| [kb-sql-reference.md](docs/kb-sql-reference.md) | Consultando a KB diretamente via SQL |
-| [gx18-mcp.md](docs/gx18-mcp.md) | Arquitetura do gx18-mcp, matriz de suporte a escrita, setup de clone KB |
-| [genexus-for-agents.md](docs/genexus-for-agents.md) | Configurando MCP para qualquer cliente AI |
-| [llm-engineering.md](docs/llm-engineering.md) | Escrevendo ou melhorando skills e docs |
+| [user-controls-guide.md](docs/user-controls-guide.md) | Creating or editing any User Control |
+| [bem-css-naming.md](docs/bem-css-naming.md) | Writing CSS for DSOs |
+| [common-pitfalls.md](docs/common-pitfalls.md) | Debugging a UC that isn't working correctly |
+| [runtime-api-reference.md](docs/runtime-api-reference.md) | Using `gx.fx.obs`, `gx.dom`, `gx.grid`, `gx.popup` |
+| [kb-sql-reference.md](docs/kb-sql-reference.md) | Querying the KB directly via SQL |
+| [gx18-mcp.md](docs/gx18-mcp.md) | gx18-mcp architecture, write support matrix, KB clone setup |
+| [genexus-for-agents.md](docs/genexus-for-agents.md) | Setting up MCP for any AI client |
+| [llm-engineering.md](docs/llm-engineering.md) | Writing or improving skills and docs |
 
 ---
 
-## Variáveis de Ambiente
+## Environment Variables
 
-| Variável | Obrigatória para | Descrição |
+| Variable | Required for | Description |
 |---|---|---|
-| `GX_KB_PATH` | gx18 MCP | Pasta raiz da KB GeneXus |
-| `GX_KB_SERVER` | gx18 MCP | Instância SQL Server (padrão: `(localdb)\MSSQLLocalDB`) |
-| `GX_KB_DATABASE` | gx18 MCP | Nome do banco de dados da KB |
-| `GX_18_DIR` | gx18 MCP | Pasta de instalação do GeneXus 18 (auto-detectado se omitido) |
-| `GX_OUTPUT_PATH` | Opcional | Pasta de output para arquivos gerados (padrão: `.\output`) |
-| `GX_PROJECT_PREFIX` | Opcional | Prefixo para nomes de objetos gerados (ex.: `Acme`) |
-| `GX_COMPILER_OUTPUT` | Opcional | Caminho de output do build GeneXus (Tomcat / .NET) |
-| `GX18_READONLY` | Opcional | Defina `true` para desabilitar todas as ferramentas de escrita |
+| `GX_KB_PATH` | gx18 MCP | GeneXus KB root folder |
+| `GX_KB_SERVER` | gx18 MCP | SQL Server instance (default: `(localdb)\MSSQLLocalDB`) |
+| `GX_KB_DATABASE` | gx18 MCP | KB database name |
+| `GX_18_DIR` | gx18 MCP | GeneXus 18 installation folder (auto-detected if omitted) |
+| `GX_OUTPUT_PATH` | Optional | Output folder for generated files (default: `.\output`) |
+| `GX_PROJECT_PREFIX` | Optional | Prefix for generated object names (e.g., `Acme`) |
+| `GX_COMPILER_OUTPUT` | Optional | GeneXus build output path (Tomcat / .NET) |
+| `GX18_READONLY` | Optional | Set to `true` to disable all write tools |
 
-A UI salva configurações em `%LOCALAPPDATA%\gx18-mcp\config.json`. Variáveis de ambiente sobrescrevem a config salva quando ambas estão definidas.
+The UI saves settings to `%LOCALAPPDATA%\gx18-mcp\config.json`. Environment variables override saved config when both are set.
 
-Copie `.env.example` → `.env` e preencha seus valores.
+Copy `.env.example` → `.env` and fill in your values.
 
 ---
 
-## Para Desenvolvedores e Contribuidores
+## For Developers and Contributors
 
 ### Build
 
@@ -415,65 +414,65 @@ Copie `.env.example` → `.env` e preencha seus valores.
 cd packages/gx18-mcp
 npm install
 npm run build            # TypeScript → dist/
-npm run build:worker     # Worker C# SDK → dist/worker/
-npm run build:exe        # Exe standalone → release/GeneXusAIToolkit.exe
-npm test                 # Testes unitários Vitest
-npm run test:all         # Unitários + integração + benchmark smoke
+npm run build:worker     # C# SDK worker → dist/worker/
+npm run build:exe        # Standalone exe → release/GeneXusAIToolkit.exe
+npm test                 # Vitest unit tests
+npm run test:all         # Unit + integration + benchmark smoke
 ```
 
-### Agentes (Claude Code)
+### Agents (Claude Code)
 
-O diretório `.claude/agents/` contém subagentes especializados disponíveis quando trabalhando neste projeto com Claude Code. Eles são automaticamente sugeridos quando a tarefa corresponde à descrição deles.
+The `.claude/agents/` directory contains specialized subagents available when working on this project with Claude Code. They are automatically suggested when the task matches their description.
 
-### Submodule nexa
+### nexa submodule
 
-O submodule `skills/nexa/` é a referência autoritativa de linguagem GeneXus mantida pelo GeneXus Labs. **Não** faz parte deste toolkit e é regido por sua própria licença.
+The `skills/nexa/` submodule is the authoritative GeneXus language reference maintained by GeneXus Labs. It is **not** part of this toolkit and is governed by its own license.
 
 ```bash
-# Inicializar após clone
+# Initialize after clone
 git submodule update --init --recursive
 
-# Atualizar para o mais recente
+# Update to latest
 git submodule update --remote skills/nexa
 ```
 
 ---
 
-## Opcional — GeneXus Next MCP
+## Optional — GeneXus Next MCP
 
-O script `scripts/optional/start-gxnext.ps1` inicia o GeneXus Next (versão Docker) se você quiser usar o servidor MCP oficial do GeneXus. Isso **não é necessário** para o workflow do gx18-mcp.
+The `scripts/optional/start-gxnext.ps1` script starts GeneXus Next (Docker version) if you want to use the official GeneXus MCP server. This is **not required** for the gx18-mcp workflow.
 
-> ⚠️ **Atenção:** NÃO use ferramentas de escrita do gxnext em uma KB GeneXus 18 — cria revisões falsas com o usuário errado no Team Development. Ferramentas somente leitura (`export_kb_to_text`, `get_kb_property`) são seguras. Consulte [docs/genexus-for-agents.md](docs/genexus-for-agents.md) para detalhes.
+> ⚠️ **Warning:** Do NOT use gxnext write tools on a GeneXus 18 KB — it creates false revisions with the wrong user in Team Development. Read-only tools (`export_kb_to_text`, `get_kb_property`) are safe. See [docs/genexus-for-agents.md](docs/genexus-for-agents.md) for details.
 
 ---
 
-## Recursos Oficiais GeneXus
+## Official GeneXus Resources
 
-| Recurso | O que é |
+| Resource | What it is |
 |---|---|
-| [GeneXus for Agents](https://wiki.genexus.com/commwiki/wiki?61619) | Docs oficiais de integração MCP (GeneXus Next) |
-| [genexuslabs/genexus-skills](https://github.com/genexuslabs/genexus-skills) | Repo oficial de skills — `skills/nexa/` é este submodule |
-| [GeneXus Wiki](https://wiki.genexus.com) | Documentação completa da plataforma |
-| [GeneXus Community](https://community.genexus.com) | Fóruns e Q&A |
+| [GeneXus for Agents](https://wiki.genexus.com/commwiki/wiki?61619) | Official MCP integration docs (GeneXus Next) |
+| [genexuslabs/genexus-skills](https://github.com/genexuslabs/genexus-skills) | Official skills repo — `skills/nexa/` is this submodule |
+| [GeneXus Wiki](https://wiki.genexus.com) | Complete platform documentation |
+| [GeneXus Community](https://community.genexus.com) | Forums and Q&A |
 
 ---
 
-## Contribuindo
+## Contributing
 
-PRs são bem-vindos — especialmente novos exemplos de UC, melhorias em skills e novos tools para o gx18-mcp. Consulte [CONTRIBUTING.md](CONTRIBUTING.md) para diretrizes.
+PRs are welcome — especially new UC examples, skill improvements, and new tools for gx18-mcp. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-Perguntas ou ideias? Abra uma [Discussion](https://github.com/lucaskarsten/genexus-ai-toolkit/discussions).
+Questions or ideas? Open a [Discussion](https://github.com/lucaskarsten/genexus-ai-toolkit/discussions).
 
 ---
 
-## Licença
+## License
 
-MIT — veja [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).
 
 ---
 
 <div align="center">
   <img src="assets/icon-source.png" alt="Nara" width="60" />
   <br/>
-  <sub>Feito com 🐕 pela Nara e muita IA · GeneXus AI Toolkit v2.0</sub>
+  <sub>Made with 🐕 by Nara and a lot of AI · GeneXus AI Toolkit v2.0</sub>
 </div>
