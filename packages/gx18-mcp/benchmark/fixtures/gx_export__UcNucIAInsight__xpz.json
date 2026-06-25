@@ -1,0 +1,16 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:02:00.619Z",
+  "tool": "gx_export",
+  "args": {
+    "name": "UcNucIAInsight",
+    "type": 147
+  },
+  "response": {
+    "ok": true,
+    "name": "UcNucIAInsight",
+    "bytes": 2878
+  },
+  "checksum": "210043c6438a6268925c029af3492cdea484aa9b3fea1e803dbea13ebd4b25bc",
+  "entityVersionId": null
+}

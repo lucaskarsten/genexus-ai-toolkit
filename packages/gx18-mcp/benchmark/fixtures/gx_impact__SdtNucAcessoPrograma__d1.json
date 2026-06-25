@@ -1,0 +1,19 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:26.545Z",
+  "tool": "gx_impact",
+  "args": {
+    "name": "SdtNucAcessoPrograma",
+    "type": 36,
+    "depth": 1
+  },
+  "response": {
+    "root": "SdtNucAcessoPrograma",
+    "entityTypeId": 36,
+    "depth": 1,
+    "impacted": [],
+    "total": 0
+  },
+  "checksum": "4fad3c2776126c93480a36323bc3b74a3296ad3687bf6174876db2b035df27af",
+  "entityVersionId": null
+}

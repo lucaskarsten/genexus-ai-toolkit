@@ -1,0 +1,15 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:02:14.990Z",
+  "tool": "gx_attribute",
+  "args": {
+    "pattern": "Loj%",
+    "limit": 20
+  },
+  "response": {
+    "attributes": [],
+    "total": 0
+  },
+  "checksum": "44406990a1b4e7f2380c32d5b280e64c97ecef227fd6e92c0a2f5b0d46b790ff",
+  "entityVersionId": null
+}

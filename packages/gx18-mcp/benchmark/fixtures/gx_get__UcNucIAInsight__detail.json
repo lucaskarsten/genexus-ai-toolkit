@@ -1,0 +1,38 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:55.618Z",
+  "tool": "gx_get",
+  "args": {
+    "name": "UcNucIAInsight",
+    "type": 147
+  },
+  "response": {
+    "entityTypeId": 147,
+    "typeName": "UserControl",
+    "entityId": 56,
+    "name": "UcNucIAInsight",
+    "lastModified": "<masked>",
+    "components": [
+      {
+        "entityTypeId": 62,
+        "typeName": "Documentation",
+        "entityId": 32004,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 148,
+        "typeName": "148",
+        "entityId": 56,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 149,
+        "typeName": "149",
+        "entityId": 56,
+        "entityVersionId": "<entityVersionId>"
+      }
+    ]
+  },
+  "checksum": "d12a6df36bfedf0b3262ed226782276f6d2561852ba2ac9ed3708081da1855fb",
+  "entityVersionId": 3
+}

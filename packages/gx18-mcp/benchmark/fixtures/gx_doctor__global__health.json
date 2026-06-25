@@ -1,0 +1,43 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:02:12.745Z",
+  "tool": "gx_doctor",
+  "args": {},
+  "response": {
+    "checks": [
+      {
+        "name": "Worker exe",
+        "status": "ok",
+        "detail": "C:\\Repos\\genexus-ai-toolkit\\packages\\gx18-mcp\\dist\\worker\\Gx18Mcp.SdkWorker.exe"
+      },
+      {
+        "name": "GX18 dir",
+        "status": "ok",
+        "detail": "C:\\Program Files (x86)\\GeneXus\\GeneXus18U6"
+      },
+      {
+        "name": "KB path",
+        "status": "ok",
+        "detail": "C:\\KBs\\FoccoLojas_03"
+      },
+      {
+        "name": "Worker ping",
+        "status": "ok",
+        "detail": "user=COMPUSOFT\\lucas.karsten kbPath=C:\\KBs\\FoccoLojas_03 sdkReady=false sqlReady=true"
+      },
+      {
+        "name": "SQL EntityVersion rows",
+        "status": "ok",
+        "detail": "5000+ (sampled)"
+      },
+      {
+        "name": "DB connections",
+        "status": "ok",
+        "detail": "kb=reachable oracle=reachable"
+      }
+    ],
+    "ok": true
+  },
+  "checksum": "f416d2b5d5b4c5fb332b83c0b986b5750bfb27ebb1dfa9089136551dfede94be",
+  "entityVersionId": null
+}

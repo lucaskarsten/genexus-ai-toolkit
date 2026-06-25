@@ -1,0 +1,46 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:45.083Z",
+  "tool": "gx_analyze",
+  "args": {
+    "name": "WbcNucMenu",
+    "type": 43,
+    "action": "uses",
+    "limit": 30
+  },
+  "response": {
+    "name": "WbcNucMenu",
+    "entityTypeId": 43,
+    "entityId": 1432,
+    "action": "uses",
+    "results": [
+      {
+        "name": "Configuration",
+        "entityTypeId": 36,
+        "typeName": "SDT"
+      },
+      {
+        "name": "Dropdown",
+        "entityTypeId": 147,
+        "typeName": "UserControl"
+      },
+      {
+        "name": "Event",
+        "entityTypeId": 36,
+        "typeName": "SDT"
+      },
+      {
+        "name": "Get",
+        "entityTypeId": 34,
+        "typeName": "Procedure"
+      },
+      {
+        "name": "GetBaseUrl",
+        "entityTypeId": 34,
+        "typeName": "Procedure"
+      }
+    ]
+  },
+  "checksum": "aa5716d278a3697d679823fde40d2436429c1c765dd0221350aa7efc4be50690",
+  "entityVersionId": null
+}

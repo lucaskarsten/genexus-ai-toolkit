@@ -1,0 +1,20 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:28.792Z",
+  "tool": "gx_analyze",
+  "args": {
+    "name": "SdtNucContext",
+    "type": 36,
+    "action": "dependencies",
+    "limit": 30
+  },
+  "response": {
+    "name": "SdtNucContext",
+    "entityTypeId": 36,
+    "entityId": 615,
+    "action": "dependencies",
+    "results": []
+  },
+  "checksum": "356570a9bd5769bbe8df82c4e4219250309a627c1ba3cd0263335beedaece383",
+  "entityVersionId": null
+}

@@ -1,0 +1,19 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:42.040Z",
+  "tool": "gx_impact",
+  "args": {
+    "name": "WbcVenMeusClientesRecentes",
+    "type": 43,
+    "depth": 1
+  },
+  "response": {
+    "root": "WbcVenMeusClientesRecentes",
+    "entityTypeId": 43,
+    "depth": 1,
+    "impacted": [],
+    "total": 0
+  },
+  "checksum": "218bd7af985228cb536267f90b52c0f12f2d2fe5aaa433d55532cc81f917f689",
+  "entityVersionId": null
+}

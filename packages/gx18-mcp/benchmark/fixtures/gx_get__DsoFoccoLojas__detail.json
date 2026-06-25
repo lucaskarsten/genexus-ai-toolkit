@@ -1,0 +1,44 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:02:00.689Z",
+  "tool": "gx_get",
+  "args": {
+    "name": "DsoFoccoLojas",
+    "type": 161
+  },
+  "response": {
+    "entityTypeId": 161,
+    "typeName": "DSO",
+    "entityId": 9,
+    "name": "DsoFoccoLojas",
+    "lastModified": "<masked>",
+    "components": [
+      {
+        "entityTypeId": 62,
+        "typeName": "Documentation",
+        "entityId": 31806,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 157,
+        "typeName": "157",
+        "entityId": 9,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 158,
+        "typeName": "158",
+        "entityId": 9,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 159,
+        "typeName": "159",
+        "entityId": 9,
+        "entityVersionId": "<entityVersionId>"
+      }
+    ]
+  },
+  "checksum": "bb2178cb8c60cbd9441aa6c5f17c762c011da5d6797ee98d22209f1369551423",
+  "entityVersionId": 18
+}

@@ -1,0 +1,45 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:55.359Z",
+  "tool": "gx_search",
+  "args": {
+    "pattern": "UCTooltip",
+    "limit": 10
+  },
+  "response": {
+    "pattern": "UCTooltip",
+    "matches": [
+      {
+        "name": "TrnNucUsuario",
+        "entityTypeId": 39,
+        "typeName": "Transaction",
+        "entityId": 210,
+        "section": "events",
+        "matchCount": 1,
+        "matchLines": [
+          {
+            "line": 53,
+            "text": "\t\tDo'ValidaEmailUsuario'If&EmailExistente&SdtNucAviso.Clear()&SdtNucAvisoItem=New()&SdtNucAvisoItem.Tipo=MessageTypes.Warning&SdtNucAvisoItem.Mensagem='O e-mail cadastrado já está sendo utilizado por outro usuário. Considere alterar para um outro e-mail.'&SdtNucAviso.Add(&SdtNucAvisoItem)&GuidValidacaoEmail=Guid.NewGuid().ToString().Trim()&WebSession.Set(&GuidValidacaoEmail,&SdtNucAviso.ToJson())WebCompValidacaoEmail.Object=WbcNucAvisos.Create(&GuidValidacaoEmail,false)EndIfEndSubSub'sub_mais_dados'BtnMaisDados.Caption=iif(&IsShowMore,'- Menos Informações','+ Mais Informações')TblMaisDados.Visible=&IsShowMore&BalaoInformativoDataSistema.TooltipText='Ao ativar este parâmetro o usuário poderá alterar a data de execução do sistema e realizar operações com datas retroativas.'UCTooltip.Tooltip()EndSubSub'FoccoLojasButtonOptions'FoccoLojasButtonOptions1.BaseElement=BtnMaisOpcoes.InternalName&SdtNucOptions.Clear()If&SDT_IPN_USUARIOS.IPN_USU_DATA_ALT_SENHA.IsEmpty()IfNot&Fabrica.ToUpper().Contains(!'BONTEMPO')&SdtNucOptionsElement=New()&SdtNucOptionsElement.description='Reenviar E-mail do Cadastro da Senha'&SdtNucOptionsElement.userEvent=!'EMA'&SdtNucOptions.Add(&SdtNucOptionsElement)EndIfElse&SdtNucOptionsElement=New()&SdtNucOptionsElement.description='Sincronizar Usuário no APP'&SdtNucOptionsElement.userEvent=!'APP'&SdtNucOptions.Add(&SdtNucOptionsElement)EndIfIfPipnVerPermissaoUsuario.Udp(0,0,0,!'TiljUsuarios',TrnMode.Update)=RetornoAcesso.Liberado&SdtNucOptionsElement=New()&SdtNucOptionsElement.description='Limpar Senha'&SdtNucOptionsElement.userEvent=!'LPS'&SdtNucOptions.Add(&SdtNucOptionsElement)endifEndSubSub'reenviar_email_cadastrar_senha'PrcNucEnviaEmailAtivaUsuario.Call(NucAplicacao.Lojas,IPN_USU_UND_ID,IPN_USU_ID,&ErroCodigo,&ErroMensagem)If&ErroCodigo.IsEmpty()&SdtNucParametroMensagem.Mensagem='E-mail enviado com sucesso.'WebCompMensagem.Object=Create(WbcNucMensagem,&SdtNucParametroMensagem)ElseMsg(&ErroMensagem)FoccoLojasNiceForm1.GxFocusErrorMessage()EndIfEndSubSub'SincronizarUsuarioApp'&SdtNucContext=PrcNucGetContext.Udp(TabelaCompartilhamento.NaoCompartilhado)&SdtNucSchema=PrcNucRetSchema.Udp()&Varcharzao=&SdtNucSchema.ToJson()PrcNucLoginApp.Call(&Varcharzao,IPN_USU_ID,&ErroCodigo,&ErroMensagem)&Message=New()If&ErroCodigo.IsEmpty()&Message.Type=MessageTypes.Info&Message.Description='Usuário sincronizado com sucesso'Else&Message.Type=MessageTypes.Error&Message.Description=&ErroMensagemEndIf&Messages.Add(&Message)"
+          }
+        ]
+      },
+      {
+        "name": "TiljClassificacoesFiscais",
+        "entityTypeId": 39,
+        "typeName": "Transaction",
+        "entityId": 226,
+        "section": "events",
+        "matchCount": 1,
+        "matchLines": [
+          {
+            "line": 9,
+            "text": "\t\tPiljPrcRetCodigosGenericos(!'CEST',&SDT_CodigosGenericos)For&SDT_CodigosGenericosItemin&SDT_CodigosGenericos&ILJ_CGE_CODIGO=&SDT_CodigosGenericosItem.ILJ_CGE_CODIGO&ILJ_CGE_DESCRICAO=&SDT_CodigosGenericosItem.ILJ_CGE_DESCRICAOIf&ILJ_CGE_DESCRICAO.Length()>100&ILJ_CGE_DESCRICAO=GXGetMLi(&ILJ_CGE_DESCRICAO,1,100)&ILJ_CGE_DESCRICAO=&ILJ_CGE_DESCRICAO+!'...'EndIfTrnVenClaFisCodCest.AddItem(&ILJ_CGE_CODIGO,&ILJ_CGE_CODIGO+!'-'+&ILJ_CGE_DESCRICAO)EndForEndSubEventTrnVenClaFisCodCest.ClickFor&SDT_CodigosGenericosItemin&SDT_CodigosGenericosIf&SDT_CodigosGenericosItem.ILJ_CGE_CODIGO=TrnVenClaFisCodCestTrnVenClaFisCodCest.Tooltiptext=&SDT_CodigosGenericosItem.ILJ_CGE_DESCRICAOUCTooltip1.Tooltip()ExitEndIfEndForEndEventEvent'SelecionaTipoNotaIntraestadual'WbpFisTipoNotaPrompt.Popup(&IPN_UND_ID,VenCfopOperacao.Saida,VenNotaFiscalTipoOperacao.Venda,ILJ_CFI_VEN_INTRA_TPN_ID)EndEventEvent'SelecionaTipoNotaInterestadual'WbpFisTipoNotaPrompt.Popup(&IPN_UND_ID,VenCfopOperacao.Saida,VenNotaFiscalTipoOperacao.Venda,ILJ_CFI_VEN_INTER_TPN_ID)EndEvent}"
+          }
+        ]
+      }
+    ],
+    "total": 2
+  },
+  "checksum": "da1ddf4715605320df29662e15a515e530f6a473b9847102666d0978076c6e07",
+  "entityVersionId": null
+}

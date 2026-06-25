@@ -1,0 +1,13 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:35.835Z",
+  "tool": "gx_read",
+  "args": {
+    "name": "TrnNucPais",
+    "type": 39,
+    "section": "rules"
+  },
+  "response": "Parm(&Mode,in:&pILJ_PAISES_ID,in:&pILJ_PAI_PAIS);ILJ_PAI_ID=&pILJ_PAISES_IDIfNot&pILJ_PAISES_ID.IsEmpty();ILJ_PAI_UND_ID=&IPN_UND_IDCompartifinsertandnot&IPN_UND_IDCompart.IsEmpty();Error('País deve ser informado.')IfILJ_PAI_PAIS.IsEmpty()orILJ_PAI_PAIS.IsNull();Error('Sigla deve ser informada.')IfILJ_PAI_SIGLA.IsEmpty()orILJ_PAI_SIGLA.IsNull();Error('Código BACEN deve ser informado.')IfILJ_PAI_BACEN.IsEmpty();Error('Nacionalidade deve ser informada.')IfILJ_PAI_NACIONALIDADE.IsEmpty();",
+  "checksum": "b7c11050242c1330208b4689cca54c24e7769ae985e42fc035715979ac2ff0fe",
+  "entityVersionId": null
+}

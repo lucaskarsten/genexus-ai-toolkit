@@ -1,0 +1,44 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:02:05.759Z",
+  "tool": "gx_get",
+  "args": {
+    "name": "DsoBase",
+    "type": 161
+  },
+  "response": {
+    "entityTypeId": 161,
+    "typeName": "DSO",
+    "entityId": 12,
+    "name": "DsoBase",
+    "lastModified": "<masked>",
+    "components": [
+      {
+        "entityTypeId": 62,
+        "typeName": "Documentation",
+        "entityId": 31807,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 157,
+        "typeName": "157",
+        "entityId": 10,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 158,
+        "typeName": "158",
+        "entityId": 10,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 159,
+        "typeName": "159",
+        "entityId": 10,
+        "entityVersionId": "<entityVersionId>"
+      }
+    ]
+  },
+  "checksum": "b96f5764810561bfff376f0da050dc441aa4ec89b244b7492e8195e7e87a712b",
+  "entityVersionId": 23
+}

@@ -1,0 +1,28 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:02:05.830Z",
+  "tool": "gx_history",
+  "args": {
+    "name": "DsoBase",
+    "type": 161,
+    "limit": 5
+  },
+  "response": {
+    "name": "DsoBase",
+    "entityTypeId": 161,
+    "typeName": "DSO",
+    "entityId": 12,
+    "versions": [
+      {
+        "versionId": "<entityVersionId>",
+        "userId": 288,
+        "userName": "288",
+        "timestamp": "<masked>",
+        "description": "Base"
+      }
+    ],
+    "count": 1
+  },
+  "checksum": "edb4d10081e2575d9b1ff335acf634d782993762ec547127b48c894f50a62893",
+  "entityVersionId": 23
+}

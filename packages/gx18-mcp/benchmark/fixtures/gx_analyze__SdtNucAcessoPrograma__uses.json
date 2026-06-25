@@ -1,0 +1,20 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:25.083Z",
+  "tool": "gx_analyze",
+  "args": {
+    "name": "SdtNucAcessoPrograma",
+    "type": 36,
+    "action": "uses",
+    "limit": 30
+  },
+  "response": {
+    "name": "SdtNucAcessoPrograma",
+    "entityTypeId": 36,
+    "entityId": 1788,
+    "action": "uses",
+    "results": []
+  },
+  "checksum": "2d48dcd43c6a6c79411baff88b305dcec01461827a498b05780a383336e41727",
+  "entityVersionId": null
+}

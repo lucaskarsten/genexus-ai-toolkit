@@ -1,0 +1,62 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:39.475Z",
+  "tool": "gx_get",
+  "args": {
+    "name": "WbcVenMeusClientesRecentes",
+    "type": 43
+  },
+  "response": {
+    "entityTypeId": 43,
+    "typeName": "WebPanel",
+    "entityId": 1091,
+    "name": "WbcVenMeusClientesRecentes",
+    "lastModified": "<masked>",
+    "components": [
+      {
+        "entityTypeId": 57,
+        "typeName": "Conditions",
+        "entityId": 3723,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 62,
+        "typeName": "Documentation",
+        "entityId": 14999,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 64,
+        "typeName": "Events",
+        "entityId": 1807,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 65,
+        "typeName": "Help",
+        "entityId": 13805,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 69,
+        "typeName": "Rules",
+        "entityId": 4415,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 72,
+        "typeName": "Variables",
+        "entityId": 4415,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 74,
+        "typeName": "WebForm",
+        "entityId": 1807,
+        "entityVersionId": "<entityVersionId>"
+      }
+    ]
+  },
+  "checksum": "58c193df2589d5f01c8c793ed49bddf4a40b95aabc31f53b395737a9eee58361",
+  "entityVersionId": 32
+}

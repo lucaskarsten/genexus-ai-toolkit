@@ -1,0 +1,16 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:18.193Z",
+  "tool": "gx_search",
+  "args": {
+    "pattern": "PrcNucIncrementaContagem",
+    "limit": 10
+  },
+  "response": {
+    "pattern": "PrcNucIncrementaContagem",
+    "matches": [],
+    "total": 0
+  },
+  "checksum": "4106910314d235e8d3ddbdbd267f785cefc91935ce51d751915e553699bac59e",
+  "entityVersionId": null
+}

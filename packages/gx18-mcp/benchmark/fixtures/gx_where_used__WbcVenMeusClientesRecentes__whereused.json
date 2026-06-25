@@ -1,0 +1,18 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:40.480Z",
+  "tool": "gx_where_used",
+  "args": {
+    "name": "WbcVenMeusClientesRecentes",
+    "type": 43
+  },
+  "response": {
+    "name": "WbcVenMeusClientesRecentes",
+    "entityTypeId": 43,
+    "entityId": 1091,
+    "action": "usedby",
+    "results": []
+  },
+  "checksum": "5e8a55983cbb8c13a409aa2314200bf3745ffe4e09c0bdb2118f45b1ab023ff3",
+  "entityVersionId": null
+}

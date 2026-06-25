@@ -1,0 +1,19 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:21.617Z",
+  "tool": "gx_impact",
+  "args": {
+    "name": "PrcNucRetMaisUsados",
+    "type": 34,
+    "depth": 1
+  },
+  "response": {
+    "root": "PrcNucRetMaisUsados",
+    "entityTypeId": 34,
+    "depth": 1,
+    "impacted": [],
+    "total": 0
+  },
+  "checksum": "c7f8d41c6ef6f9256fe48d22c11ae77989c23a0915c2d9c22deafd70f0990188",
+  "entityVersionId": null
+}

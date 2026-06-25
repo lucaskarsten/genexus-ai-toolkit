@@ -1,0 +1,201 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:29.542Z",
+  "tool": "gx_search",
+  "args": {
+    "pattern": "SdtNucContext",
+    "limit": 10
+  },
+  "response": {
+    "pattern": "SdtNucContext",
+    "matches": [
+      {
+        "name": "TrnNucPais",
+        "entityTypeId": 39,
+        "typeName": "Transaction",
+        "entityId": 138,
+        "section": "events",
+        "matchCount": 2,
+        "matchLines": [
+          {
+            "line": 22,
+            "text": "\t&SdtNucContext=PrcNucGetContext.Udp(&TabelaCompartilhamento)"
+          },
+          {
+            "line": 25,
+            "text": "    &RetornoAcesso=PipnVerPermissaoUsuario.Udp(0,0,0,&Transacao,&Mode)If&RetornoAcesso<>RetornoAcesso.LiberadoHipnErroRedirecionamento.Call(&RetornoAcesso)EndIfBtnEditar.Visible=FalseBtnExcluir.Visible=FalseIf&Mode=TrnMode.DisplayIfPipnVerPermissaoUsuario.Udp(0,0,0,&Transacao,TrnMode.Update)=RetornoAcesso.LiberadoBtnEditar.Visible=TrueEndIfIfPipnVerPermissaoUsuario.Udp(0,0,0,&Transacao,TrnMode.Delete)=RetornoAcesso.LiberadoBtnExcluir.Visible=TrueEndIfEndIf&IPN_UND_ID=&SdtNucContext.IPN_UND_ID&IPN_UND_IDCompart=&SdtNucContext.IPN_UND_ID_Compart&IPN_UND_IDCompartProcura=&SdtNucContext.IPN_UND_ESTRUTURA&Consolidada=&SdtNucContext.Consolidada"
+          }
+        ]
+      },
+      {
+        "name": "TrnNucUf",
+        "entityTypeId": 39,
+        "typeName": "Transaction",
+        "entityId": 141,
+        "section": "events",
+        "matchCount": 2,
+        "matchLines": [
+          {
+            "line": 19,
+            "text": "\t\t&SdtNucContext=PrcNucGetContext.Udp(&TabelaCompartilhamento)"
+          },
+          {
+            "line": 22,
+            "text": "\t    &RetornoAcesso=PipnVerPermissaoUsuario.Udp(0,0,0,&Transacao,&Mode)If&RetornoAcesso<>RetornoAcesso.LiberadoHipnErroRedirecionamento.Call(&RetornoAcesso)EndIf&IPN_UND_ID=&SdtNucContext.IPN_UND_ID&IPN_UND_IDCompart=&SdtNucContext.IPN_UND_ID_Compart&IPN_UND_IDCompartProcura=&SdtNucContext.IPN_UND_ESTRUTURA&Consolidada=&SdtNucContext.Consolidada&IPN_USU_ID=&SdtNucContext.IPN_USU_ID&RetornoAcessoTributacao=PipnVerPermissaoUsuario.Udp(0,0,0,!'tiljufs',CodigoEvento.TributacaoICMS)&RetornoAcessoEditar=PipnVerPermissaoUsuario.Udp(0,0,0,&Transacao,TrnMode.Update)&RetornoAcessoExcluir=PipnVerPermissaoUsuario.Udp(0,0,0,&Transacao,TrnMode.Delete)&SdtNucUf=DtpNucUf.Udp(&ILJ_UF_IDParm)BtnEditar.Visible=FalseBtnExcluir.Visible=FalseBtnTributacaoICMS.Visible=FalseIf&Mode=TrnMode.DisplayIf&RetornoAcessoEditar=RetornoAcesso.LiberadoBtnEditar.Visible=TrueEndIfIf&RetornoAcessoExcluir=RetornoAcesso.LiberadoBtnExcluir.Visible=TrueEndIfIf&RetornoAcessoTributacao=RetornoAcesso.LiberadoAnd&SdtNucUf.ILJ_PAI_SIGLA=!'BRA'AndNot&SdtNucUf.ILJ_UFS_SIGLA.IsEmpty()BtnTributacaoICMS.Visible=TrueEndIfEndIf"
+          }
+        ]
+      },
+      {
+        "name": "TrnNucCidade",
+        "entityTypeId": 39,
+        "typeName": "Transaction",
+        "entityId": 145,
+        "section": "events",
+        "matchCount": 2,
+        "matchLines": [
+          {
+            "line": 30,
+            "text": "\t\t&SdtNucContext=PrcNucGetContext.Udp(&TabelaCompartilhamento)"
+          },
+          {
+            "line": 33,
+            "text": "\t    &RetornoAcesso=PipnVerPermissaoUsuario.Udp(0,0,0,&Transacao,&Mode)If&RetornoAcesso<>RetornoAcesso.LiberadoHipnErroRedirecionamento.Call(&RetornoAcesso)EndIfBtnEditar.Visible=FalseBtnExcluir.Visible=FalseIf&Mode=TrnMode.DisplayIfPipnVerPermissaoUsuario.Udp(0,0,0,&Transacao,TrnMode.Update)=RetornoAcesso.LiberadoBtnEditar.Visible=TrueEndIfIfPipnVerPermissaoUsuario.Udp(0,0,0,&Transacao,TrnMode.Delete)=RetornoAcesso.LiberadoBtnExcluir.Visible=TrueEndIfEndIf&IPN_UND_ID=&SdtNucContext.IPN_UND_ID&IPN_UND_IDCompart=&SdtNucContext.IPN_UND_ID_Compart&IPN_UND_IDCompartProcura=&SdtNucContext.IPN_UND_ESTRUTURA&Consolidada=&SdtNucContext.Consolidada"
+          }
+        ]
+      },
+      {
+        "name": "TiljCeps",
+        "entityTypeId": 39,
+        "typeName": "Transaction",
+        "entityId": 200,
+        "section": "events",
+        "matchCount": 2,
+        "matchLines": [
+          {
+            "line": 29,
+            "text": "\t\t&SdtNucContext=PrcNucGetContext.Udp(&TabelaCompartilhamento)"
+          },
+          {
+            "line": 32,
+            "text": "\t    &RetornoAcesso=PipnVerPermissaoUsuario.Udp(0,0,0,&Transacao,&Mode)If&RetornoAcesso<>RetornoAcesso.LiberadoHipnErroRedirecionamento.Call(&RetornoAcesso)EndIfBtnEditar.Visible=FalseBtnExcluir.Visible=FalseIf&Mode=TrnMode.DisplayIfPipnVerPermissaoUsuario.Udp(0,0,0,&Transacao,TrnMode.Update)=RetornoAcesso.LiberadoBtnEditar.Visible=TrueEndIfIfPipnVerPermissaoUsuario.Udp(0,0,0,&Transacao,TrnMode.Delete)=RetornoAcesso.LiberadoBtnExcluir.Visible=TrueEndIfEndIf&IPN_UND_ID=&SdtNucContext.IPN_UND_ID&IPN_UND_IDCompart=&SdtNucContext.IPN_UND_ID_Compart&IPN_UND_IDCompartProcura=&SdtNucContext.IPN_UND_ESTRUTURA&Consolidada=&SdtNucContext.Consolidada"
+          }
+        ]
+      },
+      {
+        "name": "TiljPessoas",
+        "entityTypeId": 39,
+        "typeName": "Transaction",
+        "entityId": 202,
+        "section": "events",
+        "matchCount": 1,
+        "matchLines": [
+          {
+            "line": 8,
+            "text": "\t&SdtNucContext=PrcNucGetContext(TabelaCompartilhamento.Pessoas)&IPN_UND_ID=&SdtNucContext.IPN_UND_ID&compartILJ_PES_UND_ID=&SdtNucContext.IPN_UND_ID_Compart&ILJ_PAI_UND_ID=PipnRetUnidadeCompartUsuario(&IPN_UND_ID,TabelaCompartilhamento.Cidades)[web]{Do'Start_Objeto'Do'Start_Tela'"
+          }
+        ]
+      },
+      {
+        "name": "TrnNucLoja",
+        "entityTypeId": 39,
+        "typeName": "Transaction",
+        "entityId": 205,
+        "section": "events",
+        "matchCount": 1,
+        "matchLines": [
+          {
+            "line": 56,
+            "text": "\t&SdtNucContext=PrcNucGetContext.Udp(TabelaCompartilhamento.NaoCompartilhado)&IPN_UND_ID=&SdtNucContext.IPN_UND_ID&IPN_USU_ID=&SdtNucContext.IPN_USU_ID&IsUsuarioFocco=(&SdtNucContext.ColaboradorFocco=SimNao.Sim)If&Mode=TrnMode.UpdatePrcNucRetIntPromobHabilitada.Call(&IPN_UND_ID,&TrnNucLojaIntPromobHabilitada,!'')EndIf[web]{If&Mode=TrnMode.Insert&AuxiliarPgmdesc=&Pgmdesc+!' > '+'Nova Loja/Unidade'Else&AuxiliarPgmdesc=&Pgmdesc+!' > '+&pIPN_UND_UNIDADEEndIf"
+          }
+        ]
+      },
+      {
+        "name": "TrnNucColaborador",
+        "entityTypeId": 39,
+        "typeName": "Transaction",
+        "entityId": 206,
+        "section": "events",
+        "matchCount": 3,
+        "matchLines": [
+          {
+            "line": 21,
+            "text": "\t\tPrcNucIntegraColaboradorLearningRocksSubmit.Submit(!'',ILJ_COL_ID,ILJ_COL_UND_ID,&SdtNucContext,&Mode)Do CaseCase&Mode=TrnMode.Insert&WebSession.Set(!'MENSAGEM_TRANSACAO',Format('Colaborador %1 inserido com sucesso.',ILJ_COL_PES_NOME))TrnNucColaborador.Call(&ModoChamada,&ProgramaChamador,TrnMode.Display,ILJ_COL_PES_ID,ILJ_COL_ID)Case&Mode=TrnMode.Delete&WebSession.Set(!'MENSAGEM_TRANSACAO',Format('Colaborador %1 excluído com sucesso.',ILJ_COL_PES_NOME))Do'Voltar'Case&Mode=TrnMode.Update&WebSession.Set(!'MENSAGEM_TRANSACAO',Format('Colaborador %1 alterado com sucesso.',ILJ_COL_PES_NOME))TrnNucColaborador.Call(&ModoChamada,&ProgramaChamador,TrnMode.Display,ILJ_COL_PES_ID,ILJ_COL_ID)EndCaseEndEventEvent'Fechar'Do'Voltar'EndEventEvent'TabEditar'Link(TrnNucColaborador,&ModoChamada,&ProgramaChamador,!'UPD',&ILJ_COL_PES_IDParm,&ILJ_COL_IDParm)EndEventEvent'TabExcluir'Link(TrnNucColaborador,&ModoChamada,&ProgramaChamador,!'DLT',&ILJ_COL_PES_IDParm,&ILJ_COL_IDParm)EndEventEvent'btn_historico'HiljColaboradorHistCargos.Call(&ModoChamada,&Transacao,ILJ_COL_PES_ID,ILJ_COL_ID)EndEventEventILJ_COL_PES_CEP.IsValidIfILJ_COL_PES_CEP<>&OldILJ_COL_PES_CEPCall(PiljRetInformacoesCeps,ILJ_COL_PES_CEP,&IPN_UND_IDCidade,&ILJ_COL_PES_BAIRRORet,&ILJ_COL_PES_ENDERECORet,&ILJ_COL_PES_CID_IDRet,&ILJ_COL_PES_CID_CIDADERet,&ILJ_COL_PES_CID_UFS_IDRet,&ILJ_COL_PES_CID_UFS_SIGLARet,&ILJ_COL_PES_CID_PAI_IDRet,&ILJ_COL_PES_CID_PAI_PAISRet,&ILJ_COL_PES_CID_PAI_UND_IDRet)Ifnot&ILJ_COL_PES_CID_IDRet.IsEmpty()&OldILJ_COL_PES_CEP=ILJ_COL_PES_CEPCall(PiljRetInformacoesCeps,ILJ_COL_PES_CEP,&IPN_UND_IDCidade,ILJ_COL_PES_BAIRRO,ILJ_COL_PES_ENDERECO,ILJ_COL_PES_CID_ID,ILJ_COL_PES_CID_CIDADE,ILJ_COL_PES_CID_UFS_ID,ILJ_COL_PES_CID_UFS_SIGLA,ILJ_COL_PES_CID_PAI_ID,ILJ_COL_PES_CID_PAI_PAIS,ILJ_COL_PES_CID_PAI_UND_ID)EndIfEndIfEndEventEvent'OnClickFecharAlerta'SectionAlertaInterno.Visible=falseEndeventEventImageCity.ClickHiljCidadesPrompt.Popup(&IPN_UND_IDCidade,ILJ_COL_PES_CID_ID,ILJ_COL_PES_CID_UFS_ID,ILJ_COL_PES_CID_PAI_ID,ILJ_COL_PES_CID_CIDADE)EndEventEvent'btn_learningRocks'PrcNucCadastraColaboradorLearningRocks(&ILJ_COL_PES_CPF,&ILJ_COL_IDParm,&IPN_UND_ID,&rErroCodigo,&rErroMensagem)If&rErroCodigo.IsEmpty()&WebSession.Set(!'MENSAGEM_TRANSACAO',!'Colaborador integrado com a Learning Rocks com sucesso.')Else&WebSession.Set(!'MENSAGEM_TRANSACAO',Format(!'Erro na integração: %1',&rErroMensagem.Trim()))EndIfTrnNucColaborador.Call(&ModoChamada,&ProgramaChamador,TrnMode.Display,&ILJ_COL_PES_IDParm,&ILJ_COL_IDParm)EndEvent"
+          },
+          {
+            "line": 42,
+            "text": "\t\t&SdtNucAbas=PrcNucColaboradorAbas.Udp(&Transacao,&Mode,&ILJ_COL_PES_IDParm,&ILJ_COL_IDParm)WebCompTabs.Object=WbcNucAbas.Create(&Transacao,&SdtNucAbas.ToJson(),false)EndSubSub'Padrao_Start_Objeto'&SdtNucContext=PrcNucGetContext.Udp(&TabelaCompartilhamento)"
+          },
+          {
+            "line": 45,
+            "text": "\t    &RetornoAcesso=PipnVerPermissaoUsuario.Udp(0,0,0,&Transacao,&Mode)If&RetornoAcesso<>RetornoAcesso.LiberadoHipnErroRedirecionamento.Call(&RetornoAcesso)EndIfbtn_editar.Visible=Falsebtn_excluir.Visible=Falsebtn_historico1.Visible=FalseIf&Mode=TrnMode.DisplayIfPipnVerPermissaoUsuario.Udp(0,0,0,&Transacao,TrnMode.Update)=RetornoAcesso.Liberadobtn_editar.Visible=TrueEndIfIfPipnVerPermissaoUsuario.Udp(0,0,0,&Transacao,TrnMode.Delete)=RetornoAcesso.Liberadobtn_excluir.Visible=TrueEndIfbtn_historico1.Visible=TrueEndIf&IPN_UND_ID=&SdtNucContext.IPN_UND_ID&IPN_UND_IDCompart=&SdtNucContext.IPN_UND_ID_Compart&Consolidada=&SdtNucContext.Consolidada&IPN_USU_ID=&SdtNucContext.IPN_USU_ID"
+          }
+        ]
+      },
+      {
+        "name": "TrnVenEspecificador",
+        "entityTypeId": 39,
+        "typeName": "Transaction",
+        "entityId": 207,
+        "section": "events",
+        "matchCount": 1,
+        "matchLines": [
+          {
+            "line": 12,
+            "text": "\t&SdtNucContext=PrcNucGetContext.Udp(&TabelaCompartilhamento)&IPN_UND_ID=&SdtNucContext.IPN_UND_ID&IPN_UND_IDCompart=&SdtNucContext.IPN_UND_ID_Compart&Consolidada=&SdtNucContext.Consolidada&IPN_USU_ID=&SdtNucContext.IPN_USU_IDPipnRetUnidadeCompartUsuario.Call(0,TabelaCompartilhamento.NiveisFidelidade,&IPN_UND_IDNivelFidelidade)PipnRetUnidadeCompartUsuario.Call(0,TabelaCompartilhamento.Cidades,&ILJ_PAI_UND_ID)&IPN_UND_IDConsultor=&IPN_UND_ID&IPN_UND_IDCompart=&IPN_UND_ID&IPN_UND_IDMoeda=&IPN_UND_ID[web]{&ModoChamadaPrompt=&ModoChamadaIfnotNull(&websession.Get(!'MENSAGEM_RET_ESPECIFICADOR_ORNA'))Msg(&websession.Get(!'MENSAGEM_RET_ESPECIFICADOR_ORNA'))&websession.Remove(!'MENSAGEM_RET_ESPECIFICADOR_ORNA')EndIfWebCompTelefones.Object=WbcVenTelefones.Create(&ILJ_ESP_PES_IDParm,&Mode,TelefoneOrigem.Especificadores)If&Modein(TrnMode.Update,TrnMode.Delete,TrnMode.Display)&SdtVenEspecificadores=DtpVenEspecificador.Udp(&ILJ_ESP_IDParm)&IPN_UND_IDMoeda=&SdtVenEspecificadores.ILJ_ESP_PES_UND_ID&ILJ_PAI_UND_ID=&SdtVenEspecificadores.ILJ_ESP_PES_CID_PAI_UND_ID&IPN_UND_IDConsultor=&SdtVenEspecificadores.ILJ_ESP_COL_UND_ID&IPN_UND_IDCompart=&IPN_UND_ID&IPN_UND_IDNivelFidelidade=&SdtVenEspecificadores.ILJ_ESP_NVF_UND_ID&ILJ_ESP_GRP_ENV_ID=&SdtVenEspecificadores.ILJ_ESP_GRP_ENV_ID&ILJ_ESP_COL_ID=&SdtVenEspecificadores.ILJ_ESP_COL_ID&ILJ_ESP_COL_PES_NOME=&SdtVenEspecificadores.ILJ_ESP_COL_PES_NOME&ILJ_ESP_PES_NOME=&SdtVenEspecificadores.ILJ_ESP_PES_NOMEIf&SdtVenEspecificadores.ILJ_ESP_PES_ID.IsEmpty()&SdtVenPessoasDts=DtpVenPessoas.Udp(&ILJ_ESP_PES_IDParm)Else&SdtVenPessoasDts=DtpVenPessoas.Udp(&SdtVenEspecificadores.ILJ_ESP_PES_ID)EndIf&OldValueILJ_ESP_PES_CEP=&SdtVenEspecificadores.ILJ_ESP_PES_CEP&ILJ_ESP_PES_CID_UFS_ID=&SdtVenPessoasDts.ILJ_PES_CID_UFS_ID&ILJ_ESP_PES_CID_ID=&SdtVenPessoasDts.ILJ_PES_CID_IDIf&ILJ_PAI_UND_ID.IsEmpty()PipnRetUnidadeCompartUsuario.Call(&IPN_UND_IDCompart,TabelaCompartilhamento.Cidades,&ILJ_PAI_UND_ID)EndIfIf&IPN_UND_IDNivelFidelidade.IsEmpty()PipnRetUnidadeCompartUsuario.Call(&IPN_UND_IDCompart,TabelaCompartilhamento.NiveisFidelidade,&IPN_UND_IDNivelFidelidade)EndIfIf&IPN_UND_IDConsultor.IsEmpty()&IPN_UND_IDConsultor=&IPN_UND_IDCompartEndif"
+          }
+        ]
+      },
+      {
+        "name": "TiljNiveisFidelidade",
+        "entityTypeId": 39,
+        "typeName": "Transaction",
+        "entityId": 208,
+        "section": "events",
+        "matchCount": 2,
+        "matchLines": [
+          {
+            "line": 81,
+            "text": "\t&SdtNucContext=PrcNucGetContext.Udp(&TabelaCompartilhamento)"
+          },
+          {
+            "line": 84,
+            "text": "    &RetornoAcesso=PipnVerPermissaoUsuario.Udp(0,0,0,&Transacao,&Mode)If&RetornoAcesso<>RetornoAcesso.LiberadoHipnErroRedirecionamento.Call(&RetornoAcesso)EndIfBtnEditar.Visible=FalseBtnExcluir.Visible=FalseIf&Mode=TrnMode.DisplayIfPipnVerPermissaoUsuario.Udp(0,0,0,&Transacao,TrnMode.Update)=RetornoAcesso.LiberadoBtnEditar.Visible=TrueEndIfIfPipnVerPermissaoUsuario.Udp(0,0,0,&Transacao,TrnMode.Delete)=RetornoAcesso.LiberadoBtnExcluir.Visible=TrueEndIfEndIf&IPN_UND_ID=&SdtNucContext.IPN_UND_ID&IPN_UND_IDCompart=&SdtNucContext.IPN_UND_ID_Compart&IPN_UND_IDCompartProcura=&SdtNucContext.IPN_UND_ESTRUTURA&Consolidada=&SdtNucContext.Consolidada"
+          }
+        ]
+      },
+      {
+        "name": "TrnNucUsuario",
+        "entityTypeId": 39,
+        "typeName": "Transaction",
+        "entityId": 210,
+        "section": "events",
+        "matchCount": 5,
+        "matchLines": [
+          {
+            "line": 10,
+            "text": "\t\t&IsBontempo=(&SdtNucContext.Fabrica.IndexOf(!'BONTEMPO')>0)EndEventEventAfter TrnIf&Mode=TrnMode.Update&WebSession.Set(Sessao.Filtros,TrnNucUsuarioSalvaFiltro.ToString().Trim())pincPrcAtualizaNomeArquivo.Call(ArquivoTabelas.IPN_USUARIOS,IPN_USU_ID.ToString(),ArquivoCampos.IPN_USU_FOTO)EndifDo CaseCase&Mode=TrnMode.Delete&WebSession.Set(!'MENSAGEM_TRANSACAO',Format('Usuário %1 excluído com sucesso.',IPN_USU_NOME))HiljUsuarios.Call()Case&Mode=TrnMode.Update&WebSession.Set(!'MENSAGEM_TRANSACAO',Format('Usuário %1 alterado com sucesso.',IPN_USU_NOME))TrnNucUsuario.Call(TrnMode.Display,IPN_USU_ID,IPN_USU_NOME)EndCaseEndEventEvent'Fechar'HiljUsuarios.Call()EndEventEvent'TabEditar'TrnNucUsuario.Call(TrnMode.Update,&pIPN_USU_ID,&pIPN_USU_NOME)EndEventEvent'TabExcluir'TrnNucUsuario.Call(TrnMode.Delete,&pIPN_USU_ID,&pIPN_USU_NOME)EndEventEvent'OnClickMaisOpcoes'"
+          },
+          {
+            "line": 26,
+            "text": "\t\t&SdtNucContext=PrcNucGetContext.Udp(TabelaCompartilhamento.NaoCompartilhado)&IPN_USU_IDLogado=&SdtNucContext.IPN_USU_ID&IPN_UND_ID=&SdtNucContext.IPN_UND_ID&Fabrica=&SdtNucContext.Fabrica"
+          },
+          {
+            "line": 36,
+            "text": "\t\t&IdeAtiva_Criare=PrcNucVerificaIde.Udp(&ides_IPN_UND_ID,!'TiljUsuarios',!'IDE_FABRICA_CRIARE')&IdeAtiva_Italinea=PrcNucVerificaIde.Udp(&ides_IPN_UND_ID,!'TiljUsuarios',!'IDE_FABRICA_ITALINEA')EndSubSub'Start_Tela'&LabelFabrica=Format(!'@%1',&SdtNucContext.Fabrica)Do CaseCase&IdeAtiva_Criare=SimNao.Sim&LabelFabrica=&LabelFabrica.Replace(!\"TODESCHINI\",!\"CRIARE\")Case&IdeAtiva_Italinea=SimNao.Sim&LabelFabrica=&LabelFabrica.Replace(!\"TODESCHINI\",!\"ITALINEA\")EndCaseTB_Fabrica.Caption=&LabelFabrica&BalaoInformativo.FromImage(ImgNucInfo20Blue)&BalaoInformativo.TooltipText='Para aplicar a alteração de idioma, acesse novamente o sistema.'&BalaoInformativoDataSistema.FromImage(ImgNucInfo20Blue)TabelaInvisivel.Visible=FalseDivExplicativaExcluir.Visible=FalseBtnEditar.Visible=FalseBtnExcluir.Visible=FalseIf&Mode=TrnMode.DisplayIfPipnVerPermissaoUsuario.Udp(0,0,0,!'TiljUsuarios',TrnMode.Update)=RetornoAcesso.LiberadoBtnEditar.Visible=TrueEndIfIfPipnVerPermissaoUsuario.Udp(0,0,0,!'TiljUsuarios',TrnMode.Delete)=RetornoAcesso.LiberadoBtnExcluir.Visible=TrueEndIf&NaoInformado='Não Informado'Do'FoccoLojasButtonOptions'ElseBtnVoltar.Caption='CANCELAR'EndIfIf&Mode=TrnMode.DeleteBtnConfirmar.Caption='CONFIRMAR EXCLUSÃO'DivExplicativaExcluir.Visible=TrueEndIfIf&Mode=TrnMode.UpdateOr&Mode=TrnMode.DisplayIPN_USU_LOGIN.Visible=FalseTB_Fabrica.Caption=Format(!'%1%2',&SDT_IPN_USUARIOS.IPN_USU_LOGIN,&LabelFabrica)EndIfIf&Mode=TrnMode.UpdateAnd&SDT_IPN_USUARIOS.IPN_USU_VALIDADE<&DataAtualMsg('Usuário inativo por causa da Validade.')EndIfIPN_USU_TIPO.RemoveItem(TipoUsuario.Portal)BtnMaisOpcoes.Visible=(&SdtNucOptions.Count>0)TableVencimentoSenha.Visible=(Not&SDT_IPN_USUARIOS.IPN_USU_DATA_ALT_SENHA.IsEmpty())&IsShowMore=falseDo'sub_mais_dados'TextBlockTitulo.Caption=&pIPN_USU_NOMESectioValidacaoEmail.Visible=falseEndSubSub'monta_web_components'"
+          },
+          {
+            "line": 53,
+            "text": "\t\tDo'ValidaEmailUsuario'If&EmailExistente&SdtNucAviso.Clear()&SdtNucAvisoItem=New()&SdtNucAvisoItem.Tipo=MessageTypes.Warning&SdtNucAvisoItem.Mensagem='O e-mail cadastrado já está sendo utilizado por outro usuário. Considere alterar para um outro e-mail.'&SdtNucAviso.Add(&SdtNucAvisoItem)&GuidValidacaoEmail=Guid.NewGuid().ToString().Trim()&WebSession.Set(&GuidValidacaoEmail,&SdtNucAviso.ToJson())WebCompValidacaoEmail.Object=WbcNucAvisos.Create(&GuidValidacaoEmail,false)EndIfEndSubSub'sub_mais_dados'BtnMaisDados.Caption=iif(&IsShowMore,'- Menos Informações','+ Mais Informações')TblMaisDados.Visible=&IsShowMore&BalaoInformativoDataSistema.TooltipText='Ao ativar este parâmetro o usuário poderá alterar a data de execução do sistema e realizar operações com datas retroativas.'UCTooltip.Tooltip()EndSubSub'FoccoLojasButtonOptions'FoccoLojasButtonOptions1.BaseElement=BtnMaisOpcoes.InternalName&SdtNucOptions.Clear()If&SDT_IPN_USUARIOS.IPN_USU_DATA_ALT_SENHA.IsEmpty()IfNot&Fabrica.ToUpper().Contains(!'BONTEMPO')&SdtNucOptionsElement=New()&SdtNucOptionsElement.description='Reenviar E-mail do Cadastro da Senha'&SdtNucOptionsElement.userEvent=!'EMA'&SdtNucOptions.Add(&SdtNucOptionsElement)EndIfElse&SdtNucOptionsElement=New()&SdtNucOptionsElement.description='Sincronizar Usuário no APP'&SdtNucOptionsElement.userEvent=!'APP'&SdtNucOptions.Add(&SdtNucOptionsElement)EndIfIfPipnVerPermissaoUsuario.Udp(0,0,0,!'TiljUsuarios',TrnMode.Update)=RetornoAcesso.Liberado&SdtNucOptionsElement=New()&SdtNucOptionsElement.description='Limpar Senha'&SdtNucOptionsElement.userEvent=!'LPS'&SdtNucOptions.Add(&SdtNucOptionsElement)endifEndSubSub'reenviar_email_cadastrar_senha'PrcNucEnviaEmailAtivaUsuario.Call(NucAplicacao.Lojas,IPN_USU_UND_ID,IPN_USU_ID,&ErroCodigo,&ErroMensagem)If&ErroCodigo.IsEmpty()&SdtNucParametroMensagem.Mensagem='E-mail enviado com sucesso.'WebCompMensagem.Object=Create(WbcNucMensagem,&SdtNucParametroMensagem)ElseMsg(&ErroMensagem)FoccoLojasNiceForm1.GxFocusErrorMessage()EndIfEndSubSub'SincronizarUsuarioApp'&SdtNucContext=PrcNucGetContext.Udp(TabelaCompartilhamento.NaoCompartilhado)&SdtNucSchema=PrcNucRetSchema.Udp()&Varcharzao=&SdtNucSchema.ToJson()PrcNucLoginApp.Call(&Varcharzao,IPN_USU_ID,&ErroCodigo,&ErroMensagem)&Message=New()If&ErroCodigo.IsEmpty()&Message.Type=MessageTypes.Info&Message.Description='Usuário sincronizado com sucesso'Else&Message.Type=MessageTypes.Error&Message.Description=&ErroMensagemEndIf&Messages.Add(&Message)"
+          },
+          {
+            "line": 56,
+            "text": "\t\tPrcNucSetContext.Call(&SdtNucContext)&WebSession.Set(!'WbpNucMensagens',&Messages.ToJson())WbpNucMensagens.Popup()EndSubSub'ValidaEmailUsuario'"
+          }
+        ]
+      }
+    ],
+    "total": 10
+  },
+  "checksum": "58d3572f41f9345a3596ce9cf612517e16d7eff76d58612d25513d014d91607f",
+  "entityVersionId": null
+}

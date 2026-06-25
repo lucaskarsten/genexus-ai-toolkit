@@ -1,0 +1,19 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:38.398Z",
+  "tool": "gx_impact",
+  "args": {
+    "name": "TrnNucPais",
+    "type": 39,
+    "depth": 1
+  },
+  "response": {
+    "root": "TrnNucPais",
+    "entityTypeId": 39,
+    "depth": 1,
+    "impacted": [],
+    "total": 0
+  },
+  "checksum": "f4a007fd6fe17d0556bd02627a4e8a71070a7e190603b32d5c21bd515c110478",
+  "entityVersionId": null
+}

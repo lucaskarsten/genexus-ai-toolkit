@@ -1,0 +1,100 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:02:12.809Z",
+  "tool": "gx_stats",
+  "args": {},
+  "response": {
+    "byType": [
+      {
+        "EntityTypeName": "Procedure",
+        "EntityTypeId": 34,
+        "Total": 5538
+      },
+      {
+        "EntityTypeName": "WebPanel",
+        "EntityTypeId": 43,
+        "Total": 1920
+      },
+      {
+        "EntityTypeName": "Environments",
+        "EntityTypeId": 86,
+        "Total": 1839
+      },
+      {
+        "EntityTypeName": "SDT",
+        "EntityTypeId": 36,
+        "Total": 1391
+      },
+      {
+        "EntityTypeName": "Transaction",
+        "EntityTypeId": 39,
+        "Total": 684
+      },
+      {
+        "EntityTypeName": "UserControl",
+        "EntityTypeId": 147,
+        "Total": 97
+      },
+      {
+        "EntityTypeName": "DesignSystem",
+        "EntityTypeId": 161,
+        "Total": 36
+      }
+    ],
+    "recentlyModified": [
+      {
+        "EntityVersionName": "UCMenu",
+        "EntityTypeName": "UserControl",
+        "ts": "2026-06-25 22:41:43"
+      },
+      {
+        "EntityVersionName": "WbpNucNovoDashboard",
+        "EntityTypeName": "WebPanel",
+        "ts": "2026-06-25 22:36:05"
+      },
+      {
+        "EntityVersionName": "WbcNucMenu_V2",
+        "EntityTypeName": "WebPanel",
+        "ts": "2026-06-25 22:33:47"
+      },
+      {
+        "EntityVersionName": "MpgFoccoLojas_V2",
+        "EntityTypeName": "WebPanel",
+        "ts": "2026-06-25 22:12:11"
+      },
+      {
+        "EntityVersionName": "MpgFoccoLojas_V2",
+        "EntityTypeName": "WebPanel",
+        "ts": "2026-06-25 22:12:07"
+      },
+      {
+        "EntityVersionName": "WbcNucHeader",
+        "EntityTypeName": "WebPanel",
+        "ts": "2026-06-25 18:23:09"
+      },
+      {
+        "EntityVersionName": "WbcNucHeader",
+        "EntityTypeName": "WebPanel",
+        "ts": "2026-06-25 18:14:15"
+      },
+      {
+        "EntityVersionName": "UCSeletorLoja",
+        "EntityTypeName": "UserControl",
+        "ts": "2026-06-25 18:14:06"
+      },
+      {
+        "EntityVersionName": "",
+        "EntityTypeName": "Environments",
+        "ts": "2026-06-25 18:14:05"
+      },
+      {
+        "EntityVersionName": "WbcNucHeader",
+        "EntityTypeName": "WebPanel",
+        "ts": "2026-06-25 17:13:47"
+      }
+    ],
+    "totalObjects": 11505
+  },
+  "checksum": "5b6bf8ae3e24cfcb7a9cb21f53b2bd503901a81d0783832ba7ce062cd04ab8f7",
+  "entityVersionId": null
+}

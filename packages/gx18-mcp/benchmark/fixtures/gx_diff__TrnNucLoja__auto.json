@@ -1,0 +1,12 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:08:22.971Z",
+  "tool": "gx_diff",
+  "args": {
+    "name": "TrnNucLoja",
+    "type": 39
+  },
+  "response": "Error: Exception: Object 'TrnNucLoja' has fewer than 2 versions — diff requires at least 2.",
+  "checksum": "bc014c84531240cb9a1158be1671ba51fbb66d8a53f1b6c4fed6d24e0444be63",
+  "entityVersionId": null
+}

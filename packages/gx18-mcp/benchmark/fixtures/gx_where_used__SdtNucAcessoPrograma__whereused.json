@@ -1,0 +1,18 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:23.981Z",
+  "tool": "gx_where_used",
+  "args": {
+    "name": "SdtNucAcessoPrograma",
+    "type": 36
+  },
+  "response": {
+    "name": "SdtNucAcessoPrograma",
+    "entityTypeId": 36,
+    "entityId": 1788,
+    "action": "usedby",
+    "results": []
+  },
+  "checksum": "bf4440f97ab452f332f47217f0e41949df730cdcf14e3f74ad29b31fbe459c92",
+  "entityVersionId": null
+}

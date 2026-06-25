@@ -1,0 +1,37 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:55.613Z",
+  "tool": "gx_find",
+  "args": {
+    "pattern": "UcNucIAInsight",
+    "type": 147
+  },
+  "response": [
+    {
+      "entityTypeId": 147,
+      "typeName": "UserControl",
+      "entityId": 56,
+      "name": "UcNucIAInsight",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 147,
+      "typeName": "UserControl",
+      "entityId": 56,
+      "name": "UcNucIAInsight",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 147,
+      "typeName": "UserControl",
+      "entityId": 56,
+      "name": "UcNucIAInsight",
+      "lastModified": "<masked>",
+      "module": ""
+    }
+  ],
+  "checksum": "00000c539c3847a931e96954801b8c9c451d091c1653859665efef0daf3a40ee",
+  "entityVersionId": null
+}

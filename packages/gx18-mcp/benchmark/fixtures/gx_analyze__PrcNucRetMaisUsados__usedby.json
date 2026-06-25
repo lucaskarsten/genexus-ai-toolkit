@@ -1,0 +1,20 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:20.273Z",
+  "tool": "gx_analyze",
+  "args": {
+    "name": "PrcNucRetMaisUsados",
+    "type": 34,
+    "action": "usedby",
+    "limit": 30
+  },
+  "response": {
+    "name": "PrcNucRetMaisUsados",
+    "entityTypeId": 34,
+    "entityId": 7052,
+    "action": "usedby",
+    "results": []
+  },
+  "checksum": "a866f128ec1c3c3636ff3325e2e8a86529a593ea354e8269ebe4333fafc96546",
+  "entityVersionId": null
+}

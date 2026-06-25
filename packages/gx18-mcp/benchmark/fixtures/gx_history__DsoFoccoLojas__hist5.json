@@ -1,0 +1,28 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:02:00.711Z",
+  "tool": "gx_history",
+  "args": {
+    "name": "DsoFoccoLojas",
+    "type": 161,
+    "limit": 5
+  },
+  "response": {
+    "name": "DsoFoccoLojas",
+    "entityTypeId": 161,
+    "typeName": "DSO",
+    "entityId": 9,
+    "versions": [
+      {
+        "versionId": "<entityVersionId>",
+        "userId": 288,
+        "userName": "288",
+        "timestamp": "<masked>",
+        "description": "Menu lateral de navegação FoccoLOJAS"
+      }
+    ],
+    "count": 1
+  },
+  "checksum": "039f8ea58b1cced6928278bf6f0fde1bd752f2494fcef5692e3f349d24655bf8",
+  "entityVersionId": 18
+}

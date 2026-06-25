@@ -1,0 +1,16 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:27.754Z",
+  "tool": "gx_search",
+  "args": {
+    "pattern": "SdtNucAcessoPrograma",
+    "limit": 10
+  },
+  "response": {
+    "pattern": "SdtNucAcessoPrograma",
+    "matches": [],
+    "total": 0
+  },
+  "checksum": "0ddd76574b85043332e300c1772369dba9756e51274712361968e60ddbc64481",
+  "entityVersionId": null
+}

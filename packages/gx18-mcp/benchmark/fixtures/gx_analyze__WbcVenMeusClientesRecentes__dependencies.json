@@ -1,0 +1,36 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:41.168Z",
+  "tool": "gx_analyze",
+  "args": {
+    "name": "WbcVenMeusClientesRecentes",
+    "type": 43,
+    "action": "dependencies",
+    "limit": 30
+  },
+  "response": {
+    "name": "WbcVenMeusClientesRecentes",
+    "entityTypeId": 43,
+    "entityId": 1091,
+    "action": "dependencies",
+    "results": [
+      {
+        "name": "Button",
+        "entityTypeId": 147,
+        "typeName": "UserControl"
+      },
+      {
+        "name": "Event",
+        "entityTypeId": 36,
+        "typeName": "SDT"
+      },
+      {
+        "name": "Get",
+        "entityTypeId": 34,
+        "typeName": "Procedure"
+      }
+    ]
+  },
+  "checksum": "8b5988a3406cc6c9f192ce0a709269846c918282d41f5bbe6de9008fed0a94a2",
+  "entityVersionId": null
+}

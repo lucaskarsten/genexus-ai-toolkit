@@ -1,0 +1,21 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:18.219Z",
+  "tool": "gx_diff",
+  "args": {
+    "name": "PrcNucIncrementaContagem",
+    "type": 34
+  },
+  "response": {
+    "name": "PrcNucIncrementaContagem",
+    "entityTypeId": 34,
+    "section": "source",
+    "versionA": 4,
+    "versionB": 3,
+    "diff": "--- v4\r\n+++ v3\r\n \r\n",
+    "linesAdded": 0,
+    "linesRemoved": 0
+  },
+  "checksum": "d900ba7e1651f61547d2b796f1668b7d54c2561a46828d544f2b63be4cfb031e",
+  "entityVersionId": null
+}

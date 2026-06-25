@@ -1,0 +1,19 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:16.790Z",
+  "tool": "gx_impact",
+  "args": {
+    "name": "PrcNucIncrementaContagem",
+    "type": 34,
+    "depth": 1
+  },
+  "response": {
+    "root": "PrcNucIncrementaContagem",
+    "entityTypeId": 34,
+    "depth": 1,
+    "impacted": [],
+    "total": 0
+  },
+  "checksum": "0bef3993ac855bf8f45db51b2e79df639c195899e0a732407edb432f3dd0470f",
+  "entityVersionId": null
+}

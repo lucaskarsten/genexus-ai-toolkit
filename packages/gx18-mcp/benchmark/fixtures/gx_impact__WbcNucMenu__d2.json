@@ -1,0 +1,19 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:48.351Z",
+  "tool": "gx_impact",
+  "args": {
+    "name": "WbcNucMenu",
+    "type": 43,
+    "depth": 2
+  },
+  "response": {
+    "root": "WbcNucMenu",
+    "entityTypeId": 43,
+    "depth": 2,
+    "impacted": [],
+    "total": 0
+  },
+  "checksum": "c8cd884d639006d6e22900df581de2d4bc0084a5cff04fc831b6e805adae7787",
+  "entityVersionId": null
+}

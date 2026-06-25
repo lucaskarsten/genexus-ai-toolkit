@@ -1,0 +1,37 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:27.856Z",
+  "tool": "gx_find",
+  "args": {
+    "pattern": "SdtNucContext",
+    "type": 36
+  },
+  "response": [
+    {
+      "entityTypeId": 36,
+      "typeName": "SDT",
+      "entityId": 615,
+      "name": "SdtNucContext",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 36,
+      "typeName": "SDT",
+      "entityId": 615,
+      "name": "SdtNucContext",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 36,
+      "typeName": "SDT",
+      "entityId": 615,
+      "name": "SdtNucContext",
+      "lastModified": "<masked>",
+      "module": ""
+    }
+  ],
+  "checksum": "475554b1edf8e56c0f573e8b49eeeb88088a34b453e130dd84a82564513f379b",
+  "entityVersionId": null
+}

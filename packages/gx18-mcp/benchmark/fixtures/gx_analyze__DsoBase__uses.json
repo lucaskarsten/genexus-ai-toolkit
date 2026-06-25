@@ -1,0 +1,20 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:02:08.311Z",
+  "tool": "gx_analyze",
+  "args": {
+    "name": "DsoBase",
+    "type": 161,
+    "action": "uses",
+    "limit": 30
+  },
+  "response": {
+    "name": "DsoBase",
+    "entityTypeId": 161,
+    "entityId": 12,
+    "action": "uses",
+    "results": []
+  },
+  "checksum": "b9fd32f8990a67f53959628266b76d3eff4e3aceb8f57180037a5c7e32ccb7c2",
+  "entityVersionId": null
+}

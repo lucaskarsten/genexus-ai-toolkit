@@ -1,0 +1,21 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:43.377Z",
+  "tool": "gx_diff",
+  "args": {
+    "name": "WbcVenMeusClientesRecentes",
+    "type": 43
+  },
+  "response": {
+    "name": "WbcVenMeusClientesRecentes",
+    "entityTypeId": 43,
+    "section": "source",
+    "versionA": 33,
+    "versionB": 32,
+    "diff": "--- v33\r\n+++ v32\r\n \r\n",
+    "linesAdded": 0,
+    "linesRemoved": 0
+  },
+  "checksum": "92499114894536f0026c06e7137b4c4961512edbaef70632ef0b577698684fe9",
+  "entityVersionId": null
+}

@@ -1,0 +1,68 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:35.822Z",
+  "tool": "gx_get",
+  "args": {
+    "name": "TrnNucPais",
+    "type": 39
+  },
+  "response": {
+    "entityTypeId": 39,
+    "typeName": "Transaction",
+    "entityId": 138,
+    "name": "TrnNucPais",
+    "lastModified": "<masked>",
+    "components": [
+      {
+        "entityTypeId": 62,
+        "typeName": "Documentation",
+        "entityId": 4338,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 64,
+        "typeName": "Events",
+        "entityId": 54,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 65,
+        "typeName": "Help",
+        "entityId": 4048,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 69,
+        "typeName": "Rules",
+        "entityId": 54,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 71,
+        "typeName": "71",
+        "entityId": 51,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 72,
+        "typeName": "Variables",
+        "entityId": 54,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 73,
+        "typeName": "73",
+        "entityId": 51,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 74,
+        "typeName": "WebForm",
+        "entityId": 54,
+        "entityVersionId": "<entityVersionId>"
+      }
+    ]
+  },
+  "checksum": "27d8478abc8b90866c1af9298950fb2bf892aaaef4d10a3cb59df46bbc438485",
+  "entityVersionId": 21
+}

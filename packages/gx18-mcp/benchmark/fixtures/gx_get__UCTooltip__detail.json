@@ -1,0 +1,38 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:48.962Z",
+  "tool": "gx_get",
+  "args": {
+    "name": "UCTooltip",
+    "type": 147
+  },
+  "response": {
+    "entityTypeId": 147,
+    "typeName": "UserControl",
+    "entityId": 5,
+    "name": "UCTooltip",
+    "lastModified": "<masked>",
+    "components": [
+      {
+        "entityTypeId": 62,
+        "typeName": "Documentation",
+        "entityId": 28889,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 148,
+        "typeName": "148",
+        "entityId": 5,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 149,
+        "typeName": "149",
+        "entityId": 5,
+        "entityVersionId": "<entityVersionId>"
+      }
+    ]
+  },
+  "checksum": "28c797f73471ee0fd711ae0382a877b231089f00b89b839e5e2cdb2a6c66a2f9",
+  "entityVersionId": 7
+}

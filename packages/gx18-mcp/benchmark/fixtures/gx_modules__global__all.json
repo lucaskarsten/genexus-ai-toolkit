@@ -1,0 +1,463 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:02:12.775Z",
+  "tool": "gx_modules",
+  "args": {},
+  "response": {
+    "modules": [
+      {
+        "Id": 28,
+        "Name": "API",
+        "ParentId": 20
+      },
+      {
+        "Id": 28,
+        "Name": "API",
+        "ParentId": 20
+      },
+      {
+        "Id": 28,
+        "Name": "API",
+        "ParentId": 20
+      },
+      {
+        "Id": 7,
+        "Name": "Client",
+        "ParentId": 3
+      },
+      {
+        "Id": 7,
+        "Name": "Client",
+        "ParentId": 3
+      },
+      {
+        "Id": 7,
+        "Name": "Client",
+        "ParentId": 3
+      },
+      {
+        "Id": 4,
+        "Name": "Common",
+        "ParentId": 3
+      },
+      {
+        "Id": 4,
+        "Name": "Common",
+        "ParentId": 3
+      },
+      {
+        "Id": 4,
+        "Name": "Common",
+        "ParentId": 3
+      },
+      {
+        "Id": 21,
+        "Name": "Common",
+        "ParentId": 20
+      },
+      {
+        "Id": 21,
+        "Name": "Common",
+        "ParentId": 20
+      },
+      {
+        "Id": 21,
+        "Name": "Common",
+        "ParentId": 20
+      },
+      {
+        "Id": 17,
+        "Name": "Configuration",
+        "ParentId": 4
+      },
+      {
+        "Id": 17,
+        "Name": "Configuration",
+        "ParentId": 4
+      },
+      {
+        "Id": 17,
+        "Name": "Configuration",
+        "ParentId": 4
+      },
+      {
+        "Id": 23,
+        "Name": "Configuration",
+        "ParentId": 20
+      },
+      {
+        "Id": 23,
+        "Name": "Configuration",
+        "ParentId": 20
+      },
+      {
+        "Id": 23,
+        "Name": "Configuration",
+        "ParentId": 20
+      },
+      {
+        "Id": 27,
+        "Name": "Deprecated",
+        "ParentId": 26
+      },
+      {
+        "Id": 27,
+        "Name": "Deprecated",
+        "ParentId": 26
+      },
+      {
+        "Id": 27,
+        "Name": "Deprecated",
+        "ParentId": 26
+      },
+      {
+        "Id": 20,
+        "Name": "FF",
+        "ParentId": 1
+      },
+      {
+        "Id": 20,
+        "Name": "FF",
+        "ParentId": 1
+      },
+      {
+        "Id": 20,
+        "Name": "FF",
+        "ParentId": 1
+      },
+      {
+        "Id": 3,
+        "Name": "GeneXus",
+        "ParentId": 1
+      },
+      {
+        "Id": 3,
+        "Name": "GeneXus",
+        "ParentId": 1
+      },
+      {
+        "Id": 3,
+        "Name": "GeneXus",
+        "ParentId": 1
+      },
+      {
+        "Id": 33,
+        "Name": "GeneXusCryptography",
+        "ParentId": 1
+      },
+      {
+        "Id": 33,
+        "Name": "GeneXusCryptography",
+        "ParentId": 1
+      },
+      {
+        "Id": 33,
+        "Name": "GeneXusCryptography",
+        "ParentId": 1
+      },
+      {
+        "Id": 26,
+        "Name": "GeneXusJWT",
+        "ParentId": 1
+      },
+      {
+        "Id": 26,
+        "Name": "GeneXusJWT",
+        "ParentId": 1
+      },
+      {
+        "Id": 26,
+        "Name": "GeneXusJWT",
+        "ParentId": 1
+      },
+      {
+        "Id": 32,
+        "Name": "GeneXusReporting",
+        "ParentId": 1
+      },
+      {
+        "Id": 32,
+        "Name": "GeneXusReporting",
+        "ParentId": 1
+      },
+      {
+        "Id": 32,
+        "Name": "GeneXusReporting",
+        "ParentId": 1
+      },
+      {
+        "Id": 31,
+        "Name": "GeneXusUnanimo",
+        "ParentId": 1
+      },
+      {
+        "Id": 31,
+        "Name": "GeneXusUnanimo",
+        "ParentId": 1
+      },
+      {
+        "Id": 31,
+        "Name": "GeneXusUnanimo",
+        "ParentId": 1
+      },
+      {
+        "Id": 22,
+        "Name": "HTTP",
+        "ParentId": 20
+      },
+      {
+        "Id": 22,
+        "Name": "HTTP",
+        "ParentId": 20
+      },
+      {
+        "Id": 22,
+        "Name": "HTTP",
+        "ParentId": 20
+      },
+      {
+        "Id": 13,
+        "Name": "iOS",
+        "ParentId": 11
+      },
+      {
+        "Id": 13,
+        "Name": "iOS",
+        "ParentId": 11
+      },
+      {
+        "Id": 13,
+        "Name": "iOS",
+        "ParentId": 11
+      },
+      {
+        "Id": 16,
+        "Name": "Media",
+        "ParentId": 11
+      },
+      {
+        "Id": 16,
+        "Name": "Media",
+        "ParentId": 11
+      },
+      {
+        "Id": 16,
+        "Name": "Media",
+        "ParentId": 11
+      },
+      {
+        "Id": 6,
+        "Name": "Notifications",
+        "ParentId": 4
+      },
+      {
+        "Id": 6,
+        "Name": "Notifications",
+        "ParentId": 4
+      },
+      {
+        "Id": 6,
+        "Name": "Notifications",
+        "ParentId": 4
+      },
+      {
+        "Id": 15,
+        "Name": "Notifications",
+        "ParentId": 11
+      },
+      {
+        "Id": 15,
+        "Name": "Notifications",
+        "ParentId": 11
+      },
+      {
+        "Id": 15,
+        "Name": "Notifications",
+        "ParentId": 11
+      },
+      {
+        "Id": 29,
+        "Name": "OAuth",
+        "ParentId": 3
+      },
+      {
+        "Id": 29,
+        "Name": "OAuth",
+        "ParentId": 3
+      },
+      {
+        "Id": 29,
+        "Name": "OAuth",
+        "ParentId": 3
+      },
+      {
+        "Id": 18,
+        "Name": "Offline",
+        "ParentId": 11
+      },
+      {
+        "Id": 18,
+        "Name": "Offline",
+        "ParentId": 11
+      },
+      {
+        "Id": 18,
+        "Name": "Offline",
+        "ParentId": 11
+      },
+      {
+        "Id": 1,
+        "Name": "Root Module",
+        "ParentId": 0
+      },
+      {
+        "Id": 1,
+        "Name": "Root Module",
+        "ParentId": 0
+      },
+      {
+        "Id": 1,
+        "Name": "Root Module",
+        "ParentId": 0
+      },
+      {
+        "Id": 11,
+        "Name": "SD",
+        "ParentId": 3
+      },
+      {
+        "Id": 11,
+        "Name": "SD",
+        "ParentId": 3
+      },
+      {
+        "Id": 11,
+        "Name": "SD",
+        "ParentId": 3
+      },
+      {
+        "Id": 25,
+        "Name": "SecurityAPICommons",
+        "ParentId": 1
+      },
+      {
+        "Id": 25,
+        "Name": "SecurityAPICommons",
+        "ParentId": 1
+      },
+      {
+        "Id": 25,
+        "Name": "SecurityAPICommons",
+        "ParentId": 1
+      },
+      {
+        "Id": 9,
+        "Name": "Server",
+        "ParentId": 3
+      },
+      {
+        "Id": 9,
+        "Name": "Server",
+        "ParentId": 3
+      },
+      {
+        "Id": 9,
+        "Name": "Server",
+        "ParentId": 3
+      },
+      {
+        "Id": 24,
+        "Name": "Session",
+        "ParentId": 20
+      },
+      {
+        "Id": 24,
+        "Name": "Session",
+        "ParentId": 20
+      },
+      {
+        "Id": 24,
+        "Name": "Session",
+        "ParentId": 20
+      },
+      {
+        "Id": 8,
+        "Name": "Social",
+        "ParentId": 3
+      },
+      {
+        "Id": 8,
+        "Name": "Social",
+        "ParentId": 3
+      },
+      {
+        "Id": 8,
+        "Name": "Social",
+        "ParentId": 3
+      },
+      {
+        "Id": 14,
+        "Name": "Store",
+        "ParentId": 11
+      },
+      {
+        "Id": 14,
+        "Name": "Store",
+        "ParentId": 11
+      },
+      {
+        "Id": 14,
+        "Name": "Store",
+        "ParentId": 11
+      },
+      {
+        "Id": 12,
+        "Name": "Synchronization",
+        "ParentId": 11
+      },
+      {
+        "Id": 12,
+        "Name": "Synchronization",
+        "ParentId": 11
+      },
+      {
+        "Id": 12,
+        "Name": "Synchronization",
+        "ParentId": 11
+      },
+      {
+        "Id": 5,
+        "Name": "UI",
+        "ParentId": 4
+      },
+      {
+        "Id": 5,
+        "Name": "UI",
+        "ParentId": 4
+      },
+      {
+        "Id": 5,
+        "Name": "UI",
+        "ParentId": 4
+      },
+      {
+        "Id": 30,
+        "Name": "v2",
+        "ParentId": 29
+      },
+      {
+        "Id": 30,
+        "Name": "v2",
+        "ParentId": 29
+      },
+      {
+        "Id": 30,
+        "Name": "v2",
+        "ParentId": 29
+      }
+    ],
+    "total": 90
+  },
+  "checksum": "abd648c2b9405a6a163b84bdabc37de0b17436cca572d4dc02c84ae4e69fd4e1",
+  "entityVersionId": null
+}

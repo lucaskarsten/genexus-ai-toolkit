@@ -1,0 +1,61 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:48.947Z",
+  "tool": "gx_find",
+  "args": {
+    "pattern": "UCTooltip",
+    "type": 147
+  },
+  "response": [
+    {
+      "entityTypeId": 147,
+      "typeName": "UserControl",
+      "entityId": 5,
+      "name": "UCTooltip",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 147,
+      "typeName": "UserControl",
+      "entityId": 5,
+      "name": "UCTooltip",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 147,
+      "typeName": "UserControl",
+      "entityId": 5,
+      "name": "UCTooltip",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 147,
+      "typeName": "UserControl",
+      "entityId": 49,
+      "name": "UCTooltip_V2",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 147,
+      "typeName": "UserControl",
+      "entityId": 49,
+      "name": "UCTooltip_V2",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 147,
+      "typeName": "UserControl",
+      "entityId": 49,
+      "name": "UCTooltip_V2",
+      "lastModified": "<masked>",
+      "module": ""
+    }
+  ],
+  "checksum": "8bf4bd5fa247f1c9f3463de3a2c6ff417bd97815b9fdcfda5d5ec88123690d08",
+  "entityVersionId": null
+}

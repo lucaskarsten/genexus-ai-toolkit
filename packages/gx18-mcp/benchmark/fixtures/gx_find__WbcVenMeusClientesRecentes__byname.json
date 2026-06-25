@@ -1,0 +1,61 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:39.471Z",
+  "tool": "gx_find",
+  "args": {
+    "pattern": "WbcVenMeusClientesRecentes",
+    "type": 43
+  },
+  "response": [
+    {
+      "entityTypeId": 43,
+      "typeName": "WebPanel",
+      "entityId": 1091,
+      "name": "WbcVenMeusClientesRecentes",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 43,
+      "typeName": "WebPanel",
+      "entityId": 1091,
+      "name": "WbcVenMeusClientesRecentes",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 43,
+      "typeName": "WebPanel",
+      "entityId": 1091,
+      "name": "WbcVenMeusClientesRecentes",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 43,
+      "typeName": "WebPanel",
+      "entityId": 2569,
+      "name": "WbcVenMeusClientesRecentesV2",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 43,
+      "typeName": "WebPanel",
+      "entityId": 2569,
+      "name": "WbcVenMeusClientesRecentesV2",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 43,
+      "typeName": "WebPanel",
+      "entityId": 2569,
+      "name": "WbcVenMeusClientesRecentesV2",
+      "lastModified": "<masked>",
+      "module": ""
+    }
+  ],
+  "checksum": "0b8893255560a89a0710794fdfa6823513d75f9ffb9a40e091de6eb57c68fec2",
+  "entityVersionId": null
+}

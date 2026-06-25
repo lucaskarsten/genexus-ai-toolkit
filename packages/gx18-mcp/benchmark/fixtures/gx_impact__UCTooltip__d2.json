@@ -1,0 +1,19 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:55.209Z",
+  "tool": "gx_impact",
+  "args": {
+    "name": "UCTooltip",
+    "type": 147,
+    "depth": 2
+  },
+  "response": {
+    "root": "UCTooltip",
+    "entityTypeId": 147,
+    "depth": 2,
+    "impacted": [],
+    "total": 0
+  },
+  "checksum": "364bd5ee79e1ea74fcfbc3ac1b40fe0d17f163193feffd3963dafdb4edad8564",
+  "entityVersionId": null
+}

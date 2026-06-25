@@ -1,0 +1,62 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:18.369Z",
+  "tool": "gx_get",
+  "args": {
+    "name": "PrcNucRetMaisUsados",
+    "type": 34
+  },
+  "response": {
+    "entityTypeId": 34,
+    "typeName": "Procedure",
+    "entityId": 7052,
+    "name": "PrcNucRetMaisUsados",
+    "lastModified": "<masked>",
+    "components": [
+      {
+        "entityTypeId": 57,
+        "typeName": "Conditions",
+        "entityId": 10602,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 62,
+        "typeName": "Documentation",
+        "entityId": 32008,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 65,
+        "typeName": "Help",
+        "entityId": 27959,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 67,
+        "typeName": "67",
+        "entityId": 7752,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 69,
+        "typeName": "Rules",
+        "entityId": 11877,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 72,
+        "typeName": "Variables",
+        "entityId": 11917,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 82,
+        "typeName": "Layout",
+        "entityId": 7752,
+        "entityVersionId": "<entityVersionId>"
+      }
+    ]
+  },
+  "checksum": "03a433294b60b8f7aec4062d558a5df782d265ce39fde7a888668e11ea4d90e4",
+  "entityVersionId": 4
+}

@@ -1,0 +1,93 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:02:14.977Z",
+  "tool": "gx_list",
+  "args": {
+    "type": 34,
+    "limit": 10
+  },
+  "response": [
+    {
+      "entityTypeId": 34,
+      "typeName": "Procedure",
+      "entityId": 3191,
+      "name": "AddDeviceGroups",
+      "lastModified": "<masked>",
+      "module": "Notifications"
+    },
+    {
+      "entityTypeId": 34,
+      "typeName": "Procedure",
+      "entityId": 3191,
+      "name": "AddDeviceGroups",
+      "lastModified": "<masked>",
+      "module": "Notifications"
+    },
+    {
+      "entityTypeId": 34,
+      "typeName": "Procedure",
+      "entityId": 3191,
+      "name": "AddDeviceGroups",
+      "lastModified": "<masked>",
+      "module": "Notifications"
+    },
+    {
+      "entityTypeId": 34,
+      "typeName": "Procedure",
+      "entityId": 3192,
+      "name": "AddDeviceTargetFilter",
+      "lastModified": "<masked>",
+      "module": "Notifications"
+    },
+    {
+      "entityTypeId": 34,
+      "typeName": "Procedure",
+      "entityId": 3192,
+      "name": "AddDeviceTargetFilter",
+      "lastModified": "<masked>",
+      "module": "Notifications"
+    },
+    {
+      "entityTypeId": 34,
+      "typeName": "Procedure",
+      "entityId": 3192,
+      "name": "AddDeviceTargetFilter",
+      "lastModified": "<masked>",
+      "module": "Notifications"
+    },
+    {
+      "entityTypeId": 34,
+      "typeName": "Procedure",
+      "entityId": 1694,
+      "name": "AST_ITO_LINHA_MAXProcedure",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 34,
+      "typeName": "Procedure",
+      "entityId": 1694,
+      "name": "AST_ITO_LINHA_MAXProcedure",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 34,
+      "typeName": "Procedure",
+      "entityId": 1694,
+      "name": "AST_ITO_LINHA_MAXProcedure",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 34,
+      "typeName": "Procedure",
+      "entityId": 1030,
+      "name": "AST_OCO_ID_MaxProcedure",
+      "lastModified": "<masked>",
+      "module": ""
+    }
+  ],
+  "checksum": "44c19e28f174c342dd89670e553b2595e83e787b186d89438306bafa8e823869",
+  "entityVersionId": null
+}

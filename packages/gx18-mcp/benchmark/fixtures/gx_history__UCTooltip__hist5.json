@@ -1,0 +1,49 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:49.210Z",
+  "tool": "gx_history",
+  "args": {
+    "name": "UCTooltip",
+    "type": 147,
+    "limit": 5
+  },
+  "response": {
+    "name": "UCTooltip",
+    "entityTypeId": 147,
+    "typeName": "UserControl",
+    "entityId": 5,
+    "versions": [
+      {
+        "versionId": "<entityVersionId>",
+        "userId": 321,
+        "userName": "COMPUSOFT\\lucas.karsten",
+        "timestamp": "<masked>",
+        "description": "Tooltip contextual baseado em atributo title"
+      },
+      {
+        "versionId": "<entityVersionId>",
+        "userId": 321,
+        "userName": "COMPUSOFT\\lucas.karsten",
+        "timestamp": "<masked>",
+        "description": "Tooltip contextual baseado em atributo title"
+      },
+      {
+        "versionId": "<entityVersionId>",
+        "userId": 321,
+        "userName": "COMPUSOFT\\lucas.karsten",
+        "timestamp": "<masked>",
+        "description": "Tooltip contextual baseado em atributo title"
+      },
+      {
+        "versionId": "<entityVersionId>",
+        "userId": 290,
+        "userName": "290",
+        "timestamp": "<masked>",
+        "description": "UCTooltip"
+      }
+    ],
+    "count": 4
+  },
+  "checksum": "84d657e9f58cf68b469a7fc5044b7eabf6e06a9779b0fb9c5dd42bccd7001bac",
+  "entityVersionId": 7
+}

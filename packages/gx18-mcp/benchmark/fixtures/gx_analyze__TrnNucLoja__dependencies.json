@@ -1,0 +1,31 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:33.631Z",
+  "tool": "gx_analyze",
+  "args": {
+    "name": "TrnNucLoja",
+    "type": 39,
+    "action": "dependencies",
+    "limit": 30
+  },
+  "response": {
+    "name": "TrnNucLoja",
+    "entityTypeId": 39,
+    "entityId": 205,
+    "action": "dependencies",
+    "results": [
+      {
+        "name": "Event",
+        "entityTypeId": 36,
+        "typeName": "SDT"
+      },
+      {
+        "name": "Get",
+        "entityTypeId": 34,
+        "typeName": "Procedure"
+      }
+    ]
+  },
+  "checksum": "4d840fd790bbacd9ed2cd567294f01da5f41aa8fec8a65b934759d5417a878ef",
+  "entityVersionId": null
+}

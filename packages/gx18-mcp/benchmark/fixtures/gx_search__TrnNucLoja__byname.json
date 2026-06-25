@@ -1,0 +1,133 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:35.808Z",
+  "tool": "gx_search",
+  "args": {
+    "pattern": "TrnNucLoja",
+    "limit": 10
+  },
+  "response": {
+    "pattern": "TrnNucLoja",
+    "matches": [
+      {
+        "name": "TiljPessoas",
+        "entityTypeId": 39,
+        "typeName": "Transaction",
+        "entityId": 202,
+        "section": "events",
+        "matchCount": 2,
+        "matchLines": [
+          {
+            "line": 24,
+            "text": "\t\t\t&SdtNucBreadCrumb.PgmName=&Pgmname&SdtNucBreadCrumb.PgmDesc=Format(!\"%1 > %2\",'Pessoa',&SdtVenPessoa.ILJ_PES_NOME)WbcNucBreadCrumb.Object=WbcNucBreadCrumb.Create(&SdtNucBreadCrumb)EndSubSub'Start_Tela'TimerCidade.Enabled=falseTabelaInvisivel.Visible=FalseBtn_Editar.Visible=Falsebtn_excluir.Visible=FalseIf&Mode=TrnMode.DisplayIfPipnVerPermissaoUsuario.Udp(0,0,0,&Pgmname,TrnMode.Update)=RetornoAcesso.LiberadoBtn_Editar.Visible=TrueEndIfIfPipnVerPermissaoUsuario.Udp(0,0,0,&Pgmname,TrnMode.Delete)=RetornoAcesso.Liberadobtn_excluir.Visible=TrueEndIfEndIfDivExplicativaExcluir.Visible=falseIf&Mode=TrnMode.Deletebtn_confirmar.Caption='CONFIRMAR EXCLUSÃO'DivExplicativaExcluir.Visible=TrueEndIfIf&Mode<>TrnMode.Displaybtn_fechar.Caption='CANCELAR'EndIfDo'OnePageNav'If&SdtVenPessoa.ILJ_PES_TIPO_PESSOA=TipoPessoa.FisicaFoccoLojasOnePageNavJuridica.Hide()EndIfIf&SdtVenPessoa.ILJ_PES_TIPO_PESSOA=TipoPessoa.JuridicaFoccoLojasOnePageNavFisica.Hide()EndIfIf&Mode=!'DLT'or&Mode=!'DSP'ILJ_PES_TIPO_PESSOA.Visible=false&TipoPessoaChar=TipoPessoa.EnumerationDescription(&SdtVenPessoa.ILJ_PES_TIPO_PESSOA)ILJ_PES_SEXO.Visible=false&Sexo=Sexo.EnumerationDescription(&SdtVenPessoa.ILJ_PES_SEXO)ILJ_PES_ESTADO_CIVIL.Visible=false&EstadoCivil=EstadoCivil.EnumerationDescription(&SdtVenPessoa.ILJ_PES_ESTADO_CIVIL)EndIfPrcNucRetIntPromobHabilitada.Call(&IPN_UND_ID,&TrnNucLojaIntPromobHabilitada,!'')&TrnNucLojaSincPesPromobLog=PrcNucLojaRetSincPesPromobLog.Udp(&IPN_UND_ID)If&TrnNucLojaIntPromobHabilitada=SimNao.SimAnd&TrnNucLojaSincPesPromobLog.IsEmpty()And&ModeIn(TrnMode.Insert,TrnMode.Update)SectionAlertaInterno.Visible=trueElseSectionAlertaInterno.Visible=falseEndIf"
+          },
+          {
+            "line": 27,
+            "text": "\t\tPrcNucRetMoedaLoja.Call(&compartILJ_PES_UND_ID,&rTrnNucLojaMoeda,&rSimboloMoeda,&rClasse)ILJ_PES_RENDA_MENSAL.Class+=&rClasseILJ_PES_RENDA_MENSAL_CONJUGE.Class+=&rClasseEndSubSub'Tabs_Padrao'&SdtNucAbas=PrcNucPessoaRetAbas.Udp(&Pgmname,&Mode,&pILJ_PES_ID,&ILJ_PES_UND_IDParm)WebCompTabs.Object=WbcNucAbas.Create(&Pgmname,&SdtNucAbas.ToJson(),false)EndSubSub'OnePageNav'"
+          }
+        ]
+      },
+      {
+        "name": "TrnNucLoja",
+        "entityTypeId": 39,
+        "typeName": "Transaction",
+        "entityId": 205,
+        "section": "events",
+        "matchCount": 5,
+        "matchLines": [
+          {
+            "line": 22,
+            "text": "\t\tTabSenhaLibPromob.Visible=FalsePrcNucVerRetSenhaLibPromob(&IPN_UND_ID,&SenhaLibPromob)Ifnot&SenhaLibPromob.isEmpty()TabSenhaLibPromob.Visible=TrueSenhaLP.Caption=&SenhaLibPromobEndIf&TrnNucLojaDatValidaImp.Visible=falsePrcNucRetornaNomeDataImpLoja.Call(&IPN_UND_IDParm,&rIPN_UND_ID,&rIPN_UND_UNIDADE,&TrnNucLojaDatValidaImp)Ifnot&TrnNucLojaDatValidaImp.IsEmpty()and&Mode=TrnMode.Display&TrnNucLojaDatValidaImp.Visible=trueTrnNucLojaDatValidaImp.Visible=falseIf&IPN_UND_IDParm<>&rIPN_UND_ID&TrnNucLojaDatValidaImp.TooltipText=Format(!\"%1: %2\",\"Data configurada na loja pai\",&rIPN_UND_UNIDADE)Else&TrnNucLojaDatValidaImp.Class=!'Attribute'EndIfEndIf&TrnNucLojaAtuPrecoSoftPrj.Visible=falsePrcNucRetornaNomeDataAtuPrecoSoftPrj.Call(&IPN_UND_IDParm,&rIPN_UND_ID,&rIPN_UND_UNIDADE,&TrnNucLojaAtuPrecoSoftPrj)Ifnot&TrnNucLojaAtuPrecoSoftPrj.IsEmpty()and&Mode=TrnMode.Display&TrnNucLojaAtuPrecoSoftPrj.Visible=trueTrnNucLojaAtuPrecoSoftPrj.Visible=falseIf&IPN_UND_IDParm<>&rIPN_UND_ID&TrnNucLojaAtuPrecoSoftPrj.TooltipText=Format(!\"%1: %2\",\"Data configurada na loja pai\",&rIPN_UND_UNIDADE)Else&TrnNucLojaAtuPrecoSoftPrj.Class=!'Attribute'EndIfEndIf}"
+          },
+          {
+            "line": 28,
+            "text": "\t\t\tIfTrnNucLojaChaveAcesso.IsEmpty()"
+          },
+          {
+            "line": 44,
+            "text": "\t\t\t\tPipnPrcAtualizaRegTribUnidade.Call(IPN_UND_ID)&WebSession.Set(!'MENSAGEM_TRANSACAO',Format('Loja/Unidade %1 inserida com sucesso.',IPN_UND_UNIDADE))HiljUnidadeCompartilhamentos.Call(TrnMode.Update,IPN_UND_ID)Case&Mode=TrnMode.DeleteHipnExcluiSessaoESai.Call()Case&Mode=TrnMode.Update&WebSession.Set(!'MENSAGEM_TRANSACAO',Format('Loja/Unidade %1 alterada com sucesso.',IPN_UND_UNIDADE))TrnNucLoja.Call(TrnMode.Display,IPN_UND_ID,IPN_UND_UNIDADE)EndCaseEndEventEvent'Fechar'HiljUnidadesNegocio.Call()EndEventEvent'TabEditar'TrnNucLoja.Call(TrnMode.Update,&IPN_UND_IDParm,&pIPN_UND_UNIDADE)EndEventEvent'TabExcluir'TrnNucLoja.Call(TrnMode.Delete,&IPN_UND_IDParm,&pIPN_UND_UNIDADE)EndEventEvent'ImagePromptUnidadePai'WbpNucUnidadesPrompt.Popup(&IPN_UND_ID,TipoLojaUnidade.Consolidada,SimNao.Nao,IPN_UND_PAI_ID,IPN_UND_PAI_UNIDADE)EndeventEventImagePromptCidade.ClickHiljCidadesPromptWebPanel.Popup(&IPN_UND_IDCid,0,&ILJ_CID_IDRet,IPN_UND_END_CIDADE,&ILJ_UFS_IDRet,IPN_UND_END_UF,&IPN_UND_END_PAI_IDRet,IPN_UND_END_PAIS)EndEventEvent'VerificarCep'PiljRetInformacoesCeps.Call(IPN_UND_END_CEP,&IPN_UND_IDCid,IPN_UND_END_BAIRRO,IPN_UND_END_LOGRADOURO,&ILJ_CID_IDRet,IPN_UND_END_CIDADE,&ILJ_UFS_IDRet,IPN_UND_END_UF,&IPN_UND_END_PAI_IDRet,IPN_UND_END_PAIS,0)IPN_UND_END_BAIRRO.Setfocus()If&ILJ_CID_IDRet.IsEmpty()Msg('CEP não cadastrado.')IPN_UND_END_CEP.Setfocus()EndIfEndEventEventTrnNucLojaNaoUtilizaLojas.ClickPrcNucClienteFinalGeraGuid.Call(&IPN_UND_IDParm,TrnNucLojaChaveAcessoExterno)EndEventEventFoccoLojasDropzoneImagem.OnSuccess&IPN_UND_LOGOTIPO_EXTENSAO=PincRetornaExtensaoArquivo.Udp(&SdtNucDropzoneOutput.OriginalFileName)&IPN_UND_LOGOTIPO_EXTENSAO=&IPN_UND_LOGOTIPO_EXTENSAO.ToLower()IfNot&IPN_UND_LOGOTIPO_EXTENSAOin(!'jpeg',!'jpg',!'jpe',!'gif',!'bmp',!'png')Msg('Selecione uma imagem com alguma destas extensões: JPEG/JPG/JPE/GIF/BMP/PNG')Else&IPN_UND_LOGOTIPO_IMAGEM=&SdtNucDropzoneOutput.TemporalFileNameEndIfEndEventEvent'ArquivoProjeto'WbpNucSalvarArquivoProjeto.Popup(IPN_UND_ID,0)EndeventEvent'SincronizarContaPromob'If&Mode=TrnMode.Displayand&IsUsuarioFoccoCall(PrcNucLojaSincPromob,&IPN_UND_IDParm,&ErroCodigo,&ErroMensagem)If&ErroCodigo.IsEmpty()&WebSession.Set(!'MENSAGEM_TRANSACAO',Format('Loja/Unidade %1 sincronizada com sucesso.',&pIPN_UND_UNIDADE))TrnNucLoja.Call(TrnMode.Display,&IPN_UND_IDParm,&pIPN_UND_UNIDADE)ElseMsg(&ErroMensagem)FoccoLojasNiceForm.GxFocusErrorMessage()EndIfEndIfEndEventEvent'LogHistorico'WbpNucUnidadeNegocioHistorico.Popup(&IPN_UND_IDParm,&IPN_USU_ID,&pIPN_UND_UNIDADE)Endevent}"
+          },
+          {
+            "line": 56,
+            "text": "\t&SdtNucContext=PrcNucGetContext.Udp(TabelaCompartilhamento.NaoCompartilhado)&IPN_UND_ID=&SdtNucContext.IPN_UND_ID&IPN_USU_ID=&SdtNucContext.IPN_USU_ID&IsUsuarioFocco=(&SdtNucContext.ColaboradorFocco=SimNao.Sim)If&Mode=TrnMode.UpdatePrcNucRetIntPromobHabilitada.Call(&IPN_UND_ID,&TrnNucLojaIntPromobHabilitada,!'')EndIf[web]{If&Mode=TrnMode.Insert&AuxiliarPgmdesc=&Pgmdesc+!' > '+'Nova Loja/Unidade'Else&AuxiliarPgmdesc=&Pgmdesc+!' > '+&pIPN_UND_UNIDADEEndIf"
+          },
+          {
+            "line": 63,
+            "text": "\t        PiljPrcRetornaUnidadePai.Call(&IPN_UND_ID,&IPN_UND_PAI_IDRet,!\"\",&NuloAplicacao)Else&SdtNucLojaUnidade=DtpNucLojaUnidade(&IPN_UND_IDParm)&IPN_UND_CNPJ=&SdtNucLojaUnidade.IPN_UND_CNPJ&IPN_UND_DOC_ESTRANGEIRO=&SdtNucLojaUnidade.IPN_UND_DOC_ESTRANGEIROPiljPrcBuscaIDCidadeLoja.Call(&SdtNucLojaUnidade.IPN_UND_END_CIDADE,&SdtNucLojaUnidade.IPN_UND_END_UF,&SdtNucLojaUnidade.IPN_UND_END_PAIS,&ILJ_CID_IDRet)EndIfIf&TrnNucLojaIntPromobHabilitada=SimNao.SimAnd&Mode=TrnMode.Update&SdtNucAvisoItem=New()&SdtNucAvisoItem.Tipo=MessageTypes.Info&SdtNucAvisoItem.Mensagem='Não é possível alterar os documentos pois a loja/unidade possui integração direta habilitada.'&SdtNucAviso.Add(&SdtNucAvisoItem)&Guid=Guid.NewGuid().ToString()&WebSession.Set(&Guid,&SdtNucAviso.ToJson())WebCompAvisos.Object=WbcNucAvisos.Create(&Guid,false)EndIf}EndSub[web]{Sub'Start_Tela'TabelaInvisivel.Visible=FalseBtnEditar.Visible=FalseBtnExcluir.Visible=FalseDivExplicativaExcluir.Visible=False"
+          }
+        ]
+      },
+      {
+        "name": "TrnNucColaborador",
+        "entityTypeId": 39,
+        "typeName": "Transaction",
+        "entityId": 206,
+        "section": "events",
+        "matchCount": 2,
+        "matchLines": [
+          {
+            "line": 18,
+            "text": "\t\tPrcNucRetMoedaLoja.Call(&IPN_UND_IDCompart,&rTrnNucLojaMoeda,&rSimboloMoeda,&rClasse)ILJ_COL_PES_RENDA_MENSAL_CONJUGE.Class+=&rClasseDo'MontaComboUsuarios'&Mes=Month(ILJ_COL_ULT_PROC_FOLHA)&Ano=Year(ILJ_COL_ULT_PROC_FOLHA)&CpfOk=SimNao.Nao&CpfConjuge=SimNao.Nao&SDTPessoas=new<StructureTypeReference><Type>447527b5-9210-4523-898b-5dccb17be60a</Type><Id>8</Id></StructureTypeReference>()&SdtPessoas_Itens=new<StructureTypeReference><Type>a76e9340-bdb9-445d-8f81-cfd4ddd0b0f3</Type><Id>8</Id></StructureTypeReference>()&ILJ_COL_ID.SetEmpty()&ILJ_TEL_TIPOParm=nullvalue(&ILJ_TEL_TIPOParm)&SDTPessoas=nullvalue(&SDTPessoas)&SdtNucLojaUnidade=DtpNucLojaUnidade.Udp(&IPN_UND_IDCompart)&IPN_UND_END_PAIS=&SdtNucLojaUnidade.IPN_UND_END_PAISIf&Mode<>!'INS'PiljPrcRetUltimoProcFolhaColab.Call(&ILJ_COL_IDParm,&ILJ_COL_ULT_PROC_FOLHARet)If&ILJ_COL_ULT_PROC_FOLHARet<>nullvalue(&ILJ_COL_ULT_PROC_FOLHARet)&ILJ_COL_ULT_PROC_FOLHA_PRX_MES=month(&ILJ_COL_ULT_PROC_FOLHARet)&ILJ_COL_ULT_PROC_FOLHA_PRX_ANO=Year(&ILJ_COL_ULT_PROC_FOLHARet)Else&ILJ_COL_ULT_PROC_FOLHA_PRX_MES.Visible=0&ILJ_COL_ULT_PROC_FOLHA_PRX_ANO.Visible=0lblILJ_COL_ULT_PROC_FOLHA.Visible=falseEndifElse&ILJ_COL_ULT_PROC_FOLHA_PRX_MES.Visible=0&ILJ_COL_ULT_PROC_FOLHA_PRX_ANO.Visible=0lblILJ_COL_ULT_PROC_FOLHA.Visible=falseEndifILJ_COL_ID.Visible=0lblILJ_COL_ID.Visible=0TblCodigoColaborador.Visible=0ImageCity.Visible=(&Mode=!'INS'Or&Mode=!'UPD')btn_learningRocks.Visible=FalseILJ_COL_TIME_LEARNINGROCKS.Visible=FalselblILJ_COL_TIMES_LEARNINGROCKS.Visible=FalsePrcNucValidaParmIntegracaoLearningRocks.Call(&IPN_UND_ID,&ConexaoValida)If&ConexaoValidaDo'LearningRocks'ILJ_COL_TIME_LEARNINGROCKS.Visible=TruelblILJ_COL_TIMES_LEARNINGROCKS.Visible=TrueEndIfDo'OnePageNav'EndEventEventAfter Trn"
+          },
+          {
+            "line": 51,
+            "text": "\t\tIfnot&WebSession.Get(!'MENSAGEM_TRANSACAO').IsEmpty()&SdtNucParametroMensagem.Mensagem=&WebSession.Get(!'MENSAGEM_TRANSACAO')WebCompMensagem.Object=Create(WbcNucMensagem,&SdtNucParametroMensagem)&WebSession.Remove(!'MENSAGEM_TRANSACAO')EndIfDivExplicativaExcluir.Visible=FalseTabelaInvisivel.Visible=FalseIf&Mode=TrnMode.Deletebtn_confirmar.Caption='CONFIRMAR EXCLUSÃO'DivExplicativaExcluir.Visible=TrueEndIfIf&Mode<>TrnMode.DisplayBtnVoltar.Caption='CANCELAR'EndIfPrcNucRetIntPromobHabilitada.Call(&IPN_UND_ID,&TrnNucLojaIntPromobHabilitada,!'')&TrnNucLojaSincPesPromobLog=PrcNucLojaRetSincPesPromobLog.Udp(&IPN_UND_ID)If&TrnNucLojaIntPromobHabilitada=SimNao.SimAnd&TrnNucLojaSincPesPromobLog.IsEmpty()And&ModeIn(TrnMode.Insert,TrnMode.Update)SectionAlertaInterno.Visible=trueElseSectionAlertaInterno.Visible=falseEndIfEndSub}Event'OnClickVerLogs'&SdtNucAuditLogVisualizarCollection.Clear()PrcNucAuditLogFiltrosMontar.Call(NucTabela.Colaboradores,&ILJ_COL_IDParm.ToString().Trim(),&SdtNucAuditLogVisualizarCollection)PrcNucAuditLogFiltrosMontar.Call(NucTabela.Pessoa,&ILJ_COL_PES_IDParm.ToString().Trim(),&SdtNucAuditLogVisualizarCollection)WbpNucAuditLogHistorico.Popup(&SdtNucAuditLogVisualizarCollection.ToJson())Endevent"
+          }
+        ]
+      },
+      {
+        "name": "TrnVenEspecificador",
+        "entityTypeId": 39,
+        "typeName": "Transaction",
+        "entityId": 207,
+        "section": "events",
+        "matchCount": 2,
+        "matchLines": [
+          {
+            "line": 36,
+            "text": "\t\tPrcNucRetMoedaLoja.Call(&IPN_UND_IDMoeda,&rTrnNucLojaMoeda,&rSimboloMoeda,&rClasse)ILJ_ESP_PES_RENDA_MENSAL_CONJUGE.Class+=&rClasseTimerCidade.Enabled=false}If&HttpRequest.Method=!'GET'"
+          },
+          {
+            "line": 71,
+            "text": "\t\tIfnot&WebSession.Get(!'MENSAGEM_TRANSACAO').IsEmpty()&SdtNucParametroMensagem.Mensagem=&WebSession.Get(!'MENSAGEM_TRANSACAO')WebCompMensagem.Object=Create(WbcNucMensagem,&SdtNucParametroMensagem)&WebSession.Remove(!'MENSAGEM_TRANSACAO')EndIfDivExplicativaExcluir.Visible=FalseIf&Mode=TrnMode.Deletebtn_confirmar.Caption='CONFIRMAR EXCLUSÃO'DivExplicativaExcluir.Visible=TrueEndIfTabelaInvisivel.Visible=FalsePrcNucRetIntPromobHabilitada.Call(&IPN_UND_ID,&TrnNucLojaIntPromobHabilitada,!'')&TrnNucLojaSincPesPromobLog=PrcNucLojaRetSincPesPromobLog.Udp(&IPN_UND_ID)If&TrnNucLojaIntPromobHabilitada=SimNao.SimAnd&TrnNucLojaSincPesPromobLog.IsEmpty()And&ModeIn(TrnMode.Insert,TrnMode.Update)SectionAlertaInterno.Visible=trueElseSectionAlertaInterno.Visible=falseEndIfEndSubSub'Tabs_Padrao'&SdtNucAbas=PrcVenEspecificadorAbas.Udp(&Transacao,&Mode,&ILJ_ESP_PES_IDParm,&ILJ_ESP_IDParm)WebCompTabs.Object=Create(WbcNucAbas,&Transacao,&SdtNucAbas.ToJson(),False)EndSubSub'OnePageNav'"
+          }
+        ]
+      },
+      {
+        "name": "TiljLancamentosContaCorrente",
+        "entityTypeId": 39,
+        "typeName": "Transaction",
+        "entityId": 241,
+        "section": "events",
+        "matchCount": 1,
+        "matchLines": [
+          {
+            "line": 14,
+            "text": "\t\tPrcNucRetMoedaLoja.Call(&IPN_UND_IDCompart,&rTrnNucLojaMoeda,&rSimboloMoeda,&rClasse)ILJ_LCC_VALOR.Class+=&rClasseEndEvent  // Start"
+          }
+        ]
+      },
+      {
+        "name": "TiljClientes",
+        "entityTypeId": 39,
+        "typeName": "Transaction",
+        "entityId": 251,
+        "section": "events",
+        "matchCount": 2,
+        "matchLines": [
+          {
+            "line": 3,
+            "text": "\t&ILJ_TEL_TIPO.SetEmpty()&ILJ_TEL_EMAIL.SetEmpty()&ILJ_TEL_RAMAL.SetEmpty()&ILJ_TEL_CONTATO.SetEmpty()&ILJ_TEL_TELEFONE.SetEmpty()&ILJ_TEL_DATA_NASC.SetEmpty()&ILJ_TEL_COMPLEMENTO.SetEmpty()&Errocodigotds.SetEmpty()&ErroMensagemTds.SetEmpty()&IPN_UND_END_PAIS.SetEmpty()&Contato_ErroCodigo.SetEmpty()&Contato_ErroMensagem.SetEmpty()&ContatoIns_ErroCodigo.SetEmpty()&ContatoIns_ErroMensagem.SetEmpty()&default_ILJ_CLI_PRO_ID.SetEmpty()&TrnNucLojaDiasReservaCliente.SetEmpty()&ColTrnNucCmpObrigCampo_Obrigatorio=New()&JSON_TrnNucCmpObrigCampo_Obrigatorio.SetEmpty()&IPN_UND_IDCompart.SetEmpty()&TabelaCompartilhamento=TabelaCompartilhamento.NaoCompartilhadoDo'StartObjeto'[web]{&ILJ_CLI_PES_TELEFONE.SetEmpty()&ILJ_CLI_PES_TEL_TIPO.SetEmpty()&Foco.Enabled=TrueDo'StartTela'&SdtVenClientes=DtpVenClientes(&pILJ_CLI_ID)If&SdtVenClientes.ILJ_CLI_PES_ID.IsEmpty()&SdtVenPessoasDts=DtpVenPessoas.Udp(&pILJ_CLI_PES_ID)Else&SdtVenPessoasDts=DtpVenPessoas.Udp(&SdtVenClientes.ILJ_CLI_PES_ID)EndIf&ILJ_CLI_CONTRIB_ICMS=&SdtVenClientes.ILJ_CLI_CONTRIB_ICMS&ILJ_CLI_PES_CID_UFS_ID=&SdtVenPessoasDts.ILJ_PES_CID_UFS_IDdo'CarregaComboCidades'&ILJ_CLI_PES_CID_ID=&SdtVenPessoasDts.ILJ_PES_CID_ID&ILJ_CLI_COBRANCA_CID_UFS_ID=&SdtVenClientes.ILJ_CLI_COBRANCA_CID_UFS_IDdo'CarregaComboCidadesCobranca'&ILJ_CLI_COBRANCA_CID_ID=&SdtVenClientes.ILJ_CLI_COBRANCA_CID_ID&ILJ_CLI_PES_EMPRESA_UFS_ID=&SdtVenPessoasDts.ILJ_PES_EMPRESA_UFS_IDdo'CarregaComboCidadesEmpresa'&ILJ_CLI_PES_EMPRESA_CID_ID=&SdtVenPessoasDts.ILJ_PES_EMPRESA_CID_ID&ILJ_CLI_PES_TELEFONE=&SdtVenPessoasDts.ILJ_PES_TELEFONE&ILJ_CLI_CLIENTE_SITUACAO=&SdtVenClientes.ILJ_CLI_CLIENTE_SITUACAOIf&Mode<>TrnMode.InsertIf&ILJ_CLI_CLIENTE_SITUACAO=ClienteSituacao.AtivoButtonSituacao.Caption='INATIVAR CLIENTE'ElseButtonSituacao.Caption='ATIVAR CLIENTE'EndIfElseButtonSituacao.Visible=FalseSectionClienteTrocaModoFicha.Visible=FalseEndIf&ILJ_CLI_UND_ID=&SdtVenClientes.ILJ_CLI_UND_IDIf&ILJ_CLI_UND_ID.IsEmpty()&ILJ_CLI_UND_ID=&IPN_UND_IDEndIfFoccoLojasOnChangeCep.OnChange(ILJ_CLI_PES_CEP.InternalName)FoccoLojasOnChangeCepCobranca.OnChange(ILJ_CLI_COBRANCA_CEP.InternalName)FoccoLOJASOnChangeCepEmpresa.OnChange(ILJ_CLI_PES_EMPRESA_CEP.InternalName)&OldValueILJ_CLI_PES_EMPRESA_CEP=&SdtVenPessoasDts.ILJ_PES_EMPRESA_CEPIf&Mode=!'UPD'PiljVerificaVincClienteColaborador.Call(&SdtVenPessoasDts.ILJ_PES_ID,&PessoaDoClienteVinculadaAColaborador)If&PessoaDoClienteVinculadaAColaborador=SimNao.SimILJ_CLI_PES_TIPO_PESSOA.Visible=false&TipoPessoaChar=TipoPessoa.EnumerationDescription(&SdtVenPessoasDts.ILJ_PES_TIPO_PESSOA)EndIf&ILJ_CLI_PES_CPF=&SdtVenClientes.ILJ_CLI_PES_CPF&ILJ_CLI_PES_CNPJ=&SdtVenClientes.ILJ_CLI_PES_CNPJ&ILJ_CLI_PES_DOC_ESTRANGEIRO=&SdtVenClientes.ILJ_CLI_PES_DOC_ESTRANGEIROPrcPrtRetClienteUtzToken.Call(&IPN_UND_ID,&ILJ_CLI_PES_CPF,&ILJ_CLI_PES_CNPJ,&ILJ_CLI_PES_DOC_ESTRANGEIRO,&rIsPossuiToken)If&rIsPossuiToken=SimNao.Simand&Aplicacao=NucAplicacao.PortalIfnot&ILJ_CLI_PES_CPF.IsEmpty()ILJ_CLI_PES_CPF.Enabled=FalseEndIfIfnot&ILJ_CLI_PES_CNPJ.IsEmpty()ILJ_CLI_PES_CNPJ.Enabled=FalseEndIfIfnot&ILJ_CLI_PES_DOC_ESTRANGEIRO.IsEmpty()ILJ_CLI_PES_DOC_ESTRANGEIRO.Enabled=FalseEndIfEndIfEndIf&ILJ_PRO_UND_ID=PipnRetUnidadeCompartUsuario.Udp(&SdtVenClientes.ILJ_CLI_UND_ID,TabelaCompartilhamento.ProcedenciaClientes)If&ILJ_PRO_UND_ID.IsEmpty()If&SdtVenClientes.ILJ_CLI_UND_ID.IsEmpty()&ILJ_PRO_UND_ID=&IPN_UND_IDElse&ILJ_PRO_UND_ID=&SdtVenClientes.ILJ_CLI_UND_IDEndIfEndIf&ILJ_PAI_UND_ID=PipnRetUnidadeCompartUsuario.Udp(&SdtVenClientes.ILJ_CLI_UND_ID,TabelaCompartilhamento.Cidades)If&ILJ_PAI_UND_ID.IsEmpty()If&SdtVenClientes.ILJ_CLI_UND_ID.IsEmpty()&ILJ_PAI_UND_ID=&IPN_UND_IDElse&ILJ_PAI_UND_ID=&SdtVenClientes.ILJ_CLI_UND_IDEndIfEndIf&ILJ_COL_UND_ID=PipnRetUnidadeCompartUsuario.Udp(&SdtVenClientes.ILJ_CLI_UND_ID,TabelaCompartilhamento.Pessoas)If&ILJ_COL_UND_ID.IsEmpty()If&SdtVenClientes.ILJ_CLI_UND_ID.IsEmpty()&ILJ_COL_UND_ID=&IPN_UND_IDElse&ILJ_COL_UND_ID=&SdtVenClientes.ILJ_CLI_UND_IDEndIfEndIfDo'OnePageNav'If&SdtVenPessoasDts.ILJ_PES_TIPO_PESSOA=TipoPessoa.FisicaFoccoLojasOnePageNavJuridica.Hide()EndIfIf&SdtVenPessoasDts.ILJ_PES_TIPO_PESSOA=TipoPessoa.JuridicaFoccoLojasOnePageNavFisica.Hide()EndIfDivExplicativaExcluir.Visible=falseIf&Mode=!'DLT'DivExplicativaExcluir.Visible=trueButtonSituacao.Visible=falseSectionClienteTrocaModoFicha.Visible=falseEndIfIf&Mode='DLT'or&Mode=!'DSP'ILJ_CLI_PES_TIPO_PESSOA.Visible=false&TipoPessoaChar=TipoPessoa.EnumerationDescription(&SdtVenPessoasDts.ILJ_PES_TIPO_PESSOA)ILJ_CLI_PES_SEXO.Visible=false&Sexo=Sexo.EnumerationDescription(&SdtVenPessoasDts.ILJ_PES_SEXO)ILJ_CLI_PES_ESTADO_CIVIL.Visible=false&EstadoCivil=EstadoCivil.EnumerationDescription(&SdtVenPessoasDts.ILJ_PES_ESTADO_CIVIL)EndIf&TelefoneOrigem=TelefoneOrigem.Clientes"
+          },
+          {
+            "line": 80,
+            "text": "\t\t\t&RetornoAcesso=PipnVerPermissaoUsuario(0,0,0,!'TiljClientes',CodigoEvento.AlteracaoClientesComContrato)If&RetornoAcesso<>RetornoAcesso.Liberado&PermiteAlterarCliente=SimNao.NaoBtnEditar.Visible=FalseEndIfEndIfIfPipnVerPermissaoUsuario.Udp(0,0,0,&Pgmname,codigoEvento.AlterarReserva)=RetornoAcesso.Liberado&SDT_ParametrosProjetos=DtpParametrosProjeto.Udp(&IPN_UND_IDCompart)&TrnNucLojaDiasReservaCliente=&SDT_ParametrosProjetos.TrnNucLojaDiasReservaClienteTabelaValidadeReserva.Visible=(&TrnNucLojaDiasReservaCliente>0)ElseTabelaValidadeReserva.Visible=falseEndIfPrcNucRetIntPromobHabilitada.Call(&IPN_UND_ID,&TrnNucLojaIntPromobHabilitada,!'')&TrnNucLojaSincPesPromobLog=PrcNucLojaRetSincPesPromobLog.Udp(&IPN_UND_ID)If&TrnNucLojaIntPromobHabilitada=SimNao.SimAnd&TrnNucLojaSincPesPromobLog.IsEmpty()And&ModeIn(TrnMode.Insert,TrnMode.Update)SectionAlertaInterno.Visible=trueElseSectionAlertaInterno.Visible=falseEndIf&HasAttachmentAccess=FalseIfPipnVerPermissaoUsuario.Udp(0,0,0,!'tiljcilenteanexos',TrnMode.Display)=RetornoAcesso.Liberado\t\t\t// Deixar errado pq escreveram \"cilente\" no IPN_PROGRAMAS. SB 25/01/17"
+          }
+        ]
+      }
+    ],
+    "total": 6
+  },
+  "checksum": "2fd88694478009cb9a40db0c82519d82c272b65e4589e92d4a52cc109ec96bd4",
+  "entityVersionId": null
+}

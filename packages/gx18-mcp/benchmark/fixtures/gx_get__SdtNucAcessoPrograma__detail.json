@@ -1,0 +1,32 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:22.834Z",
+  "tool": "gx_get",
+  "args": {
+    "name": "SdtNucAcessoPrograma",
+    "type": 36
+  },
+  "response": {
+    "entityTypeId": 36,
+    "typeName": "SDT",
+    "entityId": 1788,
+    "name": "SdtNucAcessoPrograma",
+    "lastModified": "<masked>",
+    "components": [
+      {
+        "entityTypeId": 62,
+        "typeName": "Documentation",
+        "entityId": 32003,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 70,
+        "typeName": "70",
+        "entityId": 2020,
+        "entityVersionId": "<entityVersionId>"
+      }
+    ]
+  },
+  "checksum": "a6380f8ef64c0c14729a4a3ea8f713da502f3dfee068e58417b9792513ddf3f7",
+  "entityVersionId": 3
+}

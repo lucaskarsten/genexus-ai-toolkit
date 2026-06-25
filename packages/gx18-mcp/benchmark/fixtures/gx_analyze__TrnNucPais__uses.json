@@ -1,0 +1,31 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:37.358Z",
+  "tool": "gx_analyze",
+  "args": {
+    "name": "TrnNucPais",
+    "type": 39,
+    "action": "uses",
+    "limit": 30
+  },
+  "response": {
+    "name": "TrnNucPais",
+    "entityTypeId": 39,
+    "entityId": 138,
+    "action": "uses",
+    "results": [
+      {
+        "name": "Event",
+        "entityTypeId": 36,
+        "typeName": "SDT"
+      },
+      {
+        "name": "Get",
+        "entityTypeId": 34,
+        "typeName": "Procedure"
+      }
+    ]
+  },
+  "checksum": "529c2b1e084929be0b50531403b0d5c0517d0d0be3e44f657627b43a84e6dfc1",
+  "entityVersionId": null
+}

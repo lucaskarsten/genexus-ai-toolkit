@@ -1,0 +1,49 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:11.384Z",
+  "tool": "gx_history",
+  "args": {
+    "name": "PrcNucIncrementaContagem",
+    "type": 34,
+    "limit": 5
+  },
+  "response": {
+    "name": "PrcNucIncrementaContagem",
+    "entityTypeId": 34,
+    "typeName": "Procedure",
+    "entityId": 7051,
+    "versions": [
+      {
+        "versionId": "<entityVersionId>",
+        "userId": 321,
+        "userName": "COMPUSOFT\\lucas.karsten",
+        "timestamp": "<masked>",
+        "description": "Incrementa contador de acessos (Mais usados)"
+      },
+      {
+        "versionId": "<entityVersionId>",
+        "userId": 321,
+        "userName": "COMPUSOFT\\lucas.karsten",
+        "timestamp": "<masked>",
+        "description": "Incrementa contador de acessos (Mais usados)"
+      },
+      {
+        "versionId": "<entityVersionId>",
+        "userId": 321,
+        "userName": "COMPUSOFT\\lucas.karsten",
+        "timestamp": "<masked>",
+        "description": "Incrementa contador de acessos (Mais usados)"
+      },
+      {
+        "versionId": "<entityVersionId>",
+        "userId": 321,
+        "userName": "COMPUSOFT\\lucas.karsten",
+        "timestamp": "<masked>",
+        "description": "Incrementa contador de acessos (Mais usados)"
+      }
+    ],
+    "count": 4
+  },
+  "checksum": "23659ab29356fe8591c42a6b7f1dfe441680688d27cb7af45040d9b74a0a3d0f",
+  "entityVersionId": 4
+}

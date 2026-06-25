@@ -1,0 +1,28 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:31.352Z",
+  "tool": "gx_history",
+  "args": {
+    "name": "TrnNucLoja",
+    "type": 39,
+    "limit": 5
+  },
+  "response": {
+    "name": "TrnNucLoja",
+    "entityTypeId": 39,
+    "typeName": "Transaction",
+    "entityId": 205,
+    "versions": [
+      {
+        "versionId": "<entityVersionId>",
+        "userId": 318,
+        "userName": "318",
+        "timestamp": "<masked>",
+        "description": "Loja/Unidade"
+      }
+    ],
+    "count": 1
+  },
+  "checksum": "f31e13f31a906cd2731653a0a550fddfab5d7a384eeee31bb11dc484851a9381",
+  "entityVersionId": 286
+}

@@ -1,0 +1,21 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:27.778Z",
+  "tool": "gx_diff",
+  "args": {
+    "name": "SdtNucAcessoPrograma",
+    "type": 36
+  },
+  "response": {
+    "name": "SdtNucAcessoPrograma",
+    "entityTypeId": 36,
+    "section": "source",
+    "versionA": 3,
+    "versionB": 2,
+    "diff": "--- v3\r\n+++ v2\r\n \r\n",
+    "linesAdded": 0,
+    "linesRemoved": 0
+  },
+  "checksum": "f67aa8a221d024a94f9de6ae12daa3ae957261fc605b905c6675ce3509f183e5",
+  "entityVersionId": null
+}

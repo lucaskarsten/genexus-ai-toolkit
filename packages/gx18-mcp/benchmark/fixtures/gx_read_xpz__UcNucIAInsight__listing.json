@@ -1,0 +1,20 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:02:00.639Z",
+  "tool": "gx_read_xpz",
+  "args": {
+    "xpzFile": "C:\\Repos\\genexus-ai-toolkit\\packages\\gx18-mcp\\output\\UcNucIAInsight.xpz"
+  },
+  "response": {
+    "ok": true,
+    "scripts": [
+      {
+        "name": "3dd92fe7-b095-44d3-9fa0-8488fa3f0c67",
+        "length": 6305
+      }
+    ],
+    "scriptCount": 1
+  },
+  "checksum": "1382e6ceb9e652867d71cbc05c3466e0ae9b11a53de493529b97ae31054350d1",
+  "entityVersionId": null
+}

@@ -1,0 +1,32 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:27.860Z",
+  "tool": "gx_get",
+  "args": {
+    "name": "SdtNucContext",
+    "type": 36
+  },
+  "response": {
+    "entityTypeId": 36,
+    "typeName": "SDT",
+    "entityId": 615,
+    "name": "SdtNucContext",
+    "lastModified": "<masked>",
+    "components": [
+      {
+        "entityTypeId": 62,
+        "typeName": "Documentation",
+        "entityId": 14989,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 70,
+        "typeName": "70",
+        "entityId": 689,
+        "entityVersionId": "<entityVersionId>"
+      }
+    ]
+  },
+  "checksum": "520c8f5415a1b4322023980ae3576e5d1d1ad42c251f6a54f2fe5fdc6e77e055",
+  "entityVersionId": 19
+}

@@ -1,0 +1,62 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:43.437Z",
+  "tool": "gx_get",
+  "args": {
+    "name": "WbcNucMenu",
+    "type": 43
+  },
+  "response": {
+    "entityTypeId": 43,
+    "typeName": "WebPanel",
+    "entityId": 1432,
+    "name": "WbcNucMenu",
+    "lastModified": "<masked>",
+    "components": [
+      {
+        "entityTypeId": 57,
+        "typeName": "Conditions",
+        "entityId": 5011,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 62,
+        "typeName": "Documentation",
+        "entityId": 18197,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 64,
+        "typeName": "Events",
+        "entityId": 2366,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 65,
+        "typeName": "Help",
+        "entityId": 16565,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 69,
+        "typeName": "Rules",
+        "entityId": 5833,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 72,
+        "typeName": "Variables",
+        "entityId": 5833,
+        "entityVersionId": "<entityVersionId>"
+      },
+      {
+        "entityTypeId": 74,
+        "typeName": "WebForm",
+        "entityId": 2366,
+        "entityVersionId": "<entityVersionId>"
+      }
+    ]
+  },
+  "checksum": "428e37313ebf21c5e476aafb291859876402b8a55f1548579b9209885c15187c",
+  "entityVersionId": 30
+}

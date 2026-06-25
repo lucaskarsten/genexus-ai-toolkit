@@ -1,0 +1,42 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:39.551Z",
+  "tool": "gx_history",
+  "args": {
+    "name": "WbcVenMeusClientesRecentes",
+    "type": 43,
+    "limit": 5
+  },
+  "response": {
+    "name": "WbcVenMeusClientesRecentes",
+    "entityTypeId": 43,
+    "typeName": "WebPanel",
+    "entityId": 1091,
+    "versions": [
+      {
+        "versionId": "<entityVersionId>",
+        "userId": 321,
+        "userName": "COMPUSOFT\\lucas.karsten",
+        "timestamp": "<masked>",
+        "description": "Dashboard Meus Clientes Recentes"
+      },
+      {
+        "versionId": "<entityVersionId>",
+        "userId": 321,
+        "userName": "COMPUSOFT\\lucas.karsten",
+        "timestamp": "<masked>",
+        "description": "Dashboard Meus Clientes Recentes"
+      },
+      {
+        "versionId": "<entityVersionId>",
+        "userId": 294,
+        "userName": "294",
+        "timestamp": "<masked>",
+        "description": "Dashboard Meus Clientes Recentes"
+      }
+    ],
+    "count": 3
+  },
+  "checksum": "ce03b6793c2a33aefd1f4a6cb43a73783dfa1d2fab5020b1c93d5141ef52f6ba",
+  "entityVersionId": 33
+}

@@ -1,0 +1,18 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:02:10.675Z",
+  "tool": "gx_whoami",
+  "args": {},
+  "response": {
+    "windowsUser": "COMPUSOFT\\lucas.karsten",
+    "kbUserId": 321,
+    "kbPath": "C:\\KBs\\FoccoLojas_03",
+    "kbDatabase": "GX_KB_FoccoLojas_03",
+    "kbServer": "(localdb)\\MSSQLLocalDB",
+    "kbOpen": false,
+    "gx18Dir": "C:\\Program Files (x86)\\GeneXus\\GeneXus18U6",
+    "sdkReady": false
+  },
+  "checksum": "2fa65ba3cd312083a4043206a6ff4161a5cbf9c2603fa3e67f1e214dbcf77db1",
+  "entityVersionId": null
+}

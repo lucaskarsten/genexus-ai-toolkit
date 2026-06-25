@@ -1,0 +1,12 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:08:22.991Z",
+  "tool": "gx_diff",
+  "args": {
+    "name": "TrnNucPais",
+    "type": 39
+  },
+  "response": "Error: Exception: Object 'TrnNucPais' has fewer than 2 versions — diff requires at least 2.",
+  "checksum": "f4c7c4ebdefe71459b656cb882c4c54f13ac11c5b2227c374a715d585d423edc",
+  "entityVersionId": null
+}

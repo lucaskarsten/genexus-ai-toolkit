@@ -1,0 +1,21 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:22.759Z",
+  "tool": "gx_diff",
+  "args": {
+    "name": "PrcNucRetMaisUsados",
+    "type": 34
+  },
+  "response": {
+    "name": "PrcNucRetMaisUsados",
+    "entityTypeId": 34,
+    "section": "source",
+    "versionA": 4,
+    "versionB": 3,
+    "diff": "--- v4\r\n+++ v3\r\n \r\n",
+    "linesAdded": 0,
+    "linesRemoved": 0
+  },
+  "checksum": "3d782b8ee59b065314db3ef443e51d4d33fdf4bb2ec4e4b92b0f646bd205a2d5",
+  "entityVersionId": null
+}

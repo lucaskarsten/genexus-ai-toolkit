@@ -1,0 +1,21 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:55.377Z",
+  "tool": "gx_diff",
+  "args": {
+    "name": "UCTooltip",
+    "type": 147
+  },
+  "response": {
+    "name": "UCTooltip",
+    "entityTypeId": 147,
+    "section": "source",
+    "versionA": 7,
+    "versionB": 6,
+    "diff": "--- v7\r\n+++ v6\r\n \r\n",
+    "linesAdded": 0,
+    "linesRemoved": 0
+  },
+  "checksum": "50ac267c7019b4b011a34ee1866705b846a155d677b78f9d7a391c4dbec20e67",
+  "entityVersionId": null
+}

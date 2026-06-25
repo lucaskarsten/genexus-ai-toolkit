@@ -1,0 +1,42 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:22.895Z",
+  "tool": "gx_history",
+  "args": {
+    "name": "SdtNucAcessoPrograma",
+    "type": 36,
+    "limit": 5
+  },
+  "response": {
+    "name": "SdtNucAcessoPrograma",
+    "entityTypeId": 36,
+    "typeName": "SDT",
+    "entityId": 1788,
+    "versions": [
+      {
+        "versionId": "<entityVersionId>",
+        "userId": 321,
+        "userName": "COMPUSOFT\\lucas.karsten",
+        "timestamp": "<masked>",
+        "description": "Payload de acesso intencional ao programa, enviado pelo UcNucMenu via pub/sub"
+      },
+      {
+        "versionId": "<entityVersionId>",
+        "userId": 321,
+        "userName": "COMPUSOFT\\lucas.karsten",
+        "timestamp": "<masked>",
+        "description": "Payload de acesso intencional ao programa, enviado pelo UcNucMenu via pub/sub"
+      },
+      {
+        "versionId": "<entityVersionId>",
+        "userId": 321,
+        "userName": "COMPUSOFT\\lucas.karsten",
+        "timestamp": "<masked>",
+        "description": "Payload de acesso intencional ao programa, enviado pelo UcNucMenu via pub/sub"
+      }
+    ],
+    "count": 3
+  },
+  "checksum": "808935e823c4a70b427b4ab68b3f7f55434ecfaa91186c750ebe70a6da840948",
+  "entityVersionId": 3
+}

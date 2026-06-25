@@ -1,0 +1,19 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:02:05.321Z",
+  "tool": "gx_impact",
+  "args": {
+    "name": "DsoFoccoLojas",
+    "type": 161,
+    "depth": 2
+  },
+  "response": {
+    "root": "DsoFoccoLojas",
+    "entityTypeId": 161,
+    "depth": 2,
+    "impacted": [],
+    "total": 0
+  },
+  "checksum": "40473089e50fdb8e923f49edb1904c9028915154dbbc98b00dbff77def392ce4",
+  "entityVersionId": null
+}

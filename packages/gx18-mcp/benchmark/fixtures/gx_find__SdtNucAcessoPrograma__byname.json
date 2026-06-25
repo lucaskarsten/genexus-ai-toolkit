@@ -1,0 +1,37 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:22.829Z",
+  "tool": "gx_find",
+  "args": {
+    "pattern": "SdtNucAcessoPrograma",
+    "type": 36
+  },
+  "response": [
+    {
+      "entityTypeId": 36,
+      "typeName": "SDT",
+      "entityId": 1788,
+      "name": "SdtNucAcessoPrograma",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 36,
+      "typeName": "SDT",
+      "entityId": 1788,
+      "name": "SdtNucAcessoPrograma",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 36,
+      "typeName": "SDT",
+      "entityId": 1788,
+      "name": "SdtNucAcessoPrograma",
+      "lastModified": "<masked>",
+      "module": ""
+    }
+  ],
+  "checksum": "44dcb53b7af0f35847a61876cf3f98f19213b40dac02a026fbfe496781f1ad27",
+  "entityVersionId": null
+}

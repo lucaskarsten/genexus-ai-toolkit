@@ -1,0 +1,26 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:02:14.997Z",
+  "tool": "gx_sql",
+  "args": {
+    "query": "SELECT TOP 3 EntityVersionName FROM EntityVersion WHERE EntityTypeId=34 ORDER BY EntityVersionId DESC",
+    "readOnly": true
+  },
+  "response": {
+    "rows": [
+      {
+        "EntityVersionName": "PrcComGeraEnviaPedidoCompra"
+      },
+      {
+        "EntityVersionName": "PrcComGeraPedidoCompraAutomatico"
+      },
+      {
+        "EntityVersionName": "PrcVenImportaXMLPadrao"
+      }
+    ],
+    "count": 3,
+    "truncated": false
+  },
+  "checksum": "4a52ec55a704b5348293f50d42fc808283dafb8ca35a8b987128659956f53507",
+  "entityVersionId": null
+}

@@ -1,0 +1,37 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:18.364Z",
+  "tool": "gx_find",
+  "args": {
+    "pattern": "PrcNucRetMaisUsados",
+    "type": 34
+  },
+  "response": [
+    {
+      "entityTypeId": 34,
+      "typeName": "Procedure",
+      "entityId": 7052,
+      "name": "PrcNucRetMaisUsados",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 34,
+      "typeName": "Procedure",
+      "entityId": 7052,
+      "name": "PrcNucRetMaisUsados",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 34,
+      "typeName": "Procedure",
+      "entityId": 7052,
+      "name": "PrcNucRetMaisUsados",
+      "lastModified": "<masked>",
+      "module": ""
+    }
+  ],
+  "checksum": "649d7d7c025f850449920b5e9cef87c1c2f854e2ccbac59db4d630d84f990014",
+  "entityVersionId": null
+}

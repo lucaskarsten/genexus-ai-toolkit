@@ -1,0 +1,14 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:31.261Z",
+  "tool": "gx_structure",
+  "args": {
+    "name": "TrnNucLoja"
+  },
+  "response": {
+    "name": "TrnNucLoja",
+    "attributes": []
+  },
+  "checksum": "332b024d0fcb35634ddb66f06a203b958fdf4d485b4a64de37199ce41b455def",
+  "entityVersionId": null
+}

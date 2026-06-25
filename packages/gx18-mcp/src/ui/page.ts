@@ -1,7 +1,7 @@
 ﻿// Single self-contained page served by the UI server. Embedded as a string so it
 // is bundled by esbuild (no asset folder, no `files` change, no runtime path lookup).
 
-import { FAVICON_SVG_DATA } from './favicon-b64'
+import { FAVICON_DATA, FAVICON_MIME } from './favicon-b64'
 
 export const INDEX_HTML = `<!DOCTYPE html>
 <html lang="en">
@@ -9,7 +9,7 @@ export const INDEX_HTML = `<!DOCTYPE html>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>gx18-mcp</title>
-<link rel="icon" type="image/svg+xml" href="${FAVICON_SVG_DATA}" />
+<link rel="icon" type="${FAVICON_MIME}" href="${FAVICON_DATA}" />
 <style>
 :root {
   --bg:#0f1115; --panel:#171a21; --sidebar:#13151c; --line:#2a2f3a;

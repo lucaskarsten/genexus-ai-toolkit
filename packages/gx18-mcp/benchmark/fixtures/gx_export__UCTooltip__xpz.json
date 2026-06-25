@@ -1,0 +1,16 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:55.525Z",
+  "tool": "gx_export",
+  "args": {
+    "name": "UCTooltip",
+    "type": 147
+  },
+  "response": {
+    "ok": true,
+    "name": "UCTooltip",
+    "bytes": 2228
+  },
+  "checksum": "afa8a9011a649d5faaba4332b6ad878f7aa9537b70f7ff621da21da477c0c293",
+  "entityVersionId": null
+}

@@ -1,0 +1,12 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:08:27.041Z",
+  "tool": "gx_diff",
+  "args": {
+    "name": "WbcNucMenu",
+    "type": 43
+  },
+  "response": "Error: Exception: Object 'WbcNucMenu' has fewer than 2 versions — diff requires at least 2.",
+  "checksum": "359a81b8ba831ca6f153f41d8e32afb810309c448ea8c0b9476d94b34401c51d",
+  "entityVersionId": null
+}

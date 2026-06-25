@@ -1,0 +1,13 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:06.228Z",
+  "tool": "gx_read",
+  "args": {
+    "name": "PrcNucIncrementaContagem",
+    "type": 34,
+    "section": "source"
+  },
+  "response": "Parm(in:&pIPN_USU_ID,in:&pPrograma,in:&pDescricao,in:&pUrl,out:&rErroCodigo,out:&rErroMensagem);",
+  "checksum": "957cfae3b73a9573ae1f2418986856ef47739cd828654bd959c5042648862d1c",
+  "entityVersionId": null
+}

@@ -312,9 +312,24 @@ namespace Gx18Mcp.SdkWorker
                 Log("Initializing GX18 SDK...");
                 _asmResolver.Register();
                 _kbSession = new KbSession(Environment.GetEnvironmentVariable("GX_KB_PATH") ?? "");
-                _kbSession.Open();
-                _sdkReady = true;
-                Log("SDK ready.");
+            }
+
+            if (_kbSession.KnowledgeBase == null)
+            {
+                // Open() on the same session instance — safe to call multiple times.
+                // First call after worker start always NullRefs internally (GX18 cold-start);
+                // the second call on the same session succeeds.
+                try
+                {
+                    _kbSession.Open();
+                    _sdkReady = true;
+                    Log("SDK ready.");
+                }
+                catch (Exception ex)
+                {
+                    // Leave _kbSession set so next call retries Open() on the same instance.
+                    throw new Exception("SDK cold-start — retry the call once. Error: " + ex.Message, ex);
+                }
             }
             return new ObjectFactory(_kbSession, _identity, _sql);
         }

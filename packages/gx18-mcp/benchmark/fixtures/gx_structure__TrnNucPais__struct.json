@@ -1,0 +1,14 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:35.841Z",
+  "tool": "gx_structure",
+  "args": {
+    "name": "TrnNucPais"
+  },
+  "response": {
+    "name": "TrnNucPais",
+    "attributes": []
+  },
+  "checksum": "50d63ebe100ec88e6577989b0690b21ea6a38b4d72d40ea0e35304ea9a00e587",
+  "entityVersionId": null
+}

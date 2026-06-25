@@ -1,0 +1,39 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:39.425Z",
+  "tool": "gx_search",
+  "args": {
+    "pattern": "TrnNucPais",
+    "limit": 10
+  },
+  "response": {
+    "pattern": "TrnNucPais",
+    "matches": [
+      {
+        "name": "TrnNucPais",
+        "entityTypeId": 39,
+        "typeName": "Transaction",
+        "entityId": 138,
+        "section": "events",
+        "matchCount": 3,
+        "matchLines": [
+          {
+            "line": 9,
+            "text": "\t&TabelaCompartilhamento=TabelaCompartilhamento.Cidades&IPN_UND_IDCompart.SetEmpty()Do'Padrao_Start_Objeto'TabelaInvisivel.Visible=FalseEndEventEventAfter TrnDo CaseCase&Mode=TrnMode.Insert&WebSession.Set(!'MENSAGEM_TRANSACAO',Format('País %1 inserido com sucesso.',ILJ_PAI_PAIS))TrnNucPais.Call(TrnMode.Display,ILJ_PAI_ID,ILJ_PAI_PAIS)Case&Mode=TrnMode.Delete&WebSession.Set(!'MENSAGEM_TRANSACAO',Format('País %1 excluído com sucesso.',ILJ_PAI_PAIS))HiljPaises.Call()Case&Mode=TrnMode.Update&WebSession.Set(!'MENSAGEM_TRANSACAO',Format('País %1 alterado com sucesso.',ILJ_PAI_PAIS))TrnNucPais.Call(TrnMode.Display,ILJ_PAI_ID,ILJ_PAI_PAIS)EndCaseEndEventEvent'Fechar'HiljPaises.Call()EndEvent  // 'Fechar'"
+          },
+          {
+            "line": 11,
+            "text": "Event'TabEditar'TrnNucPais.Call(TrnMode.Update,&pILJ_PAISES_ID,&pILJ_PAI_PAIS)EndEvent  // 'TabEditar'"
+          },
+          {
+            "line": 13,
+            "text": "Event'TabExcluir'TrnNucPais.Call(TrnMode.Delete,&pILJ_PAISES_ID,&pILJ_PAI_PAIS)EndEvent  // 'TabExcluir'"
+          }
+        ]
+      }
+    ],
+    "total": 1
+  },
+  "checksum": "c5256c370b2c69d5667d8dd6d548ed3a18a97d29d94e85f77478f5e5e72bc130",
+  "entityVersionId": null
+}

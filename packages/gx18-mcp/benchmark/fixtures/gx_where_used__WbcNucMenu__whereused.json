@@ -1,0 +1,18 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:44.458Z",
+  "tool": "gx_where_used",
+  "args": {
+    "name": "WbcNucMenu",
+    "type": 43
+  },
+  "response": {
+    "name": "WbcNucMenu",
+    "entityTypeId": 43,
+    "entityId": 1432,
+    "action": "usedby",
+    "results": []
+  },
+  "checksum": "13075792f5b10f9155b83d6a108cc5db2950417e9dfa62f1075389cbbc233412",
+  "entityVersionId": null
+}

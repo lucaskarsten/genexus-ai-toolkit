@@ -1,0 +1,16 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:02:05.635Z",
+  "tool": "gx_search",
+  "args": {
+    "pattern": "DsoFoccoLojas",
+    "limit": 10
+  },
+  "response": {
+    "pattern": "DsoFoccoLojas",
+    "matches": [],
+    "total": 0
+  },
+  "checksum": "5af4b3ba4c89f3e974de44591991c4a764c50163f52495a8f72e66987cf86122",
+  "entityVersionId": null
+}

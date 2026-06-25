@@ -1,0 +1,19 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:02:09.501Z",
+  "tool": "gx_impact",
+  "args": {
+    "name": "DsoBase",
+    "type": 161,
+    "depth": 1
+  },
+  "response": {
+    "root": "DsoBase",
+    "entityTypeId": 161,
+    "depth": 1,
+    "impacted": [],
+    "total": 0
+  },
+  "checksum": "a56cab399e314e97e659e0aeda560526bdb99c89b579bf0d33873ec6a1cefd10",
+  "entityVersionId": null
+}

@@ -1,0 +1,20 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:15.267Z",
+  "tool": "gx_analyze",
+  "args": {
+    "name": "PrcNucIncrementaContagem",
+    "type": 34,
+    "action": "usedby",
+    "limit": 30
+  },
+  "response": {
+    "name": "PrcNucIncrementaContagem",
+    "entityTypeId": 34,
+    "entityId": 7051,
+    "action": "usedby",
+    "results": []
+  },
+  "checksum": "02a4595a51d37ecae1257f7d19631d1027f9ff2d28f49af4419400eea62019a0",
+  "entityVersionId": null
+}

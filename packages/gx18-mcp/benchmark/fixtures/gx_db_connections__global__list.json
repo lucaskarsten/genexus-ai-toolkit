@@ -1,0 +1,29 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:02:12.761Z",
+  "tool": "gx_db_connections",
+  "args": {},
+  "response": [
+    {
+      "name": "kb",
+      "type": "sqlserver",
+      "description": "GeneXus KB database (Windows Integrated Security)",
+      "server": "(localdb)\\MSSQLLocalDB",
+      "database": "GX_KB_FoccoLojas_03",
+      "auth": "integrated",
+      "ping": true
+    },
+    {
+      "name": "oracle",
+      "type": "oracle",
+      "description": "Oracle database (ODP.NET Managed, supports NNE)",
+      "host": "144.33.23.74",
+      "port": 7521,
+      "service": "teste.subnetdb.vcnfoccolojas.oraclevcn.com",
+      "user": "LOJAS_FOCCOLOJAS",
+      "ping": true
+    }
+  ],
+  "checksum": "df51700a9825452efa35173bacb95ea5826a8530cb08aab33d58e3196f743e6f",
+  "entityVersionId": null
+}

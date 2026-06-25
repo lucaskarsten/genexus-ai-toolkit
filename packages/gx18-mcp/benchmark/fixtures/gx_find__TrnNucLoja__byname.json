@@ -1,0 +1,85 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:29.993Z",
+  "tool": "gx_find",
+  "args": {
+    "pattern": "TrnNucLoja",
+    "type": 39
+  },
+  "response": [
+    {
+      "entityTypeId": 39,
+      "typeName": "Transaction",
+      "entityId": 205,
+      "name": "TrnNucLoja",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 39,
+      "typeName": "Transaction",
+      "entityId": 205,
+      "name": "TrnNucLoja",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 39,
+      "typeName": "Transaction",
+      "entityId": 205,
+      "name": "TrnNucLoja",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 39,
+      "typeName": "Transaction",
+      "entityId": 1022,
+      "name": "TrnNucLojaCompartilhamento",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 39,
+      "typeName": "Transaction",
+      "entityId": 1022,
+      "name": "TrnNucLojaCompartilhamento",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 39,
+      "typeName": "Transaction",
+      "entityId": 1022,
+      "name": "TrnNucLojaCompartilhamento",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 39,
+      "typeName": "Transaction",
+      "entityId": 416,
+      "name": "TrnNucLojaParametros",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 39,
+      "typeName": "Transaction",
+      "entityId": 416,
+      "name": "TrnNucLojaParametros",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 39,
+      "typeName": "Transaction",
+      "entityId": 416,
+      "name": "TrnNucLojaParametros",
+      "lastModified": "<masked>",
+      "module": ""
+    }
+  ],
+  "checksum": "9f49a6f15e0a56306d54cc87bba5df6201ae914cb9b443f7ea32b9b0104c130f",
+  "entityVersionId": null
+}

@@ -1,0 +1,28 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:43.478Z",
+  "tool": "gx_history",
+  "args": {
+    "name": "WbcNucMenu",
+    "type": 43,
+    "limit": 5
+  },
+  "response": {
+    "name": "WbcNucMenu",
+    "entityTypeId": 43,
+    "typeName": "WebPanel",
+    "entityId": 1432,
+    "versions": [
+      {
+        "versionId": "<entityVersionId>",
+        "userId": 290,
+        "userName": "290",
+        "timestamp": "<masked>",
+        "description": "Menu lateral FoccoLOJAS (versão legada)"
+      }
+    ],
+    "count": 1
+  },
+  "checksum": "4787f999efa4747a928d34d72e54dd3d652aef57e06c897a825ec6ed6d1dbddd",
+  "entityVersionId": 33
+}

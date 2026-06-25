@@ -1,0 +1,16 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:02:00.479Z",
+  "tool": "gx_search",
+  "args": {
+    "pattern": "UcNucIAInsight",
+    "limit": 10
+  },
+  "response": {
+    "pattern": "UcNucIAInsight",
+    "matches": [],
+    "total": 0
+  },
+  "checksum": "8116952c13ae2ccbc8daba652fb1f82a69881827d4f8629b7b86b1ca820bb464",
+  "entityVersionId": null
+}

@@ -1,0 +1,13 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:39.533Z",
+  "tool": "gx_read",
+  "args": {
+    "name": "WbcVenMeusClientesRecentes",
+    "type": 43,
+    "section": "layout"
+  },
+  "response": "(empty)",
+  "checksum": "8f904c38545a7ae1ae8d8c48a6b50d2dcca47a3aeaee7bd14c620200b9724522",
+  "entityVersionId": null
+}

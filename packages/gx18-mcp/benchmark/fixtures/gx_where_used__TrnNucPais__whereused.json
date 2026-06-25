@@ -1,0 +1,59 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:36.772Z",
+  "tool": "gx_where_used",
+  "args": {
+    "name": "TrnNucPais",
+    "type": 39
+  },
+  "response": {
+    "name": "TrnNucPais",
+    "entityTypeId": 39,
+    "entityId": 138,
+    "action": "usedby",
+    "results": [
+      {
+        "name": "TrnNucPais",
+        "entityTypeId": 39,
+        "typeName": "Transaction",
+        "entityId": 138,
+        "section": "events",
+        "matchCount": 3,
+        "matchLines": [
+          {
+            "line": 9,
+            "text": "\t&TabelaCompartilhamento=TabelaCompartilhamento.Cidades&IPN_UND_IDCompart.SetEmpty()Do'Padrao_Start_Objeto'TabelaInvisivel.Visible=FalseEndEventEventAfter TrnDo CaseCase&Mode=TrnMode.Insert&WebSession.Set(!'MENSAGEM_TRANSACAO',Format('País %1 inserido com sucesso.',ILJ_PAI_PAIS))TrnNucPais.Call(TrnMode.Display,ILJ_PAI_ID,ILJ_PAI_PAIS)Case&Mode=TrnMode.Delete&WebSession.Set(!'MENSAGEM_TRANSACAO',Format('País %1 excluído com sucesso.',ILJ_PAI_PAIS))HiljPaises.Call()Case&Mode=TrnMode.Update&WebSession.Set(!'MENSAGEM_TRANSACAO',Format('País %1 alterado com sucesso.',ILJ_PAI_PAIS))TrnNucPais.Call(TrnMode.Display,ILJ_PAI_ID,ILJ_PAI_PAIS)EndCaseEndEventEvent'Fechar'HiljPaises.Call()EndEvent  // 'Fechar'"
+          },
+          {
+            "line": 11,
+            "text": "Event'TabEditar'TrnNucPais.Call(TrnMode.Update,&pILJ_PAISES_ID,&pILJ_PAI_PAIS)EndEvent  // 'TabEditar'"
+          },
+          {
+            "line": 13,
+            "text": "Event'TabExcluir'TrnNucPais.Call(TrnMode.Delete,&pILJ_PAISES_ID,&pILJ_PAI_PAIS)EndEvent  // 'TabExcluir'"
+          }
+        ]
+      },
+      {
+        "name": "HiljPaises",
+        "entityTypeId": 43,
+        "typeName": "WebPanel",
+        "entityId": 94,
+        "section": "events",
+        "matchCount": 2,
+        "matchLines": [
+          {
+            "line": 1,
+            "text": "EventStartTextoCabecalho.Caption='Países'&Transacao=!'TiljPaises'&AuxiliarPgmdesc=&Pgmdesc&TabelaCompartilhamento=TabelaCompartilhamento.CidadesDo'StartObjeto'Do'OpcoesAvancadas'Do'StartTela'BtnPesquisar.Visible=FalseIf&HttpRequest.Method=!'GET'Do'atribui_valor_filtros'EndIf&IsValid=PrcIsScA.Udp()EndEventEventRefreshDo'gravar_filtros'ILJ_PAI_UND_UNIDADE.Visible=IIF(&Consolidada=SimNao.Sim,True,False)Do'GridContext'Do'IndicadorFiltros'EndEventEventLoadILJ_PAI_PAIS.Link=TrnNucPais.Link(TrnMode.Display,ILJ_PAI_ID,ILJ_PAI_PAIS)EndEventEventBtnGridAnterior.ClickGrid.PreviousPage()EndEventEventBtnGridProximo.ClickGrid.NextPage()EndEventEvent&ComboLinhasGrid.ClickPrcNucGravaQtdLinhasGrid.Call(&ComboLinhasGrid)RefreshEndEventEvent'OnClickLimparFiltros'EndEvent // OnClickLimparFiltros"
+          },
+          {
+            "line": 3,
+            "text": "Event'OnClickIncluir'TrnNucPais.Call(TrnMode.Insert,0,'')EndeventEvent'OnClickPesquisaAvancada'EndeventEvent'OnClickBtnEtc'"
+          }
+        ]
+      }
+    ]
+  },
+  "checksum": "27e656dd6b9b0c5f57162c388bac86d7aa7165444e65c0b845dce3b904db3d1c",
+  "entityVersionId": null
+}

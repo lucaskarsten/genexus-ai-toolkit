@@ -1,0 +1,93 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:02:14.981Z",
+  "tool": "gx_list",
+  "args": {
+    "type": 147,
+    "limit": 10
+  },
+  "response": [
+    {
+      "entityTypeId": 147,
+      "typeName": "UserControl",
+      "entityId": 16,
+      "name": "Alert",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 147,
+      "typeName": "UserControl",
+      "entityId": 16,
+      "name": "Alert",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 147,
+      "typeName": "UserControl",
+      "entityId": 16,
+      "name": "Alert",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 147,
+      "typeName": "UserControl",
+      "entityId": 17,
+      "name": "AlertAngular",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 147,
+      "typeName": "UserControl",
+      "entityId": 17,
+      "name": "AlertAngular",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 147,
+      "typeName": "UserControl",
+      "entityId": 17,
+      "name": "AlertAngular",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 147,
+      "typeName": "UserControl",
+      "entityId": 22,
+      "name": "Button",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 147,
+      "typeName": "UserControl",
+      "entityId": 22,
+      "name": "Button",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 147,
+      "typeName": "UserControl",
+      "entityId": 22,
+      "name": "Button",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 147,
+      "typeName": "UserControl",
+      "entityId": 6,
+      "name": "Dropdown",
+      "lastModified": "<masked>",
+      "module": ""
+    }
+  ],
+  "checksum": "803eb09442a00031ed667d965a3cdb76e358c4db3a22437327e699bba8ed8f7f",
+  "entityVersionId": null
+}

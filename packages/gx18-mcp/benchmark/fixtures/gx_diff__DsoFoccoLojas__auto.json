@@ -1,0 +1,12 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:08:27.088Z",
+  "tool": "gx_diff",
+  "args": {
+    "name": "DsoFoccoLojas",
+    "type": 161
+  },
+  "response": "Error: Exception: Object 'DsoFoccoLojas' has fewer than 2 versions — diff requires at least 2.",
+  "checksum": "c736cdb5b7222bf432226fb435ea8970c2d3f2631e01ebde43e1ee6d74b2ae2a",
+  "entityVersionId": null
+}

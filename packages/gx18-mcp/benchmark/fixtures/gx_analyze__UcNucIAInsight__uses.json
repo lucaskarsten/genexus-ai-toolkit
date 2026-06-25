@@ -1,0 +1,20 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:57.402Z",
+  "tool": "gx_analyze",
+  "args": {
+    "name": "UcNucIAInsight",
+    "type": 147,
+    "action": "uses",
+    "limit": 30
+  },
+  "response": {
+    "name": "UcNucIAInsight",
+    "entityTypeId": 147,
+    "entityId": 56,
+    "action": "uses",
+    "results": []
+  },
+  "checksum": "5e75d28cdd4cacf0912e3f813832af96f385d5e3e2849d92be7c129c657bde77",
+  "entityVersionId": null
+}

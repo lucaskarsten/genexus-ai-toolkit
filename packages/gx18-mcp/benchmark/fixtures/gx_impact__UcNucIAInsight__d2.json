@@ -1,0 +1,19 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:02:00.288Z",
+  "tool": "gx_impact",
+  "args": {
+    "name": "UcNucIAInsight",
+    "type": 147,
+    "depth": 2
+  },
+  "response": {
+    "root": "UcNucIAInsight",
+    "entityTypeId": 147,
+    "depth": 2,
+    "impacted": [],
+    "total": 0
+  },
+  "checksum": "c99b048894b48e133acd923ab19b7260f09c12a08c7929723823b95fc2677a51",
+  "entityVersionId": null
+}

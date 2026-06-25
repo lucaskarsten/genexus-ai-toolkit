@@ -1,0 +1,13 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:18.420Z",
+  "tool": "gx_read",
+  "args": {
+    "name": "PrcNucRetMaisUsados",
+    "type": 34,
+    "section": "source"
+  },
+  "response": "Parm(in:&pIPN_USU_ID,in:&pIPN_UND_ID,out:&rAcessoRapido,out:&rErroCodigo,out:&rErroMensagem);",
+  "checksum": "23f078e699ed196d76281d019a4f3d5c5edab418152f235b29971a7be7712cf4",
+  "entityVersionId": null
+}

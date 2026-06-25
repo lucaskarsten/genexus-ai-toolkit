@@ -1,0 +1,16 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:02:14.856Z",
+  "tool": "gx_lint",
+  "args": {
+    "type": 161
+  },
+  "response": {
+    "entityTypeId": 161,
+    "module": null,
+    "findings": [],
+    "total": 0
+  },
+  "checksum": "26211e0df800a2bd84daf10154ac912ffcf5f0b4057c59e690ba1d8574aa44f8",
+  "entityVersionId": null
+}

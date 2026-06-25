@@ -1,0 +1,16 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:22.744Z",
+  "tool": "gx_search",
+  "args": {
+    "pattern": "PrcNucRetMaisUsados",
+    "limit": 10
+  },
+  "response": {
+    "pattern": "PrcNucRetMaisUsados",
+    "matches": [],
+    "total": 0
+  },
+  "checksum": "d95905dfebd597df195f61acc1907589ba1634f32ae8f1e52e9cca5a92a6e317",
+  "entityVersionId": null
+}

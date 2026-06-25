@@ -1,0 +1,37 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:02:05.753Z",
+  "tool": "gx_find",
+  "args": {
+    "pattern": "DsoBase",
+    "type": 161
+  },
+  "response": [
+    {
+      "entityTypeId": 161,
+      "typeName": "DSO",
+      "entityId": 12,
+      "name": "DsoBase",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 161,
+      "typeName": "DSO",
+      "entityId": 12,
+      "name": "DsoBase",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 161,
+      "typeName": "DSO",
+      "entityId": 12,
+      "name": "DsoBase",
+      "lastModified": "<masked>",
+      "module": ""
+    }
+  ],
+  "checksum": "077fe51bc78f4616c948e4f6e47f7c7dc0d4f4fdbb53b73bd25050c03028b38d",
+  "entityVersionId": null
+}

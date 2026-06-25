@@ -1,0 +1,37 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:06.163Z",
+  "tool": "gx_find",
+  "args": {
+    "pattern": "PrcNucIncrementaContagem",
+    "type": 34
+  },
+  "response": [
+    {
+      "entityTypeId": 34,
+      "typeName": "Procedure",
+      "entityId": 7051,
+      "name": "PrcNucIncrementaContagem",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 34,
+      "typeName": "Procedure",
+      "entityId": 7051,
+      "name": "PrcNucIncrementaContagem",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 34,
+      "typeName": "Procedure",
+      "entityId": 7051,
+      "name": "PrcNucIncrementaContagem",
+      "lastModified": "<masked>",
+      "module": ""
+    }
+  ],
+  "checksum": "272a90abdc517e4160f51f5fc40c71ad0de0c03c35d450b39357bd0d7a895cb3",
+  "entityVersionId": null
+}

@@ -1,0 +1,16 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:43.361Z",
+  "tool": "gx_search",
+  "args": {
+    "pattern": "WbcVenMeusClientesRecentes",
+    "limit": 10
+  },
+  "response": {
+    "pattern": "WbcVenMeusClientesRecentes",
+    "matches": [],
+    "total": 0
+  },
+  "checksum": "8e8dc8b576612741b61258bb4d4e36989629351fb7b4f73f1d58f4100d078a6b",
+  "entityVersionId": null
+}

@@ -1,0 +1,37 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:35.818Z",
+  "tool": "gx_find",
+  "args": {
+    "pattern": "TrnNucPais",
+    "type": 39
+  },
+  "response": [
+    {
+      "entityTypeId": 39,
+      "typeName": "Transaction",
+      "entityId": 138,
+      "name": "TrnNucPais",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 39,
+      "typeName": "Transaction",
+      "entityId": 138,
+      "name": "TrnNucPais",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 39,
+      "typeName": "Transaction",
+      "entityId": 138,
+      "name": "TrnNucPais",
+      "lastModified": "<masked>",
+      "module": ""
+    }
+  ],
+  "checksum": "a0bdd2fdbdf45b9e00a4ce505aeed0ec0bba1e3815195e2bc5ed318043f7731e",
+  "entityVersionId": null
+}

@@ -1,0 +1,16 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:02:10.664Z",
+  "tool": "gx_search",
+  "args": {
+    "pattern": "DsoBase",
+    "limit": 10
+  },
+  "response": {
+    "pattern": "DsoBase",
+    "matches": [],
+    "total": 0
+  },
+  "checksum": "94239721524bd8f5ff42629ea57bf4922cf74f23087eff65c8fe794af821dc77",
+  "entityVersionId": null
+}

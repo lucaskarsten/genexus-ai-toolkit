@@ -1,0 +1,42 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:27.935Z",
+  "tool": "gx_history",
+  "args": {
+    "name": "SdtNucContext",
+    "type": 36,
+    "limit": 5
+  },
+  "response": {
+    "name": "SdtNucContext",
+    "entityTypeId": 36,
+    "typeName": "SDT",
+    "entityId": 615,
+    "versions": [
+      {
+        "versionId": "<entityVersionId>",
+        "userId": 321,
+        "userName": "COMPUSOFT\\lucas.karsten",
+        "timestamp": "<masked>",
+        "description": "Contexto de sessao do usuario"
+      },
+      {
+        "versionId": "<entityVersionId>",
+        "userId": 321,
+        "userName": "COMPUSOFT\\lucas.karsten",
+        "timestamp": "<masked>",
+        "description": "Menu lateral de navegação FoccoLOJAS"
+      },
+      {
+        "versionId": "<entityVersionId>",
+        "userId": 297,
+        "userName": "297",
+        "timestamp": "<masked>",
+        "description": "Sdt Nuc Context"
+      }
+    ],
+    "count": 3
+  },
+  "checksum": "848fd34986bf8455a62b64fa827a0bcc3c22a34825a62e7eba1e3893e2767307",
+  "entityVersionId": 19
+}

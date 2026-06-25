@@ -1,0 +1,21 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:02:00.497Z",
+  "tool": "gx_diff",
+  "args": {
+    "name": "UcNucIAInsight",
+    "type": 147
+  },
+  "response": {
+    "name": "UcNucIAInsight",
+    "entityTypeId": 147,
+    "section": "source",
+    "versionA": 3,
+    "versionB": 2,
+    "diff": "--- v3\r\n+++ v2\r\n \r\n",
+    "linesAdded": 0,
+    "linesRemoved": 0
+  },
+  "checksum": "0ed2b10737ee2f82ec7e7a67ce936f98ff2ab0c90df188a146e4656d83210d1f",
+  "entityVersionId": null
+}

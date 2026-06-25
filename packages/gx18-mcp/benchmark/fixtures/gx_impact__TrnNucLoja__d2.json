@@ -1,0 +1,19 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:35.675Z",
+  "tool": "gx_impact",
+  "args": {
+    "name": "TrnNucLoja",
+    "type": 39,
+    "depth": 2
+  },
+  "response": {
+    "root": "TrnNucLoja",
+    "entityTypeId": 39,
+    "depth": 2,
+    "impacted": [],
+    "total": 0
+  },
+  "checksum": "843c34cdb97d61fcb83454e61f496d6205b96c4e246dcfef8a48019385a92cb2",
+  "entityVersionId": null
+}

@@ -1,0 +1,12 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:08:27.123Z",
+  "tool": "gx_diff",
+  "args": {
+    "name": "DsoBase",
+    "type": 161
+  },
+  "response": "Error: Exception: Object 'DsoBase' has fewer than 2 versions — diff requires at least 2.",
+  "checksum": "a1369a5d64a6ff881c142a57151b52ef6bc0bf6442b897b6cb9e57e987ba1d99",
+  "entityVersionId": null
+}

@@ -1,0 +1,36 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:55.552Z",
+  "tool": "gx_read_xpz",
+  "args": {
+    "xpzFile": "C:\\Repos\\genexus-ai-toolkit\\packages\\gx18-mcp\\output\\UCTooltip.xpz"
+  },
+  "response": {
+    "ok": true,
+    "scripts": [
+      {
+        "name": "AfterShow",
+        "length": 927
+      },
+      {
+        "name": "Tooltip",
+        "length": 1055
+      },
+      {
+        "name": "Show",
+        "length": 665
+      },
+      {
+        "name": "Hide",
+        "length": 186
+      },
+      {
+        "name": "3dd92fe7-b095-44d3-9fa0-8488fa3f0c67",
+        "length": 223
+      }
+    ],
+    "scriptCount": 5
+  },
+  "checksum": "57e7d9d98ece7aec18ae507438d3ffc69440ed1beab5e7dfb4984eec52152371",
+  "entityVersionId": null
+}

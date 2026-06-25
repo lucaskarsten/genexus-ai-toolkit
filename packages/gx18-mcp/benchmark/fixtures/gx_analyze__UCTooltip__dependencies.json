@@ -1,0 +1,20 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:53.202Z",
+  "tool": "gx_analyze",
+  "args": {
+    "name": "UCTooltip",
+    "type": 147,
+    "action": "dependencies",
+    "limit": 30
+  },
+  "response": {
+    "name": "UCTooltip",
+    "entityTypeId": 147,
+    "entityId": 5,
+    "action": "dependencies",
+    "results": []
+  },
+  "checksum": "3dad70b0dace485e61cb94183cf916a949bb366eec75bce0ce22ecd41ffda60e",
+  "entityVersionId": null
+}

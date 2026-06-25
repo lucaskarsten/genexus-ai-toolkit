@@ -1,0 +1,53 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:43.431Z",
+  "tool": "gx_find",
+  "args": {
+    "pattern": "WbcNucMenu",
+    "type": 43
+  },
+  "response": [
+    {
+      "entityTypeId": 43,
+      "typeName": "WebPanel",
+      "entityId": 1432,
+      "name": "WbcNucMenu",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 43,
+      "typeName": "WebPanel",
+      "entityId": 1432,
+      "name": "WbcNucMenu",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 43,
+      "typeName": "WebPanel",
+      "entityId": 1432,
+      "name": "WbcNucMenu",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 43,
+      "typeName": "WebPanel",
+      "entityId": 2588,
+      "name": "WbcNucMenu_V2",
+      "lastModified": "<masked>",
+      "module": ""
+    },
+    {
+      "entityTypeId": 43,
+      "typeName": "WebPanel",
+      "entityId": 2588,
+      "name": "WbcNucMenu_V2",
+      "lastModified": "<masked>",
+      "module": ""
+    }
+  ],
+  "checksum": "3ba9fd879a4bc9c94fae97dbaa49b9243afe86f26e1a7a53e5f6c807b08ee0cc",
+  "entityVersionId": null
+}

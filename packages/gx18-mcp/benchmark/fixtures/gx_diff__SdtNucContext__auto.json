@@ -1,0 +1,21 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:29.564Z",
+  "tool": "gx_diff",
+  "args": {
+    "name": "SdtNucContext",
+    "type": 36
+  },
+  "response": {
+    "name": "SdtNucContext",
+    "entityTypeId": 36,
+    "section": "source",
+    "versionA": 19,
+    "versionB": 18,
+    "diff": "--- v19\r\n+++ v18\r\n \r\n",
+    "linesAdded": 0,
+    "linesRemoved": 0
+  },
+  "checksum": "77109b389e5097fed23db0bde379ce927c40218566ab95ff3ac0318e5a3162b9",
+  "entityVersionId": null
+}

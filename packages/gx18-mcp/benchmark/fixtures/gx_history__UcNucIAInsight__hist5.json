@@ -1,0 +1,42 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:55.697Z",
+  "tool": "gx_history",
+  "args": {
+    "name": "UcNucIAInsight",
+    "type": 147,
+    "limit": 5
+  },
+  "response": {
+    "name": "UcNucIAInsight",
+    "entityTypeId": 147,
+    "typeName": "UserControl",
+    "entityId": 56,
+    "versions": [
+      {
+        "versionId": "<entityVersionId>",
+        "userId": 321,
+        "userName": "COMPUSOFT\\lucas.karsten",
+        "timestamp": "<masked>",
+        "description": "Card de insight gerado por IA"
+      },
+      {
+        "versionId": "<entityVersionId>",
+        "userId": 321,
+        "userName": "COMPUSOFT\\lucas.karsten",
+        "timestamp": "<masked>",
+        "description": "Card de insight gerado por IA"
+      },
+      {
+        "versionId": "<entityVersionId>",
+        "userId": 321,
+        "userName": "COMPUSOFT\\lucas.karsten",
+        "timestamp": "<masked>",
+        "description": "Uc Nuc IAInsight"
+      }
+    ],
+    "count": 3
+  },
+  "checksum": "7e2db8bb15ff35b75523d142f9a860257a395ca58a9232be8164efd3d4529397",
+  "entityVersionId": 3
+}

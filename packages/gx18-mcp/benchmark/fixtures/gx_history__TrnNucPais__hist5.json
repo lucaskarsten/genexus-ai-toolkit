@@ -1,0 +1,28 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:35.845Z",
+  "tool": "gx_history",
+  "args": {
+    "name": "TrnNucPais",
+    "type": 39,
+    "limit": 5
+  },
+  "response": {
+    "name": "TrnNucPais",
+    "entityTypeId": 39,
+    "typeName": "Transaction",
+    "entityId": 138,
+    "versions": [
+      {
+        "versionId": "<entityVersionId>",
+        "userId": 290,
+        "userName": "290",
+        "timestamp": "<masked>",
+        "description": "País"
+      }
+    ],
+    "count": 1
+  },
+  "checksum": "16219f5f8c885fa39d279527b13de1752c55483666b5fc65a4418a4d6b09e7ca",
+  "entityVersionId": 22
+}

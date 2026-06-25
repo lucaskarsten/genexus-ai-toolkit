@@ -1,0 +1,49 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:01:18.456Z",
+  "tool": "gx_history",
+  "args": {
+    "name": "PrcNucRetMaisUsados",
+    "type": 34,
+    "limit": 5
+  },
+  "response": {
+    "name": "PrcNucRetMaisUsados",
+    "entityTypeId": 34,
+    "typeName": "Procedure",
+    "entityId": 7052,
+    "versions": [
+      {
+        "versionId": "<entityVersionId>",
+        "userId": 321,
+        "userName": "COMPUSOFT\\lucas.karsten",
+        "timestamp": "<masked>",
+        "description": "Retorna ranking dos programas mais usados"
+      },
+      {
+        "versionId": "<entityVersionId>",
+        "userId": 321,
+        "userName": "COMPUSOFT\\lucas.karsten",
+        "timestamp": "<masked>",
+        "description": "Retorna ranking dos programas mais usados"
+      },
+      {
+        "versionId": "<entityVersionId>",
+        "userId": 321,
+        "userName": "COMPUSOFT\\lucas.karsten",
+        "timestamp": "<masked>",
+        "description": "Retorna ranking dos programas mais usados"
+      },
+      {
+        "versionId": "<entityVersionId>",
+        "userId": 321,
+        "userName": "COMPUSOFT\\lucas.karsten",
+        "timestamp": "<masked>",
+        "description": "Retorna ranking dos programas mais usados"
+      }
+    ],
+    "count": 4
+  },
+  "checksum": "2a4d0712995545144355b65c5bfd17e560a6ab8e6df3d332417330618b21fc0f",
+  "entityVersionId": 4
+}

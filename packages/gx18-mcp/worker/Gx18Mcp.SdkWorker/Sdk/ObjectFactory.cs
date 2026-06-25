@@ -105,7 +105,36 @@ namespace Gx18Mcp.SdkWorker.Sdk
                 ?? FindStaticCreate(concrete, model.GetType());
             if (createMethod == null) throw new Exception($"{concrete.Name}.Create(KBModel) not found");
 
+            // Guard BEFORE creating the in-memory object so no zombie is left on rejection.
+            // events/rules/conditions for type=43 require the IDE tokenizer — raw source corrupts the blob.
+            if (spec.EntityTypeId == 43 && sections != null)
+            {
+                foreach (var blocked in new[] { "events", "rules", "conditions" })
+                    if (sections.ContainsKey(blocked))
+                        throw new Exception(
+                            $"gx_create: section '{blocked}' cannot be set at creation time for webpanel/webcomponent. " +
+                            "The SDK cannot tokenize raw source headless; writing it produces a corrupted blob " +
+                            "that the IDE rejects with 'src0009: Cannot deserialize tokens'.\n" +
+                            "Create the empty shell first, then open in GX18 IDE to add events/rules/conditions. " +
+                            "Use gx_modify section=layout after creation to set the layout.");
+            }
+
             var obj = createMethod.Invoke(null, new[] { model });
+
+            // Force a globally-safe EntityId for webpanel/webcomponent.
+            // The SDK allocates max(EntityId per-type)+1, but EntityId is a shared global sequence;
+            // collision causes DuplicateKeyException on the part insert.
+            if (spec.EntityTypeId == 43)
+            {
+                var globalMax = _sql.ScalarLong("SELECT MAX(EntityId) FROM Entity");
+                var idProp = FindProp(obj.GetType(), "Id");
+                if (idProp != null && idProp.CanWrite)
+                {
+                    idProp.SetValue(obj, (int)(globalMax + 1));
+                    Console.Error.WriteLine($"[gx18-worker] type=43 create '{name}': forced EntityId to {globalMax + 1}");
+                }
+            }
+
             SetProp(obj, "Name", name);
             AssignModule(obj, model, module);
 
@@ -118,7 +147,32 @@ namespace Gx18Mcp.SdkWorker.Sdk
                 var verr = CollectValidationErrors(obj);
                 if (!string.IsNullOrEmpty(verr)) throw new Exception("Validation: " + verr);
             }
-            InvokeSave(obj);
+
+            if (spec.EntityTypeId == 43)
+            {
+                try { InvokeSave(obj); }
+                catch (Exception ex)
+                {
+                    var inner = ex is TargetInvocationException tie && tie.InnerException != null ? tie.InnerException : ex;
+                    bool isDupe = inner.GetType().Name.IndexOf("DuplicateKey", StringComparison.OrdinalIgnoreCase) >= 0
+                               || inner.Message.IndexOf("duplicate", StringComparison.OrdinalIgnoreCase) >= 0;
+                    // Best-effort zombie eviction so next retry has a clean in-memory model.
+                    try { obj.GetType().GetMethod("Delete", Type.EmptyTypes)?.Invoke(obj, null); } catch { }
+                    if (isDupe)
+                        throw new Exception(
+                            $"gx_create '{name}' (webpanel/webcomponent): DuplicateKey on save — " +
+                            "likely a zombie object from a previous failed create in the SDK's in-memory model. " +
+                            "Call gx_reload to reset the worker, then retry gx_create.", inner);
+                    throw new Exception(
+                        $"gx_create '{name}' (webpanel/webcomponent) failed: {inner.GetType().Name}: {inner.Message}\n" +
+                        "If this is a NullReferenceException, call gx_reload and retry. " +
+                        "If it persists, create the object via the GX18 IDE and use gx_modify/gx_clone for editing.", inner);
+                }
+            }
+            else
+            {
+                InvokeSave(obj);
+            }
 
             int newId = Convert.ToInt32(GetProp(obj, "Id"));
             return VerifyUserId(spec.EntityTypeId, newId, name, "create");

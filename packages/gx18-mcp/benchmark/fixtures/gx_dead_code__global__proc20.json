@@ -1,0 +1,118 @@
+{
+  "fixtureVersion": 1,
+  "capturedAt": "2026-06-25T23:02:14.262Z",
+  "tool": "gx_dead_code",
+  "args": {
+    "type": 34,
+    "limit": 20
+  },
+  "response": {
+    "entityTypeId": 34,
+    "module": null,
+    "candidates": [
+      {
+        "name": "AddDeviceGroups",
+        "entityId": 3191,
+        "entityTypeId": 34
+      },
+      {
+        "name": "AddDeviceTargetFilter",
+        "entityId": 3192,
+        "entityTypeId": 34
+      },
+      {
+        "name": "AST_ITO_LINHA_MAXProcedure",
+        "entityId": 1694,
+        "entityTypeId": 34
+      },
+      {
+        "name": "AST_OCO_ID_MaxProcedure",
+        "entityId": 1030,
+        "entityTypeId": 34
+      },
+      {
+        "name": "CallApi",
+        "entityId": 3536,
+        "entityTypeId": 34
+      },
+      {
+        "name": "CreateToken",
+        "entityId": 4753,
+        "entityTypeId": 34
+      },
+      {
+        "name": "Destroy",
+        "entityId": 4454,
+        "entityTypeId": 34
+      },
+      {
+        "name": "DoPaging",
+        "entityId": 4755,
+        "entityTypeId": 34
+      },
+      {
+        "name": "Get",
+        "entityId": 4451,
+        "entityTypeId": 34
+      },
+      {
+        "name": "GetApplicationPath",
+        "entityId": 4493,
+        "entityTypeId": 34
+      },
+      {
+        "name": "GetBaseUrl",
+        "entityId": 4674,
+        "entityTypeId": 34
+      },
+      {
+        "name": "GetCharRegex",
+        "entityId": 4672,
+        "entityTypeId": 34
+      },
+      {
+        "name": "GetEnvironment",
+        "entityId": 4450,
+        "entityTypeId": 34
+      },
+      {
+        "name": "GetFilterRegex",
+        "entityId": 4671,
+        "entityTypeId": 34
+      },
+      {
+        "name": "GetGenerator",
+        "entityId": 4449,
+        "entityTypeId": 34
+      },
+      {
+        "name": "GetMessages",
+        "entityId": 4673,
+        "entityTypeId": 34
+      },
+      {
+        "name": "GetTemporaryPath",
+        "entityId": 4675,
+        "entityTypeId": 34
+      },
+      {
+        "name": "GoogleDirectionsServiceRequest",
+        "entityId": 4042,
+        "entityTypeId": 34
+      },
+      {
+        "name": "HttpClient",
+        "entityId": 4448,
+        "entityTypeId": 34
+      },
+      {
+        "name": "ICZ_CAR_NUMERO_MAXProcedureBon",
+        "entityId": 1410,
+        "entityTypeId": 34
+      }
+    ],
+    "total": 20
+  },
+  "checksum": "cc85f370a63c77cba68b48d77fc93dc7db9d15266d13d0baddff5005ed8eba14",
+  "entityVersionId": null
+}
