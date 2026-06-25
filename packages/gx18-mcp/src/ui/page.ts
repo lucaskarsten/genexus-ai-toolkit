@@ -1323,7 +1323,7 @@ function toolLabel(name, args) {
   var gxMap = {
     'mcp__gx18__gx_export':    ['Exportando',         'name'],
     'mcp__gx18__gx_read':      ['Lendo',              'name'],
-    'mcp__gx18__gx_find':      ['Buscando',           'query'],
+    'mcp__gx18__gx_find':      ['Buscando',           'pattern'],
     'mcp__gx18__gx_modify':    ['Modificando',        'name'],
     'mcp__gx18__gx_import':    ['Importando',         'name'],
     'mcp__gx18__gx_get':       ['Obtendo',            'name'],

@@ -52,7 +52,7 @@ All write tools require `confirm: true`. Result always includes `userIdOk`, `use
 | `gx_delete` | `name`, `type`, `dryRun?`, `confirm` | Delete object (irreversible; use dryRun first) |
 | `gx_variable` | `action`, `name`, `type`, `varName?`, `dataType?`, `confirm?` | List/add/delete variables |
 | `gx_clone` | `type`, `name`, `newName`, `module?`, `confirm` | Copy to new name |
-| `gx_bulk_modify` | `type`, `names[]`, `section`, `content`, `confirm` | Apply same section to multiple objects |
+| `gx_bulk_modify` | `type`, `names[]`, `section`, `content`, `confirm` | Apply same section to multiple objects (continues on failure, returns `succeeded[]`/`failed[]`) |
 | `gx_move` | `name`, `type`, `targetModule`, `confirm` | Move to different module |
 | `gx_export` | `name`, `type`, `outputDir?` | Export to `.xpz` via Knowledge Manager (also validates) |
 | `gx_import` | `xpzFile`, `type`, `name`, `fullOverwrite?`, `confirm` | Import `.xpz` via Knowledge Manager native |
@@ -113,11 +113,13 @@ Used as the `section` parameter in `gx_read` and `gx_modify`.
 |---------|-------------|---------|
 | `source` | Procedure, DSO | Procedure code; DSO styles (alias) |
 | `events` | WebPanel, WebComponent, Transaction | Events code |
-| `rules` | Procedure, Transaction | Rules |
+| `rules` | Procedure, WebPanel, WebComponent, Transaction | Rules |
+| `conditions` | Procedure, WebPanel, WebComponent | Conditions |
 | `layout` | WebPanel, WebComponent | WebForm layout (editable text) |
 | `variables` | Any | Object variables |
 | `template` | UserControl | Screen template HTML/CSS |
 | `properties` | UserControl | Property definitions XML |
+| `script:<Name>` | UserControl (`gx_modify` only) | AfterShow or a named Method: `script:AfterShow`, `script:Tooltip` |
 | `tokens` | DSO | Design tokens |
 | `styles` | DSO | Design styles |
 | `elements` | DSO | Design elements |
@@ -132,11 +134,11 @@ Used as the `section` parameter in `gx_read` and `gx_modify`.
 | Reading `static/UserControls/<uc>render.js` | `gx_read type=147 section=source` | render.js is regenerated on every build; edits are lost |
 | SQL `SELECT … FROM EntityVersion WHERE EntityVersionName LIKE '%X%'` | `gx_find pattern=X` | gx_find returns formatted results with real entityTypeId |
 | SQL on `EntityVersionComposition` for TRN structure | `gx_structure name=X` | gx_structure decodes the blob and returns structured output |
-| `gx_read type=147 section=events` for UC AfterShow/Methods | `gx_export` → `gx_read_xpz` | gx_read does NOT include UC script parts; XPZ is the only path |
+| `gx_read type=147 section=events` for UC AfterShow/Methods | `gx_export` → `gx_read_xpz` | gx_read does NOT include UC script parts; XPZ is the only READ path |
 | Manual ZIP/regex on .xpz to read scripts | `gx_read_xpz` | Handles encoding, CDATA parsing, and script listing automatically |
 | Manual ZIP/regex on .xpz to patch scripts | `gx_patch_xpz` | Bumps lastUpdate, zeroes checksum, writes correct BOM/CRLF encoding |
 | `gx_import` to edit an existing object's source | `gx_modify section=source confirm:true` | gx_import skips existing objects without `fullOverwrite:true` |
-| `gx_modify` to edit UC AfterShow/Methods | `gx_export` → `gx_patch_xpz` → `gx_import` | gx_modify cannot reach UC script parts |
+| XPZ round-trip to WRITE a UC script when you already know the content | `gx_modify type=147 section="script:AfterShow" content="..." confirm:true` | Simpler direct path when you don't need to read-then-patch |
 | `gx_read section=properties` for property values | `gx_properties` | gx_read returns the definition XML; gx_properties returns actual values |
 | `gx_db_query connection=kb` for KB SQL queries | `gx_sql` | Same database — gx_sql is the direct, preferred path |
 | Generating to `output/` when the intent is to write to the KB | `gx_create confirm:true` | output/ is a staging area for human review; gx_create writes directly |
@@ -171,7 +173,15 @@ gx_read name=X type=34 section=source    → read current content
 gx_modify name=X type=34 section=source content="..." confirm:true
 ```
 
-### Edit UC AfterShow / Methods scripts (tool-based round-trip)
+### Write a UC script directly (simplest path when content is already known)
+```
+gx_whoami
+gx_modify name=UCMyControl type=147 section="script:AfterShow" content="..." confirm:true
+# Works for any named method too: section="script:Tooltip", section="script:Show", etc.
+```
+
+### Read then patch a UC script (XPZ round-trip)
+Use this when you need to read the existing script before deciding what to write.
 ```
 gx_whoami
 gx_export name=UCMyControl type=147      → generates output/UCMyControl.xpz
@@ -225,7 +235,9 @@ gx_reload    → restart worker so SDK cache is cleared; worker reopens KB fresh
 
 ---
 
-## `gx_create` — Sections per Type
+## Sections per Type
+
+### `gx_create` — initial content
 
 | Type | Accepted sections |
 |------|------------------|
@@ -235,6 +247,18 @@ gx_reload    → restart worker so SDK cache is cleared; worker reopens KB fresh
 | `usercontrol` | `template`, `properties` |
 | `dso` | `tokens`, `styles`, `elements` |
 | `sdt`, `transaction` | `structure` (array of `{ name, type, length?, decimals?, key? }`) |
+
+### `gx_modify` — writable sections per type
+
+| Type | Writable sections | Notes |
+|------|------------------|-------|
+| `procedure` | `source`, `rules`, `conditions`, `variables` | SDK path |
+| `webpanel`, `webcomponent` | `events`, `rules`, `conditions`, `layout`, `variables` | events/rules/conditions via SQL blob; layout via SDK |
+| `usercontrol` | `template`, `properties`, `script:<Name>` | template/properties via SDK; scripts via SQL blob in-place |
+| `dso` | `tokens`, `styles`, `elements` | SDK path; use friendly `@import Name;` (not GUID form) |
+| `api` | `source`, `events` | SDK path |
+
+> `dataselector` and `transaction` are **not writable** via `gx_modify` — use the GX18 IDE.
 
 `structure` member `type` values: `Character`, `VarChar`, `LongVarChar`, `Numeric`, `Int`,
 `Date`, `DateTime`, `Boolean`, `GUID`.

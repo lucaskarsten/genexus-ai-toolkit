@@ -232,9 +232,16 @@ export async function gxPatchXpz(args: {
     outputFile: args.outputFile ?? null,
   };
 
+  const guardCdata = (s: string, field: string) => {
+    if (s.includes(']]>'))
+      throw new Error(`gx_patch_xpz: ${field} must not contain the literal sequence "]]>" — it terminates CDATA and would corrupt the XPZ.`);
+  };
+
   if (hasPatches) {
+    args.patches!.forEach((p, i) => guardCdata(p.content, `patches[${i}].content`));
     payload['patches'] = args.patches;
   } else {
+    guardCdata(args.content!, 'content');
     payload['scriptName'] = args.scriptName;
     payload['content'] = args.content;
   }

@@ -294,6 +294,8 @@ export async function gxVariable(args: {
 
   if (action === 'update') {
     if (!args.varName) throw new Error('gx_variable update requires varName.');
+    if (args.dataType == null && args.length == null && args.decimals == null && args.isCollection == null)
+      throw new Error('gx_variable update requires at least one of: dataType, length, decimals, isCollection.');
     const result = await bridge.send<import('../sdk-bridge/protocol').VariableMutateResult>('variable_update', {
       name: args.name,
       type: typeKey,
@@ -339,6 +341,18 @@ export async function gxBulkModify(args: {
     throw new Error('names must be a non-empty array');
 
   const typeKey = resolveTypeKey(args.type);
+  if (!SUPPORTED_WRITE_TYPES.includes(typeKey)) {
+    throw new Error(`gx_bulk_modify: type '${typeKey}' is not writable. Writable types: ${SUPPORTED_WRITE_TYPES.join(', ')}.`);
+  }
+  const typeSpec = OBJECT_TYPES.find(t => t.key === typeKey);
+  const validSections = typeSpec?.sections.map(s => s.key) ?? [];
+  const isUcScriptSection = typeKey === 'usercontrol' && args.section.toLowerCase().startsWith('script:');
+  if (validSections.length > 0 && !validSections.includes(args.section.toLowerCase()) && !isUcScriptSection) {
+    throw new Error(
+      `gx_bulk_modify: section '${args.section}' is not valid for type '${typeKey}'. ` +
+      `Valid sections: ${validSections.join(', ')}.`
+    );
+  }
   const succeeded: string[] = [];
   const failed: Array<{ name: string; error: string }> = [];
 

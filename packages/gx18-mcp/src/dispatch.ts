@@ -86,8 +86,8 @@ const TOOLS: Tool[] = [
       'properties (property definitions XML, section=properties). ' +
       'Returns the reconstructed plain-text source. ' +
       'NEVER read the generated Java in javaoracle/ or render.js in static/ — use this tool instead. ' +
-      'IMPORTANT: UserControl AfterShow and Methods scripts are NOT included in any gx_read section — ' +
-      'use gx_export to get the .xpz archive, then read the CDATA blocks inside it.',
+      'IMPORTANT: UserControl AfterShow and Methods scripts are NOT readable via any gx_read section — ' +
+      'to READ them: gx_export → gx_read_xpz. To WRITE them: gx_modify with section="script:AfterShow" (or "script:<MethodName>").',
     inputSchema: {
       type: 'object',
       properties: {
@@ -203,15 +203,14 @@ const TOOLS: Tool[] = [
       'Modify a section of an existing GeneXus KB object. Requires confirm:true. ' +
       'Sections: source, events, rules, layout, variables. ' +
       'Use this for existing objects — NOT gx_import (import does not overwrite existing objects). ' +
-      'IMPORTANT: gx_modify cannot reach UserControl AfterShow/Methods scripts. ' +
-      'For those, use the round-trip: gx_export → patch CDATA in .xpz → gx_import with fullOverwrite:true. ' +
+      'For UserControl AfterShow/Methods scripts, use section="script:AfterShow" (or "script:<MethodName>") — no XPZ round-trip needed. ' +
       'For DSO styles, pass the friendly @import name (e.g. "@import DsoBase;"), NOT the GUID form.',
     inputSchema: {
       type: 'object',
       properties: {
         name: { type: 'string', description: 'Exact object name' },
         type: { type: 'number', description: 'EntityTypeId' },
-        section: { type: 'string', description: 'Section to modify: source, events, rules, layout, variables' },
+        section: { type: 'string', description: 'Section to modify: source, events, rules, layout, variables. For UserControl scripts: "script:AfterShow" or "script:<MethodName>".' },
         content: { type: 'string', description: 'New content for the section' },
         confirm: { type: 'boolean', description: 'Must be true to execute the write' },
       },
@@ -309,9 +308,10 @@ const TOOLS: Tool[] = [
       '(importable into any GeneXus 18 KB). A successful export also validates objects are well-formed. ' +
       'Single object: pass name + type. Multiple objects of the same type: pass names (array) + type. ' +
       'Writes <name>.xpz (or <first>_and_N_more.xpz) to outputDir or the configured GX_OUTPUT_PATH. ' +
-      'This is the ONLY way to access UserControl AfterShow and Methods scripts — ' +
-      'they are stored as CDATA blocks inside the .xpz XML and are not reachable via gx_read. ' +
-      'Also use as the first step of the edit round-trip: gx_export → patch CDATA → gx_import.',
+      'Primary way to READ UserControl AfterShow and Methods scripts (not reachable via gx_read) — ' +
+      'they are stored as CDATA blocks inside the .xpz XML; use gx_read_xpz to inspect them. ' +
+      'To WRITE scripts, use gx_modify with section="script:AfterShow" (faster than the XPZ round-trip). ' +
+      'Use gx_export for reading scripts or for full-archive operations (gx_export → gx_patch_xpz → gx_import).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -734,7 +734,7 @@ const TOOLS: Tool[] = [
     inputSchema: {
       type: 'object' as const,
       properties: {
-        type: { type: 'string', description: 'Object type key (procedure, webpanel, dso, usercontrol, etc.).' },
+        type: { oneOf: [{ type: 'number' }, { type: 'string' }], description: 'EntityTypeId (number from gx_find) or type key (procedure, webpanel, webcomponent, dso, usercontrol, etc.).' },
         name: { type: 'string', description: 'Source object name.' },
         newName: { type: 'string', description: 'New object name.' },
         module: { type: 'string', description: 'Target module (optional, defaults to root).' },
@@ -747,13 +747,13 @@ const TOOLS: Tool[] = [
     name: 'gx_bulk_modify',
     description:
       'Apply the same section content to multiple GeneXus objects in a single call. Requires confirm:true. ' +
-      'Writes are serialized one-at-a-time (the SDK worker is single-session); a failed object stops the batch and reports which objects succeeded. ' +
+      'Writes are serialized one-at-a-time (the SDK worker is single-session); each object is attempted independently — failures are collected and reported without stopping the batch. ' +
       'Use case: standardizing a DSO styles block across several DSOs, or applying the same rules block to a set of procedures. ' +
       'ALWAYS call gx_whoami first. For heterogeneous changes (different content per object) call gx_modify individually instead.',
     inputSchema: {
       type: 'object' as const,
       properties: {
-        type: { type: 'string', description: 'Object type key (procedure, webpanel, dso, etc.).' },
+        type: { oneOf: [{ type: 'number' }, { type: 'string' }], description: 'EntityTypeId (number from gx_find) or type key (procedure, webpanel, webcomponent, dso, etc.).' },
         names: { type: 'array', items: { type: 'string' }, description: 'List of object names to modify.' },
         section: { type: 'string', description: 'Section to replace (source, events, rules, styles, etc.).' },
         content: { type: 'string', description: 'New content for the section.' },

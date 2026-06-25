@@ -264,7 +264,7 @@ export async function handleApi(
 }
 
 // KB-mutating tools we log to stderr as an audit trail (this surface can write the live KB).
-const WRITE_LOG = new Set(['gx_create', 'gx_modify', 'gx_set_property', 'gx_rename', 'gx_build', 'gx_import']);
+const WRITE_LOG = new Set(['gx_create', 'gx_modify', 'gx_set_property', 'gx_rename', 'gx_build', 'gx_import', 'gx_delete', 'gx_variable', 'gx_move', 'gx_clone', 'gx_bulk_modify']);
 
 /** Re-export so the http adapter can advertise read-only state without importing dispatch. */
 export { isReadonly };

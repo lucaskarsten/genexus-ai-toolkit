@@ -14,7 +14,8 @@ with the correct Windows UserId (no Team Development corruption). **47 tools tot
 | Read procedure / WBP source | `gx_read type=34/43 section=source` | Generated Java in `javaoracle/web/src/` |
 | Read UC template (HTML/CSS) | `gx_read type=147 section=source` | `render.js` in `static/` (regenerated on every build) |
 | Read UC AfterShow / Methods scripts | `gx_export` → `gx_read_xpz` | `gx_read` — script parts are NOT included |
-| Patch UC AfterShow / Methods scripts | `gx_patch_xpz` → `gx_import` | `gx_modify` — cannot reach UC script parts |
+| Write UC AfterShow / Methods scripts (direct) | `gx_modify type=147 section="script:AfterShow" confirm:true` | XPZ round-trip for simple overwrites |
+| Patch UC AfterShow / Methods scripts (read+patch) | `gx_export` → `gx_read_xpz` → `gx_patch_xpz` → `gx_import` | Manual ZIP editing |
 | Read object property values | `gx_properties` | `gx_read section=properties` — that returns definition XML, not values |
 | Read Transaction attribute structure | `gx_structure` | SQL on `EntityVersionComposition` |
 | Find where an object is referenced | `gx_where_used` or `gx_analyze action=usedby` | Text search in source files |
@@ -90,11 +91,13 @@ Used as the `section` parameter in `gx_read` and `gx_modify`.
 |---------|-----------|---------|
 | `source` | Procedure, API, DSO | Procedure code / API service group / DSO styles (alias) |
 | `events` | WebPanel, WebComponent, Transaction | Events code |
-| `rules` | Procedure, Transaction | Rules |
+| `rules` | Procedure, WebPanel, WebComponent, Transaction | Rules |
+| `conditions` | Procedure, WebPanel, WebComponent | Conditions |
 | `layout` | WebPanel, WebComponent | WebForm layout (editable text) |
 | `variables` | Any | Object variables |
 | `properties` | UserControl | UC property definitions XML |
 | `template` | UserControl | UC screen template HTML/CSS |
+| `script:<Name>` | UserControl | AfterShow or a named Method script (e.g. `script:AfterShow`, `script:Tooltip`) |
 | `tokens` | DSO | Design tokens |
 | `styles` | DSO | Design styles |
 | `elements` | DSO | Design elements |
@@ -172,13 +175,13 @@ the wrong author to Team Development.
 | Tool | What it does | Key constraint |
 |------|-------------|----------------|
 | `gx_create` | Create new object | `confirm:true`; call `gx_find` first to avoid duplicates |
-| `gx_modify` | Replace a section of existing object | Cannot reach UC AfterShow/Methods |
+| `gx_modify` | Replace a section of existing object | UC scripts: use `section="script:AfterShow"` or `section="script:MyMethod"` |
 | `gx_set_property` | Set a named property (Title, IsPrivate, etc.) | Use `gx_properties` first to see valid names |
 | `gx_rename` | Rename object | Run `gx_where_used` first; propagates to callers |
 | `gx_delete` | Delete object (irreversible) | Use `dryRun:true` first |
 | `gx_variable` | List/add/delete variables | `add`/`delete` require `confirm:true` |
 | `gx_clone` | Copy to new name | Specify `module` to control placement |
-| `gx_bulk_modify` | Apply same section to multiple objects | Writes serialized; first failure stops batch |
+| `gx_bulk_modify` | Apply same section to multiple objects | Continues on failures; returns `succeeded[]` and `failed[]` |
 | `gx_move` | Move to different module | Reflected in IDE after reload |
 | `gx_export` | Export to `.xpz` via Knowledge Manager | Also validates the object |
 | `gx_patch_xpz` | Patch script in `.xpz` (file-only, no KB write) | Cannot contain `]]>` in new content |

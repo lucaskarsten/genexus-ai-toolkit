@@ -108,6 +108,6 @@ export async function gxMove(args: {
     name: args.name,
     type: args.type,
     targetModule: args.targetModule,
-  });
+  }, 180000);
   return JSON.stringify(result, null, 2);
 }
