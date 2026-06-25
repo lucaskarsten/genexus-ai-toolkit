@@ -93,9 +93,9 @@ namespace Gx18Mcp.SdkWorker.Sql
             var typeFilter = types != null && types.Length > 0
                 ? $" AND e.EntityTypeId IN ({string.Join(",", types)})"
                 : "";
-            var modFilter = !string.IsNullOrEmpty(module) ? " AND e.ModuleName=@mod" : "";
+            var modFilter = !string.IsNullOrEmpty(module) ? " AND evmod.EntityVersionName=@mod" : "";
             var exclFilter = !string.IsNullOrEmpty(exclude) ? " AND ev.EntityVersionName NOT LIKE @excl" : "";
-            var sql = $"SELECT TOP {limit} e.EntityTypeId, e.EntityId, ev.EntityVersionName, CONVERT(varchar,ev.EntityVersionTimestamp,120) as ts, ISNULL(e.ModuleName,'') as module FROM Entity e JOIN EntityVersion ev ON e.EntityTypeId=ev.EntityTypeId AND e.EntityId=ev.EntityId WHERE ev.EntityVersionName LIKE @pat{typeFilter}{modFilter}{exclFilter} AND ev.EntityVersionId=(SELECT MAX(v2.EntityVersionId) FROM EntityVersion v2 WHERE v2.EntityTypeId=e.EntityTypeId AND v2.EntityId=e.EntityId) ORDER BY ev.EntityVersionName";
+            var sql = $"SELECT TOP {limit} e.EntityTypeId, e.EntityId, ev.EntityVersionName, CONVERT(varchar,ev.EntityVersionTimestamp,120) as ts, ISNULL(evmod.EntityVersionName,'') as module FROM Entity e JOIN EntityVersion ev ON e.EntityTypeId=ev.EntityTypeId AND e.EntityId=ev.EntityId LEFT JOIN ModelEntityVersion mev ON mev.EntityTypeId=e.EntityTypeId AND mev.EntityId=e.EntityId AND mev.EntityVersionId=(SELECT MAX(v3.EntityVersionId) FROM EntityVersion v3 WHERE v3.EntityTypeId=e.EntityTypeId AND v3.EntityId=e.EntityId) LEFT JOIN EntityVersion evmod ON evmod.EntityTypeId=100 AND evmod.EntityId=mev.ModelParentEntityId AND evmod.EntityVersionId=(SELECT MAX(v4.EntityVersionId) FROM EntityVersion v4 WHERE v4.EntityTypeId=100 AND v4.EntityId=mev.ModelParentEntityId) WHERE ev.EntityVersionName LIKE @pat{typeFilter}{modFilter}{exclFilter} AND ev.EntityVersionId=(SELECT MAX(v2.EntityVersionId) FROM EntityVersion v2 WHERE v2.EntityTypeId=e.EntityTypeId AND v2.EntityId=e.EntityId) ORDER BY ev.EntityVersionName";
 
             var results = new List<object>();
             using (var conn = Open())
@@ -114,9 +114,9 @@ namespace Gx18Mcp.SdkWorker.Sql
         public List<object> Find(string pattern, int type, int limit, string module = null, string exclude = null)
         {
             var typeFilter = type > 0 ? $" AND e.EntityTypeId={type}" : "";
-            var modFilter = !string.IsNullOrEmpty(module) ? " AND e.ModuleName=@mod" : "";
+            var modFilter = !string.IsNullOrEmpty(module) ? " AND evmod.EntityVersionName=@mod" : "";
             var exclFilter = !string.IsNullOrEmpty(exclude) ? " AND ev.EntityVersionName NOT LIKE @excl" : "";
-            var sql = $"SELECT TOP {limit} e.EntityTypeId, e.EntityId, ev.EntityVersionName, CONVERT(varchar,ev.EntityVersionTimestamp,120) as ts, ISNULL(e.ModuleName,'') as module FROM Entity e JOIN EntityVersion ev ON e.EntityTypeId=ev.EntityTypeId AND e.EntityId=ev.EntityId WHERE ev.EntityVersionName LIKE @pat{typeFilter}{modFilter}{exclFilter} AND ev.EntityVersionId=(SELECT MAX(v2.EntityVersionId) FROM EntityVersion v2 WHERE v2.EntityTypeId=e.EntityTypeId AND v2.EntityId=e.EntityId) ORDER BY ev.EntityVersionName";
+            var sql = $"SELECT TOP {limit} e.EntityTypeId, e.EntityId, ev.EntityVersionName, CONVERT(varchar,ev.EntityVersionTimestamp,120) as ts, ISNULL(evmod.EntityVersionName,'') as module FROM Entity e JOIN EntityVersion ev ON e.EntityTypeId=ev.EntityTypeId AND e.EntityId=ev.EntityId LEFT JOIN ModelEntityVersion mev ON mev.EntityTypeId=e.EntityTypeId AND mev.EntityId=e.EntityId AND mev.EntityVersionId=(SELECT MAX(v3.EntityVersionId) FROM EntityVersion v3 WHERE v3.EntityTypeId=e.EntityTypeId AND v3.EntityId=e.EntityId) LEFT JOIN EntityVersion evmod ON evmod.EntityTypeId=100 AND evmod.EntityId=mev.ModelParentEntityId AND evmod.EntityVersionId=(SELECT MAX(v4.EntityVersionId) FROM EntityVersion v4 WHERE v4.EntityTypeId=100 AND v4.EntityId=mev.ModelParentEntityId) WHERE ev.EntityVersionName LIKE @pat{typeFilter}{modFilter}{exclFilter} AND ev.EntityVersionId=(SELECT MAX(v2.EntityVersionId) FROM EntityVersion v2 WHERE v2.EntityTypeId=e.EntityTypeId AND v2.EntityId=e.EntityId) ORDER BY ev.EntityVersionName";
 
             var results = new List<object>();
             using (var conn = Open())
@@ -134,9 +134,9 @@ namespace Gx18Mcp.SdkWorker.Sql
 
         public List<object> List(int type, string module, int limit, int offset, string exclude = null)
         {
-            var moduleFilter = string.IsNullOrEmpty(module) ? "" : " AND e.ModuleName=@mod";
+            var moduleFilter = string.IsNullOrEmpty(module) ? "" : " AND evmod.EntityVersionName=@mod";
             var exclFilter = string.IsNullOrEmpty(exclude) ? "" : " AND ev.EntityVersionName NOT LIKE @excl";
-            var sql = $"SELECT e.EntityTypeId, e.EntityId, ev.EntityVersionName, CONVERT(varchar,ev.EntityVersionTimestamp,120) as ts, ISNULL(e.ModuleName,'') as module FROM Entity e JOIN EntityVersion ev ON e.EntityTypeId=ev.EntityTypeId AND e.EntityId=ev.EntityId WHERE e.EntityTypeId=@type AND ev.EntityVersionId=(SELECT MAX(v2.EntityVersionId) FROM EntityVersion v2 WHERE v2.EntityTypeId=e.EntityTypeId AND v2.EntityId=e.EntityId){moduleFilter}{exclFilter} ORDER BY ev.EntityVersionName OFFSET @off ROWS FETCH NEXT @lim ROWS ONLY";
+            var sql = $"SELECT e.EntityTypeId, e.EntityId, ev.EntityVersionName, CONVERT(varchar,ev.EntityVersionTimestamp,120) as ts, ISNULL(evmod.EntityVersionName,'') as module FROM Entity e JOIN EntityVersion ev ON e.EntityTypeId=ev.EntityTypeId AND e.EntityId=ev.EntityId LEFT JOIN ModelEntityVersion mev ON mev.EntityTypeId=e.EntityTypeId AND mev.EntityId=e.EntityId AND mev.EntityVersionId=(SELECT MAX(v3.EntityVersionId) FROM EntityVersion v3 WHERE v3.EntityTypeId=e.EntityTypeId AND v3.EntityId=e.EntityId) LEFT JOIN EntityVersion evmod ON evmod.EntityTypeId=100 AND evmod.EntityId=mev.ModelParentEntityId AND evmod.EntityVersionId=(SELECT MAX(v4.EntityVersionId) FROM EntityVersion v4 WHERE v4.EntityTypeId=100 AND v4.EntityId=mev.ModelParentEntityId) WHERE e.EntityTypeId=@type AND ev.EntityVersionId=(SELECT MAX(v2.EntityVersionId) FROM EntityVersion v2 WHERE v2.EntityTypeId=e.EntityTypeId AND v2.EntityId=e.EntityId){moduleFilter}{exclFilter} ORDER BY ev.EntityVersionName OFFSET @off ROWS FETCH NEXT @lim ROWS ONLY";
             var results = new List<object>();
             using (var conn = Open())
             using (var cmd = new SqlCommand(sql, conn))
@@ -217,7 +217,12 @@ namespace Gx18Mcp.SdkWorker.Sql
 
         private string Decompress(byte[] data)
         {
-            // Skip 11-byte GeneXus header
+            // GeneXus blob header: bytes 0-5 = magic+version, byte 6 = compression flag
+            // 0x01 = GZip compressed (11-byte header, data from offset 11)
+            // 0x02 = raw UTF-8 text  ( 7-byte header, data from offset 7)
+            if (data.Length > 7 && data[6] == 0x02)
+                return Encoding.UTF8.GetString(data, 7, data.Length - 7);
+
             using (var ms = new MemoryStream(data, 11, data.Length - 11))
             using (var gz = new GZipStream(ms, CompressionMode.Decompress))
             using (var reader = new StreamReader(gz, Encoding.UTF8))
@@ -1022,6 +1027,13 @@ namespace Gx18Mcp.SdkWorker.Sql
         // Confirmed part-type GUIDs come from real IDE-exported XPZ files (FoccoLojas_02).
         public object SqlExportXpz(string name, int entityTypeId, string outputFile)
         {
+            var _step = "init";
+            try { return SqlExportXpzImpl(name, entityTypeId, outputFile, ref _step); }
+            catch (Exception ex) { throw new Exception($"SqlExportXpz[{_step}]: {ex.GetType().Name}: {ex.Message}", ex); }
+        }
+
+        private object SqlExportXpzImpl(string name, int entityTypeId, string outputFile, ref string step)
+        {
             if (string.IsNullOrEmpty(name)) throw new Exception("name is required");
 
             // Part GUID map: EntityTypeId → XPZ <Part type="..."> GUID
@@ -1050,6 +1062,7 @@ namespace Gx18Mcp.SdkWorker.Sql
             var definitionParts = new HashSet<int> { 149 };
             // Structure parts: decompressed blob IS raw XML (<Variable>, <Help>, <Properties/>) → embed directly
 
+            step = "metadata-query";
             // 1. Object metadata
             int entityId = 0, entityVersionId = 0;
             string description = "", timestamp = "", entityVersionProperties = "", entityGuid = "";
@@ -1069,14 +1082,16 @@ namespace Gx18Mcp.SdkWorker.Sql
             {
                 if (!r.Read())
                     throw new Exception($"Object '{name}' (EntityTypeId {entityTypeId}) not found in KB. Run gx_find to confirm the exact name.");
+                step = "metadata-read-cols";
                 entityId = r.GetInt32(0);
                 entityVersionId = r.GetInt32(1);
                 description = r.GetString(2);
                 entityVersionProperties = r.GetString(3);
-                entityGuid = r.GetString(4);
+                entityGuid = r.GetValue(4)?.ToString() ?? "";
             }
             timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ");
 
+            step = "module-query";
             // 2. Module name and GUID
             string moduleName = "", parentGuid = "";
             using (var conn = Open())
@@ -1095,6 +1110,7 @@ namespace Gx18Mcp.SdkWorker.Sql
                 if (r.Read()) { moduleName = r.GetString(0); parentGuid = r.GetString(1); }
             }
 
+            step = "parts-query";
             // 3. Parts
             var partList = new List<(int typeId, int compEntityId)>();
             using (var conn = Open())
@@ -1110,6 +1126,7 @@ namespace Gx18Mcp.SdkWorker.Sql
                 while (r.Read()) partList.Add((r.GetInt32(0), r.GetInt32(1)));
             }
 
+            step = "build-parts-xml";
             // 4. Build Part XML
             Func<string, string> EscapeCdata = s => (s ?? "").Replace("]]>", "]]]]><![CDATA[>");
             Func<string, string> EscapeAttr = s => (s ?? "").Replace("&", "&amp;").Replace("\"", "&quot;").Replace("<", "&lt;").Replace(">", "&gt;");
@@ -1184,6 +1201,7 @@ namespace Gx18Mcp.SdkWorker.Sql
                 }
             }
 
+            step = "assemble-xml";
             // 5. Object-level Properties (pass-through from EntityVersionProperties)
             string objProps = string.IsNullOrEmpty(entityVersionProperties) ? "<Properties />" : entityVersionProperties;
 
@@ -1219,6 +1237,7 @@ namespace Gx18Mcp.SdkWorker.Sql
                 $"  </Objects>\r\n" +
                 $"</ExportFile>";
 
+            step = "write-zip";
             // 7. Write ZIP (BOM UTF-8 + CRLF)
             Directory.CreateDirectory(Path.GetDirectoryName(outputFile) ?? ".");
             var bomUtf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: true);

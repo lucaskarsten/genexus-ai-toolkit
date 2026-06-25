@@ -4,7 +4,16 @@ import usageGuide from './docs/usage-guide.md';
 import xpzWorkflow from './docs/xpz-workflow.md';
 import genexusKnowledge from './docs/genexus-knowledge.md';
 import writeSafetyChecklist from './docs/write-safety-checklist.md';
+import xpzFormatRef from './docs/xpz-format-reference.md';
 import spec from '../spec/entity-types.json';
+import userControlsGuide from '../../../docs/user-controls-guide.md';
+import runtimeApi from '../../../docs/runtime-api-reference.md';
+import commonPitfalls from '../../../docs/common-pitfalls.md';
+import bemCssNaming from '../../../docs/bem-css-naming.md';
+import kbSqlReference from '../../../docs/kb-sql-reference.md';
+import skillUc from '../../../skills/genexus-uc.md';
+import skillKbSql from '../../../skills/genexus-kb-sql.md';
+import skillExpert from '../../../skills/genexus-expert.md';
 
 // Both .md imports are resolved by esbuild at build time (loader: { '.md': 'text' })
 // and inlined as string literals — no file system access at runtime.
@@ -15,6 +24,15 @@ const ENTITY_TYPES_URI = 'gx18://docs/entity-types';
 const XPZ_WORKFLOW_URI = 'gx18://docs/xpz-workflow';
 const GENEXUS_KNOWLEDGE_URI = 'gx18://docs/genexus-knowledge';
 const WRITE_SAFETY_URI = 'gx18://docs/write-safety';
+const XPZ_FORMAT_REF_URI = 'gx18://docs/xpz-format-reference';
+const USER_CONTROLS_URI = 'gx18://docs/user-controls';
+const RUNTIME_API_URI = 'gx18://docs/runtime-api';
+const COMMON_PITFALLS_URI = 'gx18://docs/pitfalls';
+const BEM_CSS_URI = 'gx18://docs/css-conventions';
+const KB_SQL_URI = 'gx18://docs/kb-sql';
+const SKILL_UC_URI = 'gx18://skills/genexus-uc';
+const SKILL_KB_SQL_URI = 'gx18://skills/kb-sql';
+const SKILL_EXPERT_URI = 'gx18://skills/expert';
 
 export const RESOURCES: Resource[] = [
   {
@@ -67,6 +85,82 @@ export const RESOURCES: Resource[] = [
       'Covers: part blob validation, EntityVersionProperties check, worker kill after SQL, ' +
       'silent import failure diagnosis, GUID collision detection, SDT ATTCUSTOMTYPE vs idBasedOn, ' +
       'and GeneXus 18 syntax pitfalls. Read this before any write operation to avoid silent failures.',
+    mimeType: 'text/markdown',
+  },
+  {
+    uri: XPZ_FORMAT_REF_URI,
+    name: 'XPZ Format Reference',
+    description:
+      'Complete XPZ archive format reference: XML schema (ExportFile root, Object attributes), ' +
+      'EntityType GUIDs, Part type GUIDs, per-object structure (UC/SDT/Procedure/WBC), ' +
+      'variable typing (ATTCUSTOMTYPE vs idBasedOn), silent-import failure modes, ' +
+      'and PowerShell snippets for reading and generating XPZ files.',
+    mimeType: 'text/markdown',
+  },
+  {
+    uri: USER_CONTROLS_URI,
+    name: 'User Controls Guide',
+    description:
+      'GeneXus 18 User Control guide: AfterShow patterns A/B, init-guard, MutationObserver, ' +
+      'jQuery namespacing, Control Type constants, CSS prefixes, property types, ' +
+      'passagem de dados entre UC e Web Panel, and project UC catalog.',
+    mimeType: 'text/markdown',
+  },
+  {
+    uri: RUNTIME_API_URI,
+    name: 'GeneXus Runtime API Reference',
+    description:
+      'GeneXus 18 client-side runtime API: gx.dom (element access), gx.grid (grid control), ' +
+      'gx.fx.obs pub/sub event bus, GeneXus object lifecycle hooks, and grid.onafterrender.',
+    mimeType: 'text/markdown',
+  },
+  {
+    uri: COMMON_PITFALLS_URI,
+    name: 'Common GX18 Pitfalls',
+    description:
+      'Real-world GeneXus 18 pitfalls: event timing issues, AJAX Refresh edge cases, ' +
+      'property type mismatches, UC lifecycle traps, and known SDK limitations.',
+    mimeType: 'text/markdown',
+  },
+  {
+    uri: BEM_CSS_URI,
+    name: 'CSS & DSO Naming Conventions',
+    description:
+      'BEM CSS naming conventions for DSO and project styles: block/element/modifier rules, ' +
+      'DSO import hierarchy, token usage, and GeneXus override patterns.',
+    mimeType: 'text/markdown',
+  },
+  {
+    uri: KB_SQL_URI,
+    name: 'KB SQL Table Reference',
+    description:
+      'GeneXus 18 KB SQL table reference: EntityVersion, ModelEntityVersion, EntityVersionComposition, ' +
+      'EntityPart, GZip blob decoding, and advanced query patterns for KB exploration.',
+    mimeType: 'text/markdown',
+  },
+  {
+    uri: SKILL_UC_URI,
+    name: 'User Control Specialist Skill',
+    description:
+      'Skill for creating, refactoring, and debugging GeneXus 18 User Control objects: ' +
+      'property definitions, Screen Template, AfterShow, data passing, MutationObserver, ' +
+      'jQuery, Control Type, CSS conventions, and the project UC catalog.',
+    mimeType: 'text/markdown',
+  },
+  {
+    uri: SKILL_KB_SQL_URI,
+    name: 'KB SQL Query Skill',
+    description:
+      'Skill for writing direct SQL queries against the GeneXus 18 KB (SQL Server): ' +
+      'table mapping, GZip blob decoding, EntityTypeId reference, and query patterns.',
+    mimeType: 'text/markdown',
+  },
+  {
+    uri: SKILL_EXPERT_URI,
+    name: 'GeneXus Expert Skill',
+    description:
+      'General GeneXus platform expertise skill: KB management, object modeling, ' +
+      'artifact generation, build workflows, and technical guidance.',
     mimeType: 'text/markdown',
   },
 ];
@@ -133,6 +227,24 @@ export function readResource(uri: string): { contents: ResourceContents[] } | nu
       return { contents: [{ uri, mimeType: 'text/markdown', text: genexusKnowledge }] };
     case WRITE_SAFETY_URI:
       return { contents: [{ uri, mimeType: 'text/markdown', text: writeSafetyChecklist }] };
+    case XPZ_FORMAT_REF_URI:
+      return { contents: [{ uri, mimeType: 'text/markdown', text: xpzFormatRef }] };
+    case USER_CONTROLS_URI:
+      return { contents: [{ uri, mimeType: 'text/markdown', text: userControlsGuide }] };
+    case RUNTIME_API_URI:
+      return { contents: [{ uri, mimeType: 'text/markdown', text: runtimeApi }] };
+    case COMMON_PITFALLS_URI:
+      return { contents: [{ uri, mimeType: 'text/markdown', text: commonPitfalls }] };
+    case BEM_CSS_URI:
+      return { contents: [{ uri, mimeType: 'text/markdown', text: bemCssNaming }] };
+    case KB_SQL_URI:
+      return { contents: [{ uri, mimeType: 'text/markdown', text: kbSqlReference }] };
+    case SKILL_UC_URI:
+      return { contents: [{ uri, mimeType: 'text/markdown', text: skillUc }] };
+    case SKILL_KB_SQL_URI:
+      return { contents: [{ uri, mimeType: 'text/markdown', text: skillKbSql }] };
+    case SKILL_EXPERT_URI:
+      return { contents: [{ uri, mimeType: 'text/markdown', text: skillExpert }] };
     default:
       return null;
   }

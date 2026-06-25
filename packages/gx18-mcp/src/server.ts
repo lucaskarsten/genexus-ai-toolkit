@@ -27,11 +27,27 @@ export async function run(): Promise<void> {
       instructions: `GeneXus 18 Knowledge Base MCP server. Reads via direct SQL (zero revisions); writes via native GX18 SDK with correct Windows UserId (no Team Development corruption).
 
 ## Resources — read these first
+
+### Tools & KB operations
 - gx18://docs/quick-reference — Task→tool decision table, EntityTypeIds, sections, mandatory sequences
 - gx18://docs/usage-guide — Complete tool reference, anti-patterns, workflow examples
 - gx18://docs/entity-types — All object types with EntityTypeId, SDK type, write support
+- gx18://docs/write-safety — Mandatory pre-flight checklist before any write operation
 - gx18://docs/xpz-workflow — Full XPZ round-trip guide (UC AfterShow/Methods scripts)
-- gx18://docs/genexus-knowledge — GeneXus 18 platform knowledge: object model, events, syntax, UC patterns
+- gx18://docs/xpz-format-reference — XPZ XML schema, Part GUIDs, variable typing
+
+### GeneXus 18 knowledge
+- gx18://docs/genexus-knowledge — Object model, events, syntax, canonical patterns
+- gx18://docs/user-controls — User Control guide: AfterShow, MutationObserver, jQuery, project UC catalog
+- gx18://docs/runtime-api — Client-side runtime API: gx.dom, gx.grid, gx.fx.obs pub/sub
+- gx18://docs/pitfalls — Real-world GX18 pitfalls: event timing, AJAX, property types
+- gx18://docs/css-conventions — BEM/DSO CSS naming conventions
+- gx18://docs/kb-sql — KB SQL table reference for advanced queries
+
+### Specialized skills
+- gx18://skills/genexus-uc — User Control specialist (create, debug, integrate)
+- gx18://skills/kb-sql — Direct KB SQL queries
+- gx18://skills/expert — General GeneXus platform expertise
 
 ## Tool categories (47 tools)
 **Read (SQL):** gx_find, gx_list, gx_get, gx_read, gx_properties, gx_structure, gx_attribute
@@ -54,10 +70,7 @@ gx_read CANNOT access these. Use: gx_export → gx_read_xpz → gx_patch_xpz →
 See resource gx18://docs/xpz-workflow for the full annotated workflow.
 
 ## Critical safety rule
-NEVER use gxnext MCP tools to write to GeneXus 18 KBs — on 2026-06-17 this caused ~76k spurious Team Development revisions requiring 6 hours of SQL recovery. Safe gxnext tools only: export_kb_to_text, validate_kb_text_files, get_kb_property, search_modules.
-
-## GeneXus platform knowledge
-For GeneXus syntax, object model, and canonical patterns consult resource gx18://docs/genexus-knowledge or the nexa skill (skills/nexa/nexa/).${readonly ? '\n\n**READ-ONLY MODE** (GX18_READONLY=1): all write tools are disabled.' : ''}`,
+NEVER use gxnext MCP tools to write to GeneXus 18 KBs — on 2026-06-17 this caused ~76k spurious Team Development revisions requiring 6 hours of SQL recovery. Safe gxnext tools only: export_kb_to_text, validate_kb_text_files, get_kb_property, search_modules.${readonly ? '\n\n**READ-ONLY MODE** (GX18_READONLY=1): all write tools are disabled.' : ''}`,
     }
   );
 

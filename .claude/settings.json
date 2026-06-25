@@ -7,7 +7,14 @@
       "PowerShell(Get-ChildItem *)",
       "PowerShell(Test-Path *)",
       "PowerShell(Select-String *)",
-      "PowerShell(Get-Content *)"
+      "PowerShell(Get-Content *)",
+      "mcp__gx18__gx_sql",
+      "mcp__gx18__gx_export",
+      "mcp__gx18__gx_read",
+      "mcp__gx18__gx_reload",
+      "mcp__gx18__gx_find",
+      "mcp__gx18__gx_whoami",
+      "mcp__gx18__gx_read_xpz"
     ]
   }
 }
