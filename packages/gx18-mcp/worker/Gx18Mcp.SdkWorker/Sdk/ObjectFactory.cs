@@ -131,6 +131,47 @@ namespace Gx18Mcp.SdkWorker.Sdk
             if (content == null)               throw new Exception("content is required (pass empty string to clear a section)");
 
             var spec = Spec(typeKey);
+
+            // UC scripts require SQL blob patch — IKnowledgeManagerService fails headless for type=147.
+            // Caller uses section="script:SljShow" (prefix "script:" + script name).
+            if (spec.EntityTypeId == 147 && section.StartsWith("script:", StringComparison.OrdinalIgnoreCase))
+            {
+                string scriptName = section.Substring("script:".Length).Trim();
+                if (string.IsNullOrEmpty(scriptName))
+                    throw new Exception("section 'script:' requires a script name, e.g. 'script:SljShow'");
+                int ucEntityId = _sql.FindEntityId(spec.EntityTypeId, name);
+                string blobNote = _sql.PatchUCScriptBlob(ucEntityId, scriptName, content);
+                Console.Error.WriteLine($"[gx18-worker] UC '{name}' script '{scriptName}': {blobNote}");
+                return VerifyUserId(spec.EntityTypeId, ucEntityId, name, "modify-uc-script-sql");
+            }
+
+            // WebPanel/WBC (type 43) — events, rules, conditions: SDK NullRefs headless because
+            // theme/layout services are not initialized without the IDE. Bypass entirely via SQL
+            // raw-UTF-8 blob write (format 0x02). componentEntityTypeId: 64=Events, 69=Rules, 57=Conditions.
+            if (spec.EntityTypeId == 43 && (
+                section.Equals("events",     StringComparison.OrdinalIgnoreCase) ||
+                section.Equals("rules",      StringComparison.OrdinalIgnoreCase) ||
+                section.Equals("conditions", StringComparison.OrdinalIgnoreCase)))
+            {
+                int compTypeId = section.Equals("rules",      StringComparison.OrdinalIgnoreCase) ? 69
+                               : section.Equals("conditions", StringComparison.OrdinalIgnoreCase) ? 57
+                               : 64; // events
+                int wbEntityId = _sql.FindEntityId(spec.EntityTypeId, name);
+                Console.Error.WriteLine(
+                    $"[gx18-worker] WB/WBC '{name}' {section}: SQL raw-UTF8 blob write (SDK unsupported headless).");
+                var blobNote = _sql.WriteTextPartBlob(spec.EntityTypeId, wbEntityId, compTypeId, content);
+                Console.Error.WriteLine($"[gx18-worker] SQL blob write: {blobNote}");
+                return VerifyUserId(spec.EntityTypeId, wbEntityId, name, $"modify-{section}-sql");
+            }
+
+            // WebPanel/WBC layout uses the SDK — but a 0-byte Documentation blob causes NullRef on load.
+            // Pre-flight: null it out if needed so the SDK can open the object cleanly.
+            if (spec.EntityTypeId == 43 && section.Equals("layout", StringComparison.OrdinalIgnoreCase))
+            {
+                int wbEntityId = _sql.FindEntityId(spec.EntityTypeId, name);
+                _sql.NullOutDocumentationBlob(spec.EntityTypeId, wbEntityId);
+            }
+
             var concrete = Resolve(spec);
             var kb = _session.KnowledgeBase;
             if (kb == null) throw new Exception("KB not open — SDK may not have initialized");
@@ -161,6 +202,23 @@ namespace Gx18Mcp.SdkWorker.Sdk
                            "not the GUID form (`@import @<guid>@`). " +
                            "The GUID form is internal — the SDK resolves it on save from the friendly name.";
                 }
+                // Safety fallback for WBC events/rules/conditions if somehow the early-exit above was
+                // not reached (e.g. future code path change). Should be unreachable in normal flow.
+                bool isValidation = inner.GetType().Name.IndexOf("Validation", StringComparison.OrdinalIgnoreCase) >= 0
+                    || inner.Message.IndexOf("validação", StringComparison.OrdinalIgnoreCase) >= 0
+                    || inner.Message.IndexOf("validation", StringComparison.OrdinalIgnoreCase) >= 0;
+                if (isValidation && spec.EntityTypeId == 43)
+                {
+                    int compTypeId = section.Equals("rules",      StringComparison.OrdinalIgnoreCase) ? 69
+                                   : section.Equals("conditions", StringComparison.OrdinalIgnoreCase) ? 57
+                                   : 64; // events (default)
+                    Console.Error.WriteLine(
+                        $"[gx18-worker] WBC '{name}' {section}: ValidationException fallback — SQL raw-UTF8 blob write.");
+                    int entityId = Convert.ToInt32(GetProp(obj, "Id"));
+                    var blobNote = _sql.WriteTextPartBlob(spec.EntityTypeId, entityId, compTypeId, content);
+                    Console.Error.WriteLine($"[gx18-worker] SQL blob write: {blobNote}");
+                    return VerifyUserId(spec.EntityTypeId, entityId, name, $"modify-{section}-sql-fallback");
+                }
                 throw new Exception(msg, inner);
             }
 
@@ -177,7 +235,6 @@ namespace Gx18Mcp.SdkWorker.Sdk
             {
                 if (kv.Value == null) continue;
                 var content = kv.Value.ToString();
-                if (string.IsNullOrEmpty(content)) continue;
                 if (!spec.Sections.TryGetValue(kv.Key, out var sec))
                 {
                     var hint = spec.TypeName.IndexOf("UserControl", StringComparison.OrdinalIgnoreCase) >= 0
@@ -558,20 +615,6 @@ namespace Gx18Mcp.SdkWorker.Sdk
             }
             if (export == null) throw new Exception("IKnowledgeManagerService.Export(model,objects,file,options) not found");
 
-            var firstName = itemList.Count > 0 ? itemList[0].name : "";
-            var firstType = itemList.Count > 0 ? itemList[0].typeKey : "";
-            var firstSpec = itemList.Count > 0 ? Spec(itemList[0].typeKey) : null;
-
-            // GX18 SDK Export for WebPanel/WebComponent (EntityTypeId 43) fails in headless mode:
-            // both ResolveByName and IKnowledgeManagerService.Export throw NullReferenceException
-            // because theme/layout services are not initialized without the IDE.
-            // Skip the entire SDK path and use SQL blob XPZ construction for this type.
-            if (firstSpec != null && firstSpec.EntityTypeId == 43)
-            {
-                Console.Error.WriteLine($"[gx18-worker] Type 43 detected ({firstName}): skipping SDK Export, using SQL XPZ builder.");
-                return _sql.SqlExportXpz(firstName, 43, outputFile);
-            }
-
             var objectsParam = export.GetParameters()[1].ParameterType;
             var elemType = objectsParam.IsGenericType ? objectsParam.GetGenericArguments()[0] : kbObjectType;
             var listType = typeof(List<>).MakeGenericType(elemType);
@@ -602,7 +645,7 @@ namespace Gx18Mcp.SdkWorker.Sdk
             finally { Console.SetOut(savedOut); }
 
             long size = System.IO.File.Exists(outputFile) ? new System.IO.FileInfo(outputFile).Length : 0;
-            return new { ok, name = firstName, type = firstType, outputFile, fileExists = System.IO.File.Exists(outputFile), bytes = size, exportedNames };
+            return new { ok, name = itemList.Count > 0 ? itemList[0].name : "", type = itemList.Count > 0 ? itemList[0].typeKey : "", outputFile, fileExists = System.IO.File.Exists(outputFile), bytes = size, exportedNames };
         }
 
         private static void SetIfExists(Type t, object obj, string prop, object val)
@@ -746,6 +789,12 @@ namespace Gx18Mcp.SdkWorker.Sdk
         public object SetProperty(string name, string typeKey, string property, string value)
         {
             var spec = Spec(typeKey);
+            if (spec.EntityTypeId == 43)
+                throw new Exception(
+                    $"gx_set_property is not supported for webpanel/webcomponent (type 43) in headless mode — " +
+                    "the GX18 SDK requires IDE layout services to load WebPanel objects. " +
+                    "To change properties like Title or Description: use gx_sql to UPDATE EntityVersionProperties directly, " +
+                    "or use gx_export → edit the XPZ <Object description='...'> attribute → gx_import.");
             var concrete = Resolve(spec);
             var kb = _session.KnowledgeBase;
             if (kb == null) throw new Exception("KB not open");
@@ -788,6 +837,12 @@ namespace Gx18Mcp.SdkWorker.Sdk
         public object Rename(string name, string typeKey, string newName)
         {
             var spec = Spec(typeKey);
+            if (spec.EntityTypeId == 43)
+                throw new Exception(
+                    $"gx_rename is not supported for webpanel/webcomponent (type 43) in headless mode — " +
+                    "the GX18 SDK requires IDE layout services to load WebPanel objects. " +
+                    "Rename via the GX18 IDE (right-click → Rename) or via direct SQL: " +
+                    "UPDATE EntityVersion SET EntityVersionName='NewName' WHERE EntityTypeId=43 AND EntityVersionName='OldName'.");
             var concrete = Resolve(spec);
             var kb = _session.KnowledgeBase;
             if (kb == null) throw new Exception("KB not open");
@@ -839,6 +894,12 @@ namespace Gx18Mcp.SdkWorker.Sdk
         public object DeleteObject(string name, string typeKey, bool dryRun)
         {
             var spec = Spec(typeKey);
+            if (spec.EntityTypeId == 43)
+                throw new Exception(
+                    $"gx_delete is not supported for webpanel/webcomponent (type 43) in headless mode — " +
+                    "the GX18 SDK requires IDE layout services to load WebPanel objects. " +
+                    "Delete via the GX18 IDE, or use gx_sql (DELETE from EntityVersion/ModelEntityVersion/EntityVersionComposition — " +
+                    "run gx_reload afterward).");
             var concrete = Resolve(spec);
             var kb = _session.KnowledgeBase;
             if (kb == null) throw new Exception("KB not open");

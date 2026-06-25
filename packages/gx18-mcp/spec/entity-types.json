@@ -127,7 +127,7 @@
       "displayName": "DataSelector",
       "sdkAssembly": "Artech.Genexus.Common",
       "sdkType": "Artech.Genexus.Common.Objects.DataSelector",
-      "writeSupported": true,
+      "writeSupported": false,
       "structured": true,
       "isComponent": false,
       "sections": [

@@ -14,6 +14,48 @@ namespace Gx18Mcp.SdkWorker.Sql
     {
         private readonly string _connectionString;
 
+        private static readonly Dictionary<string, string> _colHints =
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["EntityVersionUserId"]   = "UserId",
+                ["EntityVersionAuthorId"] = "UserId",
+                ["AuthorId"]              = "UserId",
+                ["EntityVersionUser"]     = "UserId",
+                ["LastUpdate"]            = "EntityVersionTimestamp",
+                ["EntityVersionDate"]     = "EntityVersionTimestamp",
+                ["CreatedAt"]             = "EntityVersionTimestamp",
+                ["UpdatedAt"]             = "EntityVersionTimestamp",
+                ["EntityName"]            = "EntityVersionName",
+                ["Description"]           = "EntityVersionDescription",
+            };
+
+        private static string ColHint(string msg)
+        {
+            // Invalid column name → suggest known aliases
+            var mCol = Regex.Match(msg, @"Invalid column name '([^']+)'");
+            if (mCol.Success)
+                return _colHints.TryGetValue(mCol.Groups[1].Value, out var suggestion)
+                    ? $"Did you mean '{suggestion}'? (EntityVersion columns: EntityTypeId, EntityId, EntityVersionId, EntityVersionName, EntityVersionDescription, UserId, EntityVersionTimestamp, ParentVersionId, EntityVersionComment, EntityVersionProperties, EntityVersionData)"
+                    : null;
+
+            // Multi-part identifier not bound → alias scope problem
+            var mAlias = Regex.Match(msg, @"The multi-part identifier ""([^""]+)"" could not be bound");
+            if (mAlias.Success)
+                return $"Alias '{mAlias.Groups[1].Value}' is out of scope — check that every table alias is defined in the same FROM/JOIN clause as the reference. " +
+                       "Correlated subqueries that reference an outer alias must declare it as a parameter (e.g. WHERE inner.col = outer_alias.col inside the subquery).";
+
+            // DECOMPRESS built-in on a GeneXus blob — header must be skipped
+            if (msg.IndexOf("DECOMPRESS", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                (msg.IndexOf("Uncompressed", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                 msg.IndexOf("corrupted", StringComparison.OrdinalIgnoreCase) >= 0))
+                return "GeneXus blobs have an 11-byte proprietary header before the GZip payload. " +
+                       "Skip it with: DECOMPRESS(SUBSTRING(EntityVersionData, 12, DATALENGTH(EntityVersionData) - 11)). " +
+                       "Check byte 7 first: CONVERT(int, SUBSTRING(blob, 7, 1)) — 1=GZip (use DECOMPRESS+offset), 2=raw UTF-8 (use SUBSTRING(blob, 8, ...) directly). " +
+                       "Note: UC (type 147) root objects have NULL EntityVersionData — content is in parts via EntityVersionComposition (PartType 148=template, 149=scripts).";
+
+            return null;
+        }
+
         public KbSqlClient(string server, string database)
         {
             _connectionString = $"Data Source={server};Initial Catalog={database};Integrated Security=True;Connection Timeout=30;Min Pool Size=1;Max Pool Size=8;Pooling=true";
@@ -220,26 +262,100 @@ namespace Gx18Mcp.SdkWorker.Sql
             // GeneXus blob header: bytes 0-5 = magic+version, byte 6 = compression flag
             // 0x01 = GZip compressed (11-byte header, data from offset 11)
             // 0x02 = raw UTF-8 text  ( 7-byte header, data from offset 7)
-            if (data.Length > 7 && data[6] == 0x02)
+            if (data == null || data.Length < 7)
+                throw new Exception($"Blob too short to decompress ({data?.Length ?? 0} bytes — expected ≥7)");
+            byte flag = data[6];
+            if (flag == 0x02)
                 return Encoding.UTF8.GetString(data, 7, data.Length - 7);
-
-            using (var ms = new MemoryStream(data, 11, data.Length - 11))
-            using (var gz = new GZipStream(ms, CompressionMode.Decompress))
-            using (var reader = new StreamReader(gz, Encoding.UTF8))
-                return reader.ReadToEnd();
+            if (flag == 0x01)
+            {
+                if (data.Length < 11)
+                    throw new Exception($"GZip blob too short ({data.Length} bytes — expected ≥11)");
+                using (var ms = new MemoryStream(data, 11, data.Length - 11))
+                using (var gz = new GZipStream(ms, CompressionMode.Decompress))
+                using (var reader = new StreamReader(gz, Encoding.UTF8))
+                    return reader.ReadToEnd();
+            }
+            throw new Exception(
+                $"Unknown GeneXus blob compression flag 0x{flag:X2} at byte[6]. " +
+                "Known: 0x01=GZip, 0x02=raw-UTF8. Blob may be corrupt or from an unsupported GX version.");
         }
 
-        // Writes the events blob for a WebPanel/WBC (EntityTypeId 43) or procedure (34) directly via SQL,
-        // bypassing the SDK compiler. Uses GeneXus blob format 0x02 (raw UTF-8), which Decompress() handles.
+        // Writes a raw-UTF-8 text section blob (Events/Rules/Conditions) for any compound object
+        // directly via SQL, bypassing the SDK compiler. Uses GeneXus blob format 0x02 (raw UTF-8,
+        // 7-byte header). componentEntityTypeId: 64=Events, 69=Rules, 57=Conditions.
         // Caller must gx_reload after this write to invalidate the SDK in-memory model.
-        public string WriteEventsBlob(int compoundEntityTypeId, int compoundEntityId, string newText)
+        public string WriteTextPartBlob(int compoundEntityTypeId, int compoundEntityId,
+                                        int componentEntityTypeId, string newText)
         {
-            int eventsEntityId = -1, eventsEntityVersionId = -1;
+            int partEntityId = -1, partVersionId = -1;
             const string findSql = @"
                 SELECT evc.ComponentEntityId, evc.ComponentEntityVersionId
                 FROM EntityVersionComposition evc
                 WHERE evc.CompoundEntityTypeId = @ct AND evc.CompoundEntityId = @cid
-                  AND evc.ComponentEntityTypeId = 64
+                  AND evc.ComponentEntityTypeId = @partType
+                  AND evc.CompoundEntityVersionId = (
+                      SELECT MAX(ev2.EntityVersionId) FROM EntityVersion ev2
+                      WHERE ev2.EntityTypeId = @ct AND ev2.EntityId = @cid
+                  )";
+            using (var conn = Open())
+            using (var cmd = new SqlCommand(findSql, conn))
+            {
+                cmd.Parameters.AddWithValue("@ct", compoundEntityTypeId);
+                cmd.Parameters.AddWithValue("@cid", compoundEntityId);
+                cmd.Parameters.AddWithValue("@partType", componentEntityTypeId);
+                using (var r = cmd.ExecuteReader())
+                {
+                    if (!r.Read()) throw new Exception(
+                        $"Part (type {componentEntityTypeId}) not found in composition for " +
+                        $"object type={compoundEntityTypeId} id={compoundEntityId}");
+                    partEntityId = r.GetInt32(0);
+                    partVersionId = r.GetInt32(1);
+                }
+            }
+            byte[] current = ReadBlob(componentEntityTypeId, partEntityId);
+            if (current == null || current.Length < 7)
+                throw new Exception(
+                    $"Text blob missing or too short (entity {componentEntityTypeId}/{partEntityId})");
+            var textBytes = Encoding.UTF8.GetBytes(newText);
+            var newBlob = new byte[7 + textBytes.Length];
+            Array.Copy(current, 0, newBlob, 0, 6);
+            newBlob[6] = 0x02;
+            Array.Copy(textBytes, 0, newBlob, 7, textBytes.Length);
+            const string updateSql =
+                "UPDATE EntityVersion SET EntityVersionData = @blob " +
+                "WHERE EntityTypeId=@partType AND EntityId=@id AND EntityVersionId=@vid";
+            using (var conn = Open())
+            using (var cmd = new SqlCommand(updateSql, conn))
+            {
+                cmd.Parameters.AddWithValue("@partType", componentEntityTypeId);
+                cmd.Parameters.AddWithValue("@id", partEntityId);
+                cmd.Parameters.AddWithValue("@vid", partVersionId);
+                var p = cmd.Parameters.Add("@blob", SqlDbType.VarBinary, -1);
+                p.Value = newBlob;
+                int rows = cmd.ExecuteNonQuery();
+                if (rows == 0) throw new Exception(
+                    $"UPDATE affected 0 rows for part {componentEntityTypeId}/{partEntityId}@{partVersionId}");
+            }
+            return $"text-part-written:{componentEntityTypeId}/{partEntityId}@{partVersionId} " +
+                   $"({newBlob.Length} bytes, raw-utf8)";
+        }
+
+        // Convenience wrapper — keeps callers that pass events (component 64) unchanged.
+        public string WriteEventsBlob(int compoundEntityTypeId, int compoundEntityId, string newText)
+            => WriteTextPartBlob(compoundEntityTypeId, compoundEntityId, 64, newText);
+
+        // Sets the Documentation part blob (EntityTypeId 62) to NULL when it exists but is 0/short.
+        // A 0-byte Documentation blob causes NullReferenceException in the SDK when loading the object
+        // headless (e.g. before a layout save). NULL is handled gracefully; an empty blob is not.
+        public void NullOutDocumentationBlob(int compoundEntityTypeId, int compoundEntityId)
+        {
+            int docEntityId = -1, docVersionId = -1;
+            const string findSql = @"
+                SELECT evc.ComponentEntityId, evc.ComponentEntityVersionId
+                FROM EntityVersionComposition evc
+                WHERE evc.CompoundEntityTypeId = @ct AND evc.CompoundEntityId = @cid
+                  AND evc.ComponentEntityTypeId = 62
                   AND evc.CompoundEntityVersionId = (
                       SELECT MAX(ev2.EntityVersionId) FROM EntityVersion ev2
                       WHERE ev2.EntityTypeId = @ct AND ev2.EntityId = @cid
@@ -251,35 +367,118 @@ namespace Gx18Mcp.SdkWorker.Sql
                 cmd.Parameters.AddWithValue("@cid", compoundEntityId);
                 using (var r = cmd.ExecuteReader())
                 {
-                    if (!r.Read()) throw new Exception(
-                        $"Events part (type 64) not found in composition for object type={compoundEntityTypeId} id={compoundEntityId}");
-                    eventsEntityId = r.GetInt32(0);
-                    eventsEntityVersionId = r.GetInt32(1);
+                    if (!r.Read()) return; // no Documentation part — nothing to fix
+                    docEntityId = r.GetInt32(0);
+                    docVersionId = r.GetInt32(1);
                 }
             }
-            byte[] current = ReadBlob(64, eventsEntityId);
-            if (current == null || current.Length < 7)
-                throw new Exception($"Events blob missing or too short (entity 64/{eventsEntityId})");
-            var textBytes = Encoding.UTF8.GetBytes(newText);
-            var newBlob = new byte[7 + textBytes.Length];
-            Array.Copy(current, 0, newBlob, 0, 6);
-            newBlob[6] = 0x02;
-            Array.Copy(textBytes, 0, newBlob, 7, textBytes.Length);
+            byte[] blob = ReadBlob(62, docEntityId);
+            if (blob != null && blob.Length >= 11) return; // blob is non-trivial — leave it alone
             const string updateSql =
-                "UPDATE EntityVersion SET EntityVersionData = @blob " +
-                "WHERE EntityTypeId=64 AND EntityId=@id AND EntityVersionId=@vid";
+                "UPDATE EntityVersion SET EntityVersionData = NULL " +
+                "WHERE EntityTypeId=62 AND EntityId=@id AND EntityVersionId=@vid";
             using (var conn = Open())
             using (var cmd = new SqlCommand(updateSql, conn))
             {
-                cmd.Parameters.AddWithValue("@id", eventsEntityId);
-                cmd.Parameters.AddWithValue("@vid", eventsEntityVersionId);
+                cmd.Parameters.AddWithValue("@id", docEntityId);
+                cmd.Parameters.AddWithValue("@vid", docVersionId);
+                cmd.ExecuteNonQuery();
+            }
+            Console.Error.WriteLine(
+                $"[gx18-worker] NullOutDocumentationBlob: zeroed 62/{docEntityId}@{docVersionId} " +
+                $"(was {blob?.Length ?? 0} bytes)");
+        }
+
+        // Looks up the latest EntityId for an object by EntityTypeId + name (case-insensitive).
+        public int FindEntityId(int entityTypeId, string name)
+        {
+            const string sql = "SELECT TOP 1 ev.EntityId FROM EntityVersion ev " +
+                "WHERE ev.EntityTypeId=@tid AND ev.EntityVersionName=@name " +
+                "AND ev.EntityVersionId=(SELECT MAX(ev2.EntityVersionId) FROM EntityVersion ev2 " +
+                "WHERE ev2.EntityTypeId=@tid AND ev2.EntityId=ev.EntityId)";
+            using (var conn = Open())
+            using (var cmd = new SqlCommand(sql, conn))
+            {
+                cmd.Parameters.AddWithValue("@tid", entityTypeId);
+                cmd.Parameters.AddWithValue("@name", name ?? "");
+                var val = cmd.ExecuteScalar();
+                if (val == null || val == DBNull.Value)
+                    throw new Exception($"Object '{name}' (EntityTypeId {entityTypeId}) not found in KB");
+                return Convert.ToInt32(val);
+            }
+        }
+
+        // Patches a <Script Name="scriptName"><![CDATA[...]]></Script> block in the UC Properties
+        // blob (EntityTypeId 149) directly via SQL. Used as fallback when IKnowledgeManagerService
+        // fails headless for UC type=147 (same root cause as export, which already has a SQL bypass).
+        // Preserves the 11-byte GeneXus header and re-GZips the patched XML.
+        public string PatchUCScriptBlob(int ucEntityId, string scriptName, string newContent)
+        {
+            int partEntityId = -1, partVersionId = -1;
+            const string findSql = @"
+                SELECT evc.ComponentEntityId, evc.ComponentEntityVersionId
+                FROM EntityVersionComposition evc
+                WHERE evc.CompoundEntityTypeId = 147 AND evc.CompoundEntityId = @cid
+                  AND evc.ComponentEntityTypeId = 149
+                  AND evc.CompoundEntityVersionId = (
+                      SELECT MAX(ev2.EntityVersionId) FROM EntityVersion ev2
+                      WHERE ev2.EntityTypeId = 147 AND ev2.EntityId = @cid
+                  )";
+            using (var conn = Open())
+            using (var cmd = new SqlCommand(findSql, conn))
+            {
+                cmd.Parameters.AddWithValue("@cid", ucEntityId);
+                using (var r = cmd.ExecuteReader())
+                {
+                    if (!r.Read()) throw new Exception(
+                        $"Properties part (type 149) not found for UC EntityId={ucEntityId}");
+                    partEntityId = r.GetInt32(0);
+                    partVersionId = r.GetInt32(1);
+                }
+            }
+            byte[] current = ReadBlob(149, partEntityId);
+            if (current == null || current.Length < 11)
+                throw new Exception($"Properties blob missing or too short for UC EntityId={ucEntityId}");
+            string xml = Decompress(current);
+            // Raw blob may store scripts without CDATA (only gx_export adds CDATA wrappers).
+            // Match both: <Script Name="X">raw content</Script> and <Script Name="X"><![CDATA[...]]></Script>
+            var rx = new Regex(
+                @"(<Script\b[^>]*\bName=""" + Regex.Escape(scriptName) + @"""[^>]*>)(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?(</Script>)",
+                RegexOptions.Compiled);
+            if (!rx.IsMatch(xml))
+                throw new Exception($"Script '{scriptName}' not found in UC Properties blob. " +
+                    "Use gx_read_xpz to list available scripts.");
+            // Escape any ]]> in newContent — it would prematurely close the CDATA section.
+            // Split into adjacent sections: ]]> → ]]]]><![CDATA[>
+            string safeContent = newContent.Replace("]]>", "]]]]><![CDATA[>");
+            string newXml = rx.Replace(xml,
+                m => m.Groups[1].Value + "<![CDATA[" + safeContent + "]]>" + m.Groups[3].Value);
+            byte[] textBytes = Encoding.UTF8.GetBytes(newXml);
+            byte[] compressed;
+            using (var ms = new MemoryStream())
+            {
+                using (var gz = new GZipStream(ms, CompressionLevel.Optimal))
+                    gz.Write(textBytes, 0, textBytes.Length);
+                compressed = ms.ToArray();
+            }
+            var newBlob = new byte[11 + compressed.Length];
+            Array.Copy(current, 0, newBlob, 0, 11);
+            Array.Copy(compressed, 0, newBlob, 11, compressed.Length);
+            const string updateSql =
+                "UPDATE EntityVersion SET EntityVersionData = @blob " +
+                "WHERE EntityTypeId=149 AND EntityId=@id AND EntityVersionId=@vid";
+            using (var conn = Open())
+            using (var cmd = new SqlCommand(updateSql, conn))
+            {
+                cmd.Parameters.AddWithValue("@id", partEntityId);
+                cmd.Parameters.AddWithValue("@vid", partVersionId);
                 var p = cmd.Parameters.Add("@blob", SqlDbType.VarBinary, -1);
                 p.Value = newBlob;
                 int rows = cmd.ExecuteNonQuery();
                 if (rows == 0) throw new Exception(
-                    $"UPDATE affected 0 rows for Events entity 64/{eventsEntityId} version {eventsEntityVersionId}");
+                    $"UPDATE affected 0 rows for UC Properties part 149/{partEntityId}");
             }
-            return $"events-blob-written:64/{eventsEntityId}@{eventsEntityVersionId} ({newBlob.Length} bytes, raw-utf8)";
+            return $"uc-script-patched:149/{partEntityId}@{partVersionId} script={scriptName} ({newBlob.Length} bytes, gzip)";
         }
 
         private string TokensToText(string xml)
@@ -369,16 +568,24 @@ namespace Gx18Mcp.SdkWorker.Sql
             using (var conn = Open())
             using (var cmd = new SqlCommand(query, conn))
             {
-                using (var r = cmd.ExecuteReader())
+                try
                 {
-                    while (r.Read())
+                    using (var r = cmd.ExecuteReader())
                     {
-                        if (rows.Count >= maxRows) { truncated = true; break; }
-                        var row = new Dictionary<string, object>();
-                        for (int i = 0; i < r.FieldCount; i++)
-                            row[r.GetName(i)] = r.IsDBNull(i) ? null : r.GetValue(i);
-                        rows.Add(row);
+                        while (r.Read())
+                        {
+                            if (rows.Count >= maxRows) { truncated = true; break; }
+                            var row = new Dictionary<string, object>();
+                            for (int i = 0; i < r.FieldCount; i++)
+                                row[r.GetName(i)] = r.IsDBNull(i) ? null : r.GetValue(i);
+                            rows.Add(row);
+                        }
                     }
+                }
+                catch (SqlException ex)
+                {
+                    var hint = ColHint(ex.Message);
+                    throw new Exception(hint != null ? $"{ex.Message} {hint}" : ex.Message);
                 }
             }
             return new { rows, count = rows.Count, truncated };

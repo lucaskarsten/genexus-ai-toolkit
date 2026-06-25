@@ -59,6 +59,9 @@ export function resolveTypeKey(type: number | string): string {
   if (typeof type === 'string') {
     const key = type.toLowerCase();
     if (key in KEY_TO_ENTITY_TYPE) return key;
+    // Also accept aliases that share an EntityTypeId with another key (e.g. "webcomponent" → 43,
+    // same EntityTypeId as "webpanel") — the worker's Spec() handles these correctly.
+    if (OBJECT_TYPES.find(o => o.key === key && o.writeSupported)) return key;
     const known = Object.keys(KEY_TO_ENTITY_TYPE).join(', ');
     throw new Error(
       `Unknown type name "${type}". Use a numeric EntityTypeId (e.g. 34=procedure, 147=usercontrol) ` +

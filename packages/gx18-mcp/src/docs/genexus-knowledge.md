@@ -334,11 +334,11 @@ ORDER BY ev.EntityTypeId, ev.EntityVersionName;
 
 -- Object revision history
 SELECT ev.EntityVersionId, ev.EntityVersionDescription,
-       u.EntityVersionName AS Author, ev.LastUpdate
+       u.EntityVersionName AS Author, ev.EntityVersionTimestamp
 FROM EntityVersion ev
 JOIN EntityVersion u ON u.EntityTypeId = 7 AND u.EntityId = ev.UserId
 WHERE ev.EntityTypeId = 34 AND ev.EntityVersionName = 'PrcMyProc'
-ORDER BY ev.LastUpdate DESC;
+ORDER BY ev.EntityVersionTimestamp DESC;
 
 -- Module membership
 SELECT mev.ModelParentEntityId AS ModuleId,

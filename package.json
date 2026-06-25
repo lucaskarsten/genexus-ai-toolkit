@@ -1,9 +1,11 @@
-{
+﻿{
   "name": "genexus-ai-toolkit",
   "private": true,
   "scripts": {
     "build":         "npm run build         --prefix packages/gx18-mcp",
     "build:exe":     "npm run build:exe     --prefix packages/gx18-mcp",
-    "build:release": "npm run build:release --prefix packages/gx18-mcp"
+    "build:release": "npm run build:release --prefix packages/gx18-mcp",
+    "gen:icon":      "node packages/gx18-mcp/scripts/gen-icon.js && node scripts/gen-png.js"
   }
 }
+

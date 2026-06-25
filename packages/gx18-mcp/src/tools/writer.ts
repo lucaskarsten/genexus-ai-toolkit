@@ -85,9 +85,10 @@ export async function gxModify(args: {
 
   const typeSpec = OBJECT_TYPES.find(t => t.key === typeKey);
   const validSections = typeSpec?.sections.map(s => s.key) ?? [];
-  if (validSections.length > 0 && !validSections.includes(args.section.toLowerCase())) {
+  const isUcScriptSection = typeKey === 'usercontrol' && args.section.toLowerCase().startsWith('script:');
+  if (validSections.length > 0 && !validSections.includes(args.section.toLowerCase()) && !isUcScriptSection) {
     const ucHint = typeKey === 'usercontrol'
-      ? ' To edit AfterShow/Methods scripts, use gx_export → patch CDATA → gx_import.'
+      ? ' To patch AfterShow/Methods scripts, use section="script:<ScriptName>" (e.g. script:AfterShow).'
       : '';
     throw new Error(
       `gx_modify: section '${args.section}' is not valid for type '${typeKey}'. ` +

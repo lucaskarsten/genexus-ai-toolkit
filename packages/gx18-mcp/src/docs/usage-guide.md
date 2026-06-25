@@ -88,7 +88,10 @@ All write tools require `confirm: true`. Result always includes `userIdOk`, `use
 
 ## EntityTypeIds
 
-Used as the `type` parameter in `gx_read`, `gx_modify`, `gx_export`, `gx_import`, `gx_list`.
+Used as the `type` parameter throughout all tools. Write tools (`gx_modify`, `gx_export`,
+`gx_import`, `gx_validate`, `gx_rename`, `gx_delete`, etc.) accept either the numeric
+EntityTypeId **or** the string name (e.g. `"procedure"`) — both are normalised server-side.
+Read tools (`gx_read`, `gx_list`, `gx_get`, etc.) require the numeric form only.
 
 | Id | Type | Id | Type |
 |----|------|----|------|

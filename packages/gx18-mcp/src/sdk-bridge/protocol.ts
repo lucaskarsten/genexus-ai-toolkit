@@ -67,15 +67,6 @@ export interface AttributeInfo {
 
 // ---------- Method param/result types ----------
 
-// ping
-export interface PingResult {
-  ok: true;
-  sdkReady: boolean;
-  sqlReady: boolean;
-  user: string;
-  kbPath: string;
-}
-
 // find
 export interface FindParams {
   pattern: string;

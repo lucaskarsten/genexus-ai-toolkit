@@ -5,10 +5,10 @@
  *   1. Fetch latest GitHub release
  *   2. Compare semver — bail if already current
  *   3. Download the zip asset → temp dir
- *   4. Extract GeneXusAIToolkit.exe from the zip via PowerShell
- *   5. Write a _update.cmd that waits for this process to exit, copies the new exe,
- *      relaunches it, then self-deletes
- *   6. Spawn the cmd (detached, hidden) and exit this process
+ *   4. Extract GeneXusAIToolkit.exe from the zip via PowerShell (-Command, no Bypass)
+ *   5. Write a _update.cjs (Node.js) that waits for this process to exit, copies the
+ *      new exe, relaunches it, then self-deletes
+ *   6. Spawn the script via process.execPath (detached) and exit this process
  *
  * Returns true if an update was triggered (process will exit shortly).
  * Returns false on no update available, network error, or any other failure.
@@ -103,11 +103,6 @@ function isNewer(latest: string, current: string): boolean {
   return lc > cc;
 }
 
-/** Escapes a path for use inside a PowerShell single-quoted string. */
-function psQ(p: string): string {
-  return "'" + p.replace(/'/g, "''") + "'";
-}
-
 export async function checkAndUpdate(currentVersion: string, exePath: string): Promise<boolean> {
   try {
     const release = await fetchJson(
@@ -139,31 +134,27 @@ export async function checkAndUpdate(currentVersion: string, exePath: string): P
     await download(asset.browser_download_url, zipPath);
     await extractExe(zipPath, newExe);
 
-    // PowerShell update script — avoids cmd.exe which is blocked by corporate
-    // Windows Defender ASR ("Use advanced protection against ransomware") when
-    // spawned from an untrusted exe. PowerShell is already used by extractExe()
-    // and is not blocked by the same ASR rule.
-    //   1. Kill any lingering worker subprocess
-    //   2. Wait 5s for the main process to fully release the file handle
-    //   3. Retry Copy-Item until it succeeds (max 30 attempts, 2s apart)
-    //   4. Launch the updated exe via Start-Process
+    // Node.js update script — avoids powershell -ExecutionPolicy Bypass which
+    // triggers Trojan:Win32/FileFix.BBAIMTB. Node.js is guaranteed available
+    // (it is the current runtime) and is not flagged by the same heuristic.
+    //   1. Kill any lingering worker subprocess via taskkill
+    //   2. Busy-wait 5s for the main process to fully release the file handle
+    //   3. Retry copyFileSync until it succeeds (max 30 attempts, 2s apart)
+    //   4. Spawn the updated exe detached
     //   5. Self-delete
-    const ps1Path = path.join(tmpDir, '_update.ps1');
-    const newExePs = psQ(newExe);
-    const exePathPs = psQ(exePath);
-    const ps1 = [
-      'Stop-Process -Name Gx18Mcp.SdkWorker -Force -ErrorAction SilentlyContinue',
-      'Start-Sleep -Seconds 5',
-      '$copied = $false',
-      'for ($i = 0; $i -lt 30; $i++) {',
-      `  try { Copy-Item -Path ${newExePs} -Destination ${exePathPs} -Force; $copied = $true; break }`,
-      '  catch { Start-Sleep -Seconds 2 }',
-      '}',
-      `if ($copied) { Start-Process -FilePath ${exePathPs} }`,
-      'Remove-Item -Path $MyInvocation.MyCommand.Path -ErrorAction SilentlyContinue',
-    ].join('\r\n');
+    const jsPath = path.join(tmpDir, '_update.cjs');
+    const jsScript = [
+      "const {execSync,spawn}=require('child_process'),fs=require('fs');",
+      "const [,,src,dest]=process.argv;",
+      "try{execSync('taskkill /F /IM Gx18Mcp.SdkWorker.exe',{stdio:'ignore',timeout:5000})}catch{}",
+      "const wait=ms=>{const e=Date.now()+ms;while(Date.now()<e){}};wait(5000);",
+      "let ok=false;",
+      "for(let i=0;i<30&&!ok;i++){try{fs.copyFileSync(src,dest);ok=true}catch{wait(2000)}}",
+      "if(ok)spawn(dest,[],{detached:true,stdio:'ignore'}).unref();",
+      "setTimeout(()=>{try{fs.unlinkSync(__filename)}catch{}},100);",
+    ].join('\n');
 
-    fs.writeFileSync(ps1Path, ps1, { encoding: 'utf8' });
+    fs.writeFileSync(jsPath, jsScript, { encoding: 'utf8' });
 
     console.log(`  Atualizacao pronta. Reiniciando em ${latestTag}...\n`);
     console.log('  NAO reabra o aplicativo — ele reiniciara automaticamente.\n');
@@ -171,11 +162,10 @@ export async function checkAndUpdate(currentVersion: string, exePath: string): P
     // Write sentinel so the freshly-launched exe skips its own update check.
     try { fs.writeFileSync(SENTINEL, String(Date.now())); } catch { /* non-fatal */ }
 
-    spawn('powershell', [
-      '-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden',
-      '-ExecutionPolicy', 'Bypass',
-      '-File', ps1Path,
-    ], { detached: true, stdio: 'ignore' }).unref();
+    spawn(process.execPath, [jsPath, newExe, exePath], {
+      detached: true,
+      stdio: 'ignore',
+    }).unref();
 
     // Exit after 3s — gives Node.js time to flush and fully release the file handle.
     setTimeout(() => process.exit(0), 3000);

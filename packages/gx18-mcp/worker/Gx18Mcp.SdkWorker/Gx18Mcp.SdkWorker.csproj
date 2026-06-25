@@ -8,6 +8,7 @@
     <Optimize>true</Optimize>
     <AssemblyName>Gx18Mcp.SdkWorker</AssemblyName>
     <RootNamespace>Gx18Mcp.SdkWorker</RootNamespace>
+    <ApplicationIcon>..\..\assets\icon.ico</ApplicationIcon>
     <!-- STAThread is set via attribute on Main, not here -->
   </PropertyGroup>
   <ItemGroup>

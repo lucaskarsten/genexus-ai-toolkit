@@ -104,6 +104,9 @@ export async function startUi(opts: UiServerOptions = {}): Promise<RunningUi> {
   const url = `http://127.0.0.1:${boundPort}/`;
   if (opts.open !== false) openBrowser(url);
 
+  // Warm up the worker so the dashboard shows Running, not Stopped on first open.
+  bridge.send('ping', {}, 60_000).catch(() => {});
+
   return {
     url,
     port: boundPort,

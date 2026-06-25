@@ -66,20 +66,19 @@ Used as the `type` parameter in `gx_read`, `gx_modify`, `gx_export`, `gx_import`
 
 ## Type Parameter — Number vs String
 
-`gx_export`, `gx_modify`, and `gx_read` use the **numeric** EntityTypeId for `type`.
-`gx_import` and `gx_create` use the **string** type name.
-**`gx_export` accepts both forms** — number or string are both valid.
+**All write and utility tools accept both forms** (v1.10+). Pass the numeric EntityTypeId or the
+string name — `resolveTypeKey()` normalises it server-side before reaching the worker.
 
-| Tool | `type` format | Example |
-|------|--------------|---------|
-| `gx_export` | number **or** string (both work) | `type=147` or `type=usercontrol` |
-| `gx_read`, `gx_modify`, `gx_validate` | number only | `type=147` |
-| `gx_import` | string enum | `type=usercontrol` |
-| `gx_create` | string enum | `type=usercontrol` |
+| Tool group | `type` format | Example |
+|-----------|--------------|---------|
+| Write tools: `gx_modify`, `gx_set_property`, `gx_rename`, `gx_delete`, `gx_variable`, `gx_clone`, `gx_bulk_modify`, `gx_move` | **number OR string** | `type=147` or `type="usercontrol"` |
+| XPZ + validate: `gx_export`, `gx_import`, `gx_validate` | **number OR string** | `type=34` or `type="procedure"` |
+| Read/analysis tools: `gx_read`, `gx_list`, `gx_get`, `gx_where_used`, `gx_impact`, `gx_diff`, `gx_compare`, `gx_history`, `gx_dead_code`, `gx_lint`, `gx_analyze` | number only (SQL layer) | `type=147` |
+| `gx_create` | string enum only | `type="usercontrol"` |
 
-> ⚠️ **Common mistake:** `gx_export name=X type=procedure` — unquoted `procedure` is invalid JSON
-> and the call fails before reaching the server. Pass the number (`type=34`) or the quoted string
-> (`type="procedure"`). Both now work for `gx_export`.
+> ⚠️ **Unquoted identifier = invalid JSON.** `type=procedure` (no quotes) causes an
+> `InputValidationError` before execution. Always quote: `type="procedure"` or pass the
+> number `type=34`.
 
 ---
 

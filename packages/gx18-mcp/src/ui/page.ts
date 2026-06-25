@@ -552,6 +552,10 @@ function bootApp() {
     if (READONLY)             b.innerHTML += '<div class="banner warn">Read-only mode (GX18_READONLY): write tools are hidden.</div>';
     renderConnections(r.body.clients || []);
   });
+  try {
+    var savedSec = localStorage.getItem('gx18-sec');
+    if (savedSec && savedSec !== 'dashboard') nav(savedSec);
+  } catch(_) {}
   loadDashboard();
   loadTools();
   startLogs();
@@ -570,6 +574,7 @@ function nav(sec) {
   // Chat needs full-height zero-padding layout
   el('gx-content').classList.toggle('for-chat', sec === 'chat');
   if (sec === 'chat') { el('chat-in').focus(); renderConvList(); }
+  try { localStorage.setItem('gx18-sec', sec); } catch(_) {}
 }
 
 // ── Dashboard ──────────────────────────────────────────────────
@@ -587,18 +592,19 @@ function loadDashboard() {
     var hw = el('hd-worker');
     hw.textContent = alive ? '● Running' : (starting ? '◌ Iniciando...' : '● Stopped');
     hw.style.color = alive ? 'var(--ok)' : (starting ? 'var(--warn)' : 'var(--fail)');
-    // Auto-poll every 3s while starting so the dashboard updates when ready.
-    if (starting && !window['_workerPoll']) {
+    // Poll every 3s whenever the worker is not yet alive (catches the race where
+    // isStarting hasn't been set yet when the page first loads).
+    if (!alive && !window['_workerPoll']) {
       window['_workerPoll'] = setInterval(function() {
         api('GET', '/api/worker/status').then(function(pr) {
           if (pr.status !== 200) return;
-          if (pr.body.alive || !pr.body.starting) {
+          if (pr.body.alive) {
             clearInterval(window['_workerPoll']); window['_workerPoll'] = null;
             loadDashboard();
           }
         });
       }, 3000);
-    } else if (!starting && window['_workerPoll']) {
+    } else if (alive && window['_workerPoll']) {
       clearInterval(window['_workerPoll']); window['_workerPoll'] = null;
     }
   });

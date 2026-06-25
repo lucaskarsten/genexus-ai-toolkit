@@ -3,7 +3,7 @@ import fs from 'fs';
 import { bridge } from '../sdk-bridge/bridge';
 import { loadConfig, saveConfig } from '../config';
 import { ValidateResult, BuildResult, SqlQueryResult, SearchResult, ExportResult, ReadXpzResult, PatchXpzResult } from '../sdk-bridge/protocol';
-import { ENTITY_TYPE_TO_KEY, resolveTypeKey } from './writer';
+import { ENTITY_TYPE_TO_KEY, KEY_TO_ENTITY_TYPE, resolveTypeKey } from './writer';
 import { runDoctor } from '../doctor';
 
 export async function gxSaveConfig(args: {
