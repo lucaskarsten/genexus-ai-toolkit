@@ -42,6 +42,37 @@ export const ENTITY_TYPE_TO_KEY: Record<number, string> = (() => {
   return m;
 })();
 
+// typeKey -> EntityTypeId (reverse of ENTITY_TYPE_TO_KEY).
+export const KEY_TO_ENTITY_TYPE: Record<string, number> = Object.fromEntries(
+  Object.entries(ENTITY_TYPE_TO_KEY).map(([num, key]) => [key, Number(num)])
+);
+
+/**
+ * Resolve a `type` parameter that is either a numeric EntityTypeId or a string key name.
+ * Returns the lowercase string key used by the worker (e.g. "procedure", "usercontrol").
+ * Throws a clear, actionable error if not recognised.
+ *
+ * Both forms are always valid — models that learn the type from gx_find (number) or from
+ * gx_import (string) should not need to convert.
+ */
+export function resolveTypeKey(type: number | string): string {
+  if (typeof type === 'string') {
+    const key = type.toLowerCase();
+    if (key in KEY_TO_ENTITY_TYPE) return key;
+    const known = Object.keys(KEY_TO_ENTITY_TYPE).join(', ');
+    throw new Error(
+      `Unknown type name "${type}". Use a numeric EntityTypeId (e.g. 34=procedure, 147=usercontrol) ` +
+      `or one of: ${known}.`
+    );
+  }
+  const key = ENTITY_TYPE_TO_KEY[type];
+  if (!key) {
+    const known = Object.entries(ENTITY_TYPE_TO_KEY).map(([n, k]) => `${k}=${n}`).join(', ');
+    throw new Error(`Unknown EntityTypeId ${type}. Known: ${known}.`);
+  }
+  return key;
+}
+
 // Section name -> sub-component EntityTypeId, for gx_read.
 export const SECTION_TYPE: Record<string, number> = (() => {
   const m: Record<string, number> = {};

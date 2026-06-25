@@ -1,10 +1,10 @@
 import fs from 'fs';
 import { bridge } from '../sdk-bridge/bridge';
 import { CreateResult, ModifyResult, SetPropertyResult, RenameResult, WriteResult, ImportResult } from '../sdk-bridge/protocol';
-import { SUPPORTED_WRITE_TYPES, SECTION_FIELDS, ENTITY_TYPE_TO_KEY, OBJECT_TYPES } from '../domain/entity-types';
+import { SUPPORTED_WRITE_TYPES, SECTION_FIELDS, ENTITY_TYPE_TO_KEY, OBJECT_TYPES, KEY_TO_ENTITY_TYPE, resolveTypeKey } from '../domain/entity-types';
 
 // Re-exported for backward compatibility and the contract tests; defined in domain/entity-types.
-export { SUPPORTED_WRITE_TYPES, SECTION_FIELDS, ENTITY_TYPE_TO_KEY };
+export { SUPPORTED_WRITE_TYPES, SECTION_FIELDS, ENTITY_TYPE_TO_KEY, KEY_TO_ENTITY_TYPE, resolveTypeKey };
 
 function requireConfirm(confirm: unknown, toolName: string): void {
   if (confirm !== true) {
@@ -65,7 +65,7 @@ export async function gxCreate(args: {
 
 export async function gxModify(args: {
   name: string;
-  type: number;
+  type: number | string;
   section: string;
   content: string;
   confirm?: boolean;
@@ -76,14 +76,10 @@ export async function gxModify(args: {
   if (!args.section) throw new Error('gx_modify: section is required.');
   if (args.content == null) throw new Error('gx_modify: content is required (pass empty string to clear a section).');
 
-  const typeKey = ENTITY_TYPE_TO_KEY[args.type];
-  if (!typeKey || !SUPPORTED_WRITE_TYPES.includes(typeKey)) {
-    const supportedMap = Object.entries(ENTITY_TYPE_TO_KEY)
-      .map(([id, key]) => `${key}=${id}`)
-      .join(', ');
+  const typeKey = resolveTypeKey(args.type);
+  if (!SUPPORTED_WRITE_TYPES.includes(typeKey)) {
     throw new Error(
-      `gx_modify: unsupported EntityTypeId ${args.type}. ` +
-      `Supported types (key=EntityTypeId): ${supportedMap}.`
+      `gx_modify: type '${typeKey}' is not writable. Writable types: ${SUPPORTED_WRITE_TYPES.join(', ')}.`
     );
   }
 
@@ -94,8 +90,8 @@ export async function gxModify(args: {
       ? ' To edit AfterShow/Methods scripts, use gx_export → patch CDATA → gx_import.'
       : '';
     throw new Error(
-      `gx_modify: section '${args.section}' is not valid for type '${typeKey}' ` +
-      `(EntityTypeId ${args.type}). Valid sections: ${validSections.join(', ')}.${ucHint}`
+      `gx_modify: section '${args.section}' is not valid for type '${typeKey}'. ` +
+      `Valid sections: ${validSections.join(', ')}.${ucHint}`
     );
   }
 
@@ -122,7 +118,7 @@ export async function gxModify(args: {
 
 export async function gxImport(args: {
   xpzFile: string;
-  type?: string;
+  type?: number | string;
   name: string;
   fullOverwrite?: boolean;
   confirm?: boolean;
@@ -148,7 +144,7 @@ export async function gxImport(args: {
   // on top of the import itself. Give it a generous timeout (the default 30s is not enough cold).
   const result = await bridge.send<ImportResult>('import', {
     xpzFile: args.xpzFile,
-    type: (args.type ?? '').toLowerCase(),
+    type: args.type != null ? resolveTypeKey(args.type) : '',
     name: args.name,
     fullOverwrite: args.fullOverwrite !== false,
   }, 180000);
@@ -168,19 +164,14 @@ export async function gxImport(args: {
 
 export async function gxSetProperty(args: {
   name: string;
-  type: number;
+  type: number | string;
   property: string;
   value: string;
   confirm?: boolean;
 }): Promise<string> {
   requireConfirm(args.confirm, 'gx_set_property');
 
-  const typeKey = ENTITY_TYPE_TO_KEY[args.type];
-  if (!typeKey) {
-    throw new Error(
-      `gx_set_property: unknown EntityTypeId ${args.type}. Known: ${Object.keys(ENTITY_TYPE_TO_KEY).join(', ')}.`
-    );
-  }
+  const typeKey = resolveTypeKey(args.type);
 
   const result = await bridge.send<SetPropertyResult>('set_property', {
     name: args.name,
@@ -195,18 +186,13 @@ export async function gxSetProperty(args: {
 
 export async function gxRename(args: {
   name: string;
-  type: number;
+  type: number | string;
   newName: string;
   confirm?: boolean;
 }): Promise<string> {
   requireConfirm(args.confirm, 'gx_rename');
 
-  const typeKey = ENTITY_TYPE_TO_KEY[args.type];
-  if (!typeKey) {
-    throw new Error(
-      `gx_rename: unknown EntityTypeId ${args.type}. Known: ${Object.keys(ENTITY_TYPE_TO_KEY).join(', ')}.`
-    );
-  }
+  const typeKey = resolveTypeKey(args.type);
 
   const result = await bridge.send<RenameResult>('rename', {
     name: args.name,
@@ -220,7 +206,7 @@ export async function gxRename(args: {
 
 export async function gxDelete(args: {
   name: string;
-  type: string;
+  type: number | string;
   dryRun?: boolean;
   force?: boolean;
   confirm?: boolean;
@@ -235,10 +221,10 @@ export async function gxDelete(args: {
     }
   }
 
-  const typeKey = args.type.toLowerCase();
+  const typeKey = resolveTypeKey(args.type);
   if (!SUPPORTED_WRITE_TYPES.includes(typeKey)) {
     throw new Error(
-      `gx_delete: unsupported type '${args.type}'. Supported: ${SUPPORTED_WRITE_TYPES.join(', ')}.`
+      `gx_delete: unsupported type '${typeKey}'. Supported: ${SUPPORTED_WRITE_TYPES.join(', ')}.`
     );
   }
 
@@ -254,7 +240,7 @@ export async function gxDelete(args: {
 export async function gxVariable(args: {
   action: 'list' | 'add' | 'delete' | 'update';
   name: string;
-  type: string;
+  type: number | string;
   varName?: string;
   dataType?: string;
   length?: number;
@@ -262,10 +248,10 @@ export async function gxVariable(args: {
   isCollection?: boolean;
   confirm?: boolean;
 }): Promise<string> {
-  const typeKey = args.type.toLowerCase();
+  const typeKey = resolveTypeKey(args.type);
   if (!SUPPORTED_WRITE_TYPES.includes(typeKey)) {
     throw new Error(
-      `gx_variable: unsupported type '${args.type}'. Supported: ${SUPPORTED_WRITE_TYPES.join(', ')}.`
+      `gx_variable: unsupported type '${typeKey}'. Supported: ${SUPPORTED_WRITE_TYPES.join(', ')}.`
     );
   }
 
@@ -323,7 +309,7 @@ export async function gxVariable(args: {
 }
 
 export async function gxClone(args: {
-  type: string;
+  type: number | string;
   name: string;
   newName: string;
   module?: string;
@@ -331,7 +317,7 @@ export async function gxClone(args: {
 }): Promise<string> {
   requireConfirm(args.confirm, 'gx_clone');
   const r = await bridge.send<WriteResult>('clone', {
-    typeKey: args.type,
+    typeKey: resolveTypeKey(args.type),
     sourceName: args.name,
     targetName: args.newName,
     module: args.module,
@@ -341,7 +327,7 @@ export async function gxClone(args: {
 }
 
 export async function gxBulkModify(args: {
-  type: string;
+  type: number | string;
   names: string[];
   section: string;
   content: string;
@@ -351,6 +337,7 @@ export async function gxBulkModify(args: {
   if (!Array.isArray(args.names) || args.names.length === 0)
     throw new Error('names must be a non-empty array');
 
+  const typeKey = resolveTypeKey(args.type);
   const succeeded: string[] = [];
   const failed: Array<{ name: string; error: string }> = [];
 
@@ -358,7 +345,7 @@ export async function gxBulkModify(args: {
     try {
       const r = await bridge.send<WriteResult>('modify', {
         name,
-        type: args.type,
+        type: typeKey,
         section: args.section,
         content: args.content,
       }, 180_000);

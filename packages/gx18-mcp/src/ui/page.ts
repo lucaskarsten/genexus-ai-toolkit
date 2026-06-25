@@ -1240,9 +1240,9 @@ function chatScrollBottom() {
 }
 function renderMarkdown(text) {
   var s = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  // Fenced code blocks — backticks escaped as \`, \s\S replaced with [^], \n doubled
+  // Fenced code blocks — backticks escaped as \`, \s\S replaced with [^], \\n doubled
   s = s.replace(/\`\`\`[a-zA-Z0-9_]*\\n?([^]*?)\`\`\`/gm, function(_,c){ return '<pre><code>'+c.replace(/\\n$/,'')+'</code></pre>'; });
-  // Inline code — backtick and \n escaped
+  // Inline code — backtick and \\n escaped
   s = s.replace(/\`([^\`\\n]+)\`/g, '<code>$1</code>');
   // Bold — * replaced with [*] to avoid invalid \* escape
   s = s.replace(/[*][*]([^*\\n]+)[*][*]/g, '<strong>$1</strong>');

@@ -83,7 +83,7 @@ function extractExe(zipPath: string, destExe: string): Promise<void> {
     const script = [
       'Add-Type -AssemblyName System.IO.Compression.FileSystem',
       `$zip = [System.IO.Compression.ZipFile]::OpenRead('${zipPath.replace(/'/g, "''")}')`,
-      `$entry = $zip.Entries | Where-Object { $_.Name -eq '${EXE_NAME}' } | Select-Object -First 1`,
+      `$entry = $zip.Entries | Where-Object { $_.Name -like 'GeneXusAIToolkit*.exe' } | Select-Object -First 1`,
       'if (-not $entry) { $zip.Dispose(); exit 1 }',
       `[System.IO.Compression.ZipFileExtensions]::ExtractToFile($entry, '${destExe.replace(/'/g, "''")}', $true)`,
       '$zip.Dispose()',

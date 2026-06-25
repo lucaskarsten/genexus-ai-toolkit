@@ -64,6 +64,25 @@ Used as the `type` parameter in `gx_read`, `gx_modify`, `gx_export`, `gx_import`
 
 ---
 
+## Type Parameter — Number vs String
+
+`gx_export`, `gx_modify`, and `gx_read` use the **numeric** EntityTypeId for `type`.
+`gx_import` and `gx_create` use the **string** type name.
+**`gx_export` accepts both forms** — number or string are both valid.
+
+| Tool | `type` format | Example |
+|------|--------------|---------|
+| `gx_export` | number **or** string (both work) | `type=147` or `type=usercontrol` |
+| `gx_read`, `gx_modify`, `gx_validate` | number only | `type=147` |
+| `gx_import` | string enum | `type=usercontrol` |
+| `gx_create` | string enum | `type=usercontrol` |
+
+> ⚠️ **Common mistake:** `gx_export name=X type=procedure` — unquoted `procedure` is invalid JSON
+> and the call fails before reaching the server. Pass the number (`type=34`) or the quoted string
+> (`type="procedure"`). Both now work for `gx_export`.
+
+---
+
 ## Sections
 
 Used as the `section` parameter in `gx_read` and `gx_modify`.

@@ -43,7 +43,7 @@ const zipPath = path.join(root, 'release', `GeneXusAIToolkit-${version}-windows.
 if (fs.existsSync(zipPath)) fs.rmSync(zipPath);
 
 execSync(
-  `Compress-Archive -Path "${exeVersioned}","${workerDst}","${path.join(root, 'release', 'README.txt')}" -DestinationPath "${zipPath}" -Force`,
+  `Compress-Archive -Path "${exeSrc}","${workerDst}","${path.join(root, 'release', 'README.txt')}" -DestinationPath "${zipPath}" -Force`,
   { shell: 'powershell.exe', stdio: 'inherit' }
 );
 

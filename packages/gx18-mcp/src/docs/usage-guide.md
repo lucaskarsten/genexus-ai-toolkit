@@ -140,6 +140,8 @@ Used as the `section` parameter in `gx_read` and `gx_modify`.
 | Assuming UserId is correct and writing immediately | `gx_whoami` first | Wrong author permanently corrupts Team Development history |
 | Guessing impact of a change | `gx_impact name=X depth=2` | Traverses usedby graph transitively up to N levels |
 | Calling gxnext write tools on a GX18 KB | `gx18-mcp tools or GX18 IDE` | gxnext caused 76k spurious TD revisions — irreversible without SQL recovery |
+| `gx_export name=X type=procedure` (unquoted) | `gx_export name=X type=34` or `type="procedure"` | Unquoted identifier is invalid JSON — call fails before executing. Both number and string accepted by gx_export. |
+| `gx_import` to create a brand-new object (not yet in KB) | Create in GX18 IDE first, then `gx_import` to update | gx_import creates an `EntityVersion` shell without `EntityVersionComposition` parts — subsequent `gx_modify` throws NullReference |
 
 ---
 

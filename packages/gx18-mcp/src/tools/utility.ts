@@ -3,7 +3,7 @@ import fs from 'fs';
 import { bridge } from '../sdk-bridge/bridge';
 import { loadConfig, saveConfig } from '../config';
 import { ValidateResult, BuildResult, SqlQueryResult, SearchResult, ExportResult, ReadXpzResult, PatchXpzResult } from '../sdk-bridge/protocol';
-import { ENTITY_TYPE_TO_KEY } from './writer';
+import { ENTITY_TYPE_TO_KEY, resolveTypeKey } from './writer';
 import { runDoctor } from '../doctor';
 
 export async function gxSaveConfig(args: {
@@ -36,14 +36,9 @@ export async function gxSaveConfig(args: {
 
 export async function gxValidate(args: {
   name: string;
-  type: number;
+  type: number | string;
 }): Promise<string> {
-  const typeKey = ENTITY_TYPE_TO_KEY[args.type];
-  if (!typeKey) {
-    throw new Error(
-      `gx_validate: unknown EntityTypeId ${args.type}. Known: ${Object.keys(ENTITY_TYPE_TO_KEY).join(', ')}.`
-    );
-  }
+  const typeKey = resolveTypeKey(args.type);
   const result = await bridge.send<ValidateResult>('validate', {
     name: args.name,
     type: typeKey,
@@ -116,19 +111,40 @@ export async function gxReload(): Promise<string> {
     await bridge.restart();
     return JSON.stringify({ ok: true, message: 'Worker restarted. KB reopened fresh.' });
   } catch (e) {
-    return JSON.stringify({ ok: false, error: String(e) });
+    const msg = String(e);
+    // Worker exits during restart — expected behavior; bridge auto-recovers on next call.
+    if (msg.includes('Worker exited') || msg.includes('Worker restart')) {
+      return JSON.stringify({
+        ok: true,
+        message: 'Worker is restarting (exit detected). KB will reopen on the next tool call (~30s cold-start). Call gx_whoami to confirm readiness.',
+      });
+    }
+    return JSON.stringify({ ok: false, error: msg });
   }
 }
 
 export async function gxExport(args: {
   name?: string;
   names?: string[];
-  type: number;
+  type: number | string;
   outputDir?: string;
 }): Promise<string> {
-  const typeKey = ENTITY_TYPE_TO_KEY[args.type];
+  // Accept both numeric EntityTypeId and string type name ("procedure", "usercontrol", etc.)
+  let typeNum: number;
+  if (typeof args.type === 'string') {
+    typeNum = KEY_TO_ENTITY_TYPE[args.type.toLowerCase()] ?? 0;
+    if (!typeNum)
+      throw new Error(
+        `gx_export: unknown type name "${args.type}". ` +
+        `Use number (34=procedure, 147=usercontrol, 43=webpanel, 161=dso…) ` +
+        `or a known name: ${Object.keys(KEY_TO_ENTITY_TYPE).join(', ')}.`
+      );
+  } else {
+    typeNum = args.type;
+  }
+  const typeKey = ENTITY_TYPE_TO_KEY[typeNum];
   if (!typeKey) {
-    throw new Error(`Unknown EntityTypeId ${args.type} for export. Known: ${Object.keys(ENTITY_TYPE_TO_KEY).join(', ')}.`);
+    throw new Error(`Unknown EntityTypeId ${typeNum} for export. Known: ${Object.keys(ENTITY_TYPE_TO_KEY).join(', ')}.`);
   }
 
   // Normalise: support both single name and names array.
@@ -155,7 +171,16 @@ export async function gxExport(args: {
   }
 
   // export_xpz exports via the Knowledge Manager service — a real, importable .xpz archive.
-  const result = await bridge.send<ExportResult>('export_xpz', payload, 180000);
+  // Auto-retry on NullReference: cold-start quirk where first export after worker restart always fails.
+  let result: ExportResult;
+  try {
+    result = await bridge.send<ExportResult>('export_xpz', payload, 180000);
+  } catch (e) {
+    if (String(e).toLowerCase().includes('nullreference')) {
+      process.stderr.write('[gx18-mcp] gx_export: cold-start NullReference — retrying automatically...\n');
+      result = await bridge.send<ExportResult>('export_xpz', payload, 180000);
+    } else throw e;
+  }
   return JSON.stringify(result, null, 2);
 }
 

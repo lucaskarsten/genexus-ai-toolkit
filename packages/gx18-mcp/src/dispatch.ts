@@ -317,7 +317,19 @@ const TOOLS: Tool[] = [
       properties: {
         name: { type: 'string', description: 'Exact object name (single-object export). Use names for multi-object.' },
         names: { type: 'array', items: { type: 'string' }, description: 'Array of object names to export into one .xpz (all must share the same type).' },
-        type: { type: 'number', description: 'EntityTypeId (all exported objects must share the same type)' },
+        type: {
+          oneOf: [
+            { type: 'number' },
+            {
+              type: 'string',
+              enum: ['procedure', 'webpanel', 'webcomponent', 'api', 'usercontrol', 'dso', 'sdt', 'dataselector', 'transaction'],
+            },
+          ],
+          description:
+            'EntityTypeId as number (34=procedure, 147=usercontrol, 43=webpanel/webcomponent, ' +
+            '161=dso, 36=sdt, 39=transaction, 86=api, 88=dataselector) ' +
+            'OR type name string ("procedure", "usercontrol", "webpanel", etc.). Both forms accepted.',
+        },
         outputDir: { type: 'string', description: 'Output directory (optional, defaults to GX_OUTPUT_PATH)' },
       },
       required: ['type'],
