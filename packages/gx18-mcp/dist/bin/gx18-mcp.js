@@ -3069,7 +3069,7 @@ var require_package = __commonJS({
   "package.json"(exports2, module2) {
     module2.exports = {
       name: "gx18-mcp",
-      version: "1.9.11",
+      version: "1.9.12",
       description: "MCP server for GeneXus 18 \xE2\u20AC\u201D native SDK access without UserId corruption",
       keywords: [
         "genexus",
@@ -19861,7 +19861,7 @@ var init_entity_types = __esm({
           displayName: "DataSelector",
           sdkAssembly: "Artech.Genexus.Common",
           sdkType: "Artech.Genexus.Common.Objects.DataSelector",
-          writeSupported: true,
+          writeSupported: false,
           structured: true,
           isComponent: false,
           sections: [
@@ -19938,6 +19938,8 @@ function resolveTypeKey(type) {
   if (typeof type === "string") {
     const key2 = type.toLowerCase();
     if (key2 in KEY_TO_ENTITY_TYPE2)
+      return key2;
+    if (OBJECT_TYPES.find((o) => o.key === key2 && o.writeSupported))
       return key2;
     const known = Object.keys(KEY_TO_ENTITY_TYPE2).join(", ");
     throw new Error(
@@ -54249,6 +54251,8 @@ async function startUi(opts = {}) {
   const url = `http://127.0.0.1:${boundPort}/`;
   if (opts.open !== false)
     openBrowser(url);
+  bridge.send("ping", {}, 6e4).catch(() => {
+  });
   return {
     url,
     port: boundPort,
