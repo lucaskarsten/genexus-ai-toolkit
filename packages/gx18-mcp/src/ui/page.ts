@@ -192,6 +192,22 @@ pre.out.err{border-color:var(--fail);color:#ffb4ae;}
                       white-space:pre-wrap;word-break:break-all;max-height:200px;overflow-y:auto;
                       color:var(--muted);font-size:11px;}
 .chat-tool .tool-body.err{color:#ffb4ae;}
+.chat-toolbar{display:flex;gap:14px;align-items:center;margin-bottom:8px;flex-wrap:wrap;}
+.chat-toolbar label{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);}
+.chat-toolbar select{background:#0e1014;color:var(--fg);border:1px solid var(--line);
+                     border-radius:6px;padding:4px 6px;font:12px var(--font);outline:none;cursor:pointer;}
+.chat-toolbar select:focus{border-color:var(--accent);}
+.chat-toolbar select:disabled{opacity:.45;cursor:not-allowed;}
+.chat-slash{position:absolute;bottom:100%;left:0;margin-bottom:6px;background:var(--panel);
+            border:1px solid var(--line);border-radius:8px;padding:6px;min-width:280px;z-index:20;
+            box-shadow:0 4px 16px rgba(0,0,0,.4);font-size:12px;}
+.chat-slash .slash-item{padding:5px 8px;border-radius:5px;cursor:pointer;display:flex;gap:8px;}
+.chat-slash .slash-item:hover,.chat-slash .slash-item.sel{background:#1a2040;}
+.chat-slash .slash-cmd{color:var(--accent);font-family:var(--mono);}
+.chat-slash .slash-desc{color:var(--muted);}
+.chat-usage{font-size:10px;color:var(--muted);margin-top:6px;font-family:var(--mono);}
+.chat-sysmsg{align-self:center;font-size:11px;color:var(--muted);font-style:italic;
+             background:#161a26;border:1px solid var(--line);border-radius:7px;padding:5px 12px;max-width:90%;}
 .chat-input-row{display:flex;gap:8px;align-items:flex-end;}
 .chat-input{flex:1;background:#0e1014;color:var(--fg);border:1px solid var(--line);
             border-radius:8px;padding:10px 12px;font:13px/1.5 var(--font);
@@ -463,15 +479,25 @@ pre.out.err{border-color:var(--fail);color:#ffb4ae;}
             <span id="chat-img-label"></span>
             <button onclick="clearChatImage()" style="margin-left:8px;background:none;border:none;color:var(--fail);cursor:pointer;font-size:12px">&#10005; remover</button>
           </div>
-          <div class="chat-input-row">
+          <div class="chat-toolbar">
+            <label>Model
+              <select id="chat-model" onchange="onModelChange()"></select>
+            </label>
+            <label>Effort
+              <select id="chat-effort" onchange="onEffortChange()"></select>
+            </label>
+            <span id="chat-conv-usage" class="muted" style="margin-left:auto;font-size:11px"></span>
+          </div>
+          <div class="chat-input-row" style="position:relative">
+            <div id="chat-slash" class="chat-slash" style="display:none"></div>
             <textarea id="chat-in" class="chat-input" rows="2"
-              placeholder="Ask anything about the GeneXus KB&#10;e.g. What web panels exist in the VEN module?&#10;Ctrl+V to paste a screenshot"
-              onkeydown="chatKey(event)" onpaste="chatPaste(event)"></textarea>
+              placeholder="Ask anything about the GeneXus KB&#10;e.g. What web panels exist in the VEN module?&#10;/help for commands &#183; Ctrl+V to paste a screenshot"
+              onkeydown="chatKey(event)" oninput="chatSlashHint()" onpaste="chatPaste(event)"></textarea>
             <button class="act" id="chat-send" onclick="chatSend()">Send</button>
             <button class="act sec" id="chat-cancel" onclick="chatCancel()" style="display:none">Cancel</button>
           </div>
           <p class="muted" style="font-size:11px;margin-top:6px">
-            Shift+Enter = new line &nbsp;&#183;&nbsp; Enter = send &nbsp;&#183;&nbsp; Ctrl+V = colar imagem &nbsp;&#183;&nbsp; uses local <code>claude</code> CLI
+            Shift+Enter = new line &nbsp;&#183;&nbsp; Enter = send &nbsp;&#183;&nbsp; / = comandos &nbsp;&#183;&nbsp; Ctrl+V = colar imagem &nbsp;&#183;&nbsp; uses local <code>claude</code> CLI
           </p>
         </div>
       </section>
@@ -547,6 +573,7 @@ function bootApp() {
       setVal('chatNexaDir', c.chat.nexaSkillsDir||'');
       setVal('chatAddDirs', (c.chat.addDirs||[]).join('\\n'));
     }
+    initChatPickers(r.body.models||[], r.body.effortLevels||[], (r.body.chat||{}));
     var b = el('cfg-banners'); b.innerHTML = '';
     if (!r.body.workerExists) b.innerHTML += '<div class="banner fail">Worker not built. Run <b>npm run build:worker</b>.</div>';
     if (READONLY)             b.innerHTML += '<div class="banner warn">Read-only mode (GX18_READONLY): write tools are hidden.</div>';
@@ -963,6 +990,136 @@ var _chatSessionId = null;
 var _chatBusy = false;
 var _chatAbort = null;
 
+// ── Model / effort pickers ──────────────────────────────────────
+var _models = [];          // [{id,label,effortDefault,supportsEffort}]
+var _effortLevels = [];
+var _chatModel = '';       // active model id
+var _chatEffort = '';      // active effort level
+
+function modelById(id){ for (var i=0;i<_models.length;i++){ if(_models[i].id===id) return _models[i]; } return null; }
+
+function initChatPickers(models, efforts, chatCfg){
+  _models = models || [];
+  _effortLevels = efforts || [];
+  var msel = el('chat-model'); var esel = el('chat-effort');
+  if (!msel || !esel) return;
+  msel.innerHTML = _models.map(function(m){ return '<option value="'+m.id+'">'+escHtml(m.label)+'</option>'; }).join('');
+  esel.innerHTML = _effortLevels.map(function(lv){ return '<option value="'+lv+'">'+lv+'</option>'; }).join('');
+  // Default from saved config, else first model.
+  _chatModel = (chatCfg && chatCfg.model) || (_models[0] ? _models[0].id : '');
+  var m = modelById(_chatModel) || _models[0];
+  if (m) { _chatModel = m.id; msel.value = m.id; }
+  _chatEffort = (chatCfg && chatCfg.effort) || (m && m.effortDefault) || 'high';
+  esel.value = _chatEffort;
+  syncEffortEnabled();
+}
+
+function syncEffortEnabled(){
+  var m = modelById(_chatModel); var esel = el('chat-effort');
+  if (!esel) return;
+  esel.disabled = !(m && m.supportsEffort);
+}
+
+function onModelChange(){
+  _chatModel = el('chat-model').value;
+  var m = modelById(_chatModel);
+  // adopt the model's default effort when switching
+  if (m && m.supportsEffort && m.effortDefault){ _chatEffort = m.effortDefault; el('chat-effort').value = _chatEffort; }
+  syncEffortEnabled();
+  persistChatDefaults();
+  // remember per-conversation
+  var conv = currentConv(); if (conv){ conv.model = _chatModel; conv.effort = _chatEffort; saveConvs(); }
+}
+function onEffortChange(){
+  _chatEffort = el('chat-effort').value;
+  persistChatDefaults();
+  var conv = currentConv(); if (conv){ conv.effort = _chatEffort; saveConvs(); }
+}
+function persistChatDefaults(){
+  api('POST','/api/config', { chat: { model: _chatModel, effort: _chatEffort } });
+}
+
+// Restore a conversation's saved model/effort into the pickers (called from selectConv).
+function applyConvPickers(conv){
+  if (conv && conv.model && modelById(conv.model)){ _chatModel = conv.model; }
+  if (conv && conv.effort){ _chatEffort = conv.effort; }
+  var msel = el('chat-model'); var esel = el('chat-effort');
+  if (msel) msel.value = _chatModel;
+  var m = modelById(_chatModel);
+  if (esel) esel.value = (m && m.supportsEffort) ? _chatEffort : (esel.value||'');
+  syncEffortEnabled();
+}
+
+// ── Slash commands ──────────────────────────────────────────────
+var SLASH_CMDS = [
+  { cmd: '/help',   desc: 'lista os comandos disponíveis' },
+  { cmd: '/clear',  desc: 'limpa as mensagens da conversa' },
+  { cmd: '/new',    desc: 'inicia uma nova conversa' },
+  { cmd: '/model',  desc: 'troca o modelo (ex: /model haiku)' },
+  { cmd: '/effort', desc: 'troca o effort (ex: /effort xhigh)' }
+];
+function chatSlashHint(){
+  var box = el('chat-slash'); var v = (el('chat-in').value||'');
+  if (v.charAt(0) !== '/' || v.indexOf('\\n') >= 0){ box.style.display='none'; return; }
+  var typed = v.toLowerCase();
+  var hits = SLASH_CMDS.filter(function(c){ return c.cmd.indexOf(typed.split(' ')[0]) === 0; });
+  if (!hits.length){ box.style.display='none'; return; }
+  box.innerHTML = hits.map(function(c){
+    return '<div class="slash-item" onclick="pickSlash(\\''+c.cmd+'\\')"><span class="slash-cmd">'+c.cmd+'</span><span class="slash-desc">'+c.desc+'</span></div>';
+  }).join('');
+  box.style.display='block';
+}
+function pickSlash(cmd){
+  el('chat-in').value = cmd + ' ';
+  el('chat-slash').style.display='none';
+  el('chat-in').focus();
+}
+function chatSysMsg(text){
+  showMsgs();
+  var d = document.createElement('div');
+  d.className = 'chat-sysmsg';
+  d.textContent = text;
+  el('chat-msgs').appendChild(d);
+  chatScrollBottom();
+}
+// Returns true if the input was a locally-handled command (don't send to Claude).
+function handleSlash(text){
+  if (text.charAt(0) !== '/') return false;
+  var parts = text.slice(1).split(/\\s+/);
+  var cmd = (parts[0]||'').toLowerCase();
+  var arg = parts.slice(1).join(' ').trim();
+  if (cmd === 'help'){
+    chatSysMsg('Comandos: ' + SLASH_CMDS.map(function(c){return c.cmd;}).join(', ') + '. Qualquer outro /comando é repassado ao Claude.');
+    return true;
+  }
+  if (cmd === 'clear'){
+    var conv = currentConv(); if (conv){ conv.msgs = []; saveConvs(); }
+    el('chat-msgs').innerHTML=''; _chatSessionId = conv ? null : _chatSessionId;
+    chatSysMsg('Conversa limpa.');
+    return true;
+  }
+  if (cmd === 'new'){ newConv(); return true; }
+  if (cmd === 'model'){
+    if (!arg){ chatSysMsg('Modelo atual: '+_chatModel+'. Opções: '+_models.map(function(m){return m.id;}).join(', ')); return true; }
+    var found = modelById(arg) || _models.filter(function(m){ return m.id.indexOf(arg.toLowerCase()) >= 0 || m.label.toLowerCase().indexOf(arg.toLowerCase()) >= 0; })[0];
+    if (!found){ chatSysMsg('Modelo não encontrado: '+arg); return true; }
+    _chatModel = found.id; el('chat-model').value = found.id;
+    if (found.supportsEffort && found.effortDefault){ _chatEffort = found.effortDefault; el('chat-effort').value=_chatEffort; }
+    syncEffortEnabled(); persistChatDefaults();
+    chatSysMsg('Modelo → '+found.label);
+    return true;
+  }
+  if (cmd === 'effort'){
+    var m = modelById(_chatModel);
+    if (!m || !m.supportsEffort){ chatSysMsg(_chatModel+' não suporta effort.'); return true; }
+    if (_effortLevels.indexOf(arg) < 0){ chatSysMsg('Effort inválido. Opções: '+_effortLevels.join(', ')); return true; }
+    _chatEffort = arg; el('chat-effort').value = arg; persistChatDefaults();
+    chatSysMsg('Effort → '+arg);
+    return true;
+  }
+  return false; // unknown /command → forward to Claude CLI
+}
+
 var CONV_KEY = 'gx18_convs';
 function loadConvs() {
   try { _convs = JSON.parse(localStorage.getItem(CONV_KEY) || '[]'); } catch(e) { _convs = []; }
@@ -1008,15 +1165,43 @@ function newConv() {
   if (_chatBusy) return;
   _convId = null;
   _chatSessionId = null;
+  renderConvUsage(null);
   showEmpty();
   el('chat-in').focus();
   renderConvList();
+}
+function renderConvUsage(conv){
+  var box = el('chat-conv-usage'); if (!box) return;
+  var t = conv && conv.usageTotal;
+  if (t && (t.costUsd || t.inputTokens || t.outputTokens)){
+    box.textContent = 'conversa: ↑'+(t.inputTokens||0)+' ↓'+(t.outputTokens||0)+' tok · $'+(t.costUsd||0).toFixed(4);
+  } else { box.textContent = ''; }
+}
+function buildUsageBadge(usage, costUsd, model){
+  if (!usage && costUsd == null && !model) return null;
+  var d = document.createElement('div');
+  d.className = 'chat-usage';
+  var bits = [];
+  if (usage){ bits.push('↑'+(usage.inputTokens||0)+' ↓'+(usage.outputTokens||0)+' tok'); }
+  if (costUsd != null){ bits.push('$'+Number(costUsd).toFixed(4)); }
+  if (model){ bits.push(model); }
+  d.textContent = bits.join(' · ');
+  return d;
+}
+function accumulateUsage(conv, usage, costUsd){
+  if (!conv) return;
+  var t = conv.usageTotal || { inputTokens:0, outputTokens:0, costUsd:0 };
+  if (usage){ t.inputTokens += (usage.inputTokens||0); t.outputTokens += (usage.outputTokens||0); }
+  if (costUsd != null){ t.costUsd += Number(costUsd); }
+  conv.usageTotal = t;
 }
 function switchConv(id) {
   if (_chatBusy) return;
   _convId = id;
   var conv = currentConv();
   _chatSessionId = conv ? (conv.sessionId || null) : null;
+  applyConvPickers(conv);
+  renderConvUsage(conv);
   showMsgs();
   el('chat-msgs').innerHTML = '';
   if (conv && (conv.msgs||[]).length) {
@@ -1065,6 +1250,10 @@ function renderStoredMsg(m) {
       div.parentNode.insertBefore(det, div.nextSibling);
     });
   }
+  if (m.role === 'assistant' && (m.usage || m.costUsd != null || m.model)) {
+    var badge = buildUsageBadge(m.usage, m.costUsd, m.model);
+    if (badge) div.appendChild(badge);
+  }
 }
 
 // ── Chat ────────────────────────────────────────────────────────
@@ -1107,6 +1296,9 @@ function chatSend() {
   if (_chatBusy) return;
   var text = (el('chat-in').value||'').trim();
   if (!text && !_pendingImagePath) return;
+  el('chat-slash').style.display = 'none';
+  // Local slash commands are handled in-UI and never reach Claude.
+  if (text && !_pendingImagePath && handleSlash(text)) { el('chat-in').value=''; return; }
   // Append image reference so Claude can Read() it
   if (_pendingImagePath) {
     text = (text ? text + '\\n\\n' : '') + '[Imagem anexada: ' + _pendingImagePath + ']';
@@ -1122,7 +1314,7 @@ function chatSend() {
   if (!_convId) {
     _convId = 'conv-' + Date.now();
     var ts = Date.now();
-    _convs.push({ id: _convId, title: text.slice(0,60), sessionId: null, msgs: [], createdAt: ts, updatedAt: ts });
+    _convs.push({ id: _convId, title: text.slice(0,60), sessionId: null, msgs: [], createdAt: ts, updatedAt: ts, model: _chatModel, effort: _chatEffort });
     saveConvs();
   }
   var _pendingTools = [];  // tool calls accumulating during this turn
@@ -1144,7 +1336,7 @@ function chatSend() {
     method: 'POST',
     signal: _chatAbort ? _chatAbort.signal : undefined,
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ message: text, sessionId: _chatSessionId })
+    body: JSON.stringify({ message: text, sessionId: _chatSessionId, model: _chatModel, effort: _chatEffort })
   }).then(function(resp) {
     if (!resp.ok) {
       return resp.json().then(function(j) {
@@ -1172,8 +1364,12 @@ function chatSend() {
           var ev;
           try { ev = JSON.parse(line); } catch(e) { return; }
           if (ev.type === 'delta') {
+            // First token: drop the "Thinking…" placeholder and switch to live text.
+            if (firstChunk) { aDiv.classList.remove('thinking'); aDiv.textContent = ''; firstChunk = false; }
             fullText += ev.text;
-            chatStatus('thinking', 'Claude está pensando…');
+            aDiv.textContent = fullText;   // incremental plain-text; markdown rendered on done
+            chatScrollBottom();
+            chatStatus('thinking', 'Claude está respondendo…');
           } else if (ev.type === 'tool_call') {
             typingStop(aDiv);
             var label = toolLabel(ev.name, ev.args || {});
@@ -1208,7 +1404,9 @@ function chatSend() {
             typingStop(aDiv);
             chatStatus('done', 'Pronto');
             aDiv.classList.remove('thinking');
-            aDiv.innerHTML = renderMarkdown(ev.fullText || '(no response)');
+            aDiv.innerHTML = renderMarkdown(ev.fullText || fullText || '(no response)');
+            var usageBadge = buildUsageBadge(ev.usage, ev.costUsd, ev.model);
+            if (usageBadge) aDiv.appendChild(usageBadge);
             if (ev.sessionId) _chatSessionId = ev.sessionId;
             // Persist this turn to the conversation
             var conv = currentConv();
@@ -1217,7 +1415,9 @@ function chatSend() {
               conv.updatedAt = Date.now();
               conv.msgs = conv.msgs || [];
               conv.msgs.push({ role: 'user', content: text });
-              conv.msgs.push({ role: 'assistant', content: ev.fullText||'', tools: _pendingTools.slice() });
+              conv.msgs.push({ role: 'assistant', content: ev.fullText||fullText||'', tools: _pendingTools.slice(), usage: ev.usage, costUsd: ev.costUsd, model: ev.model });
+              accumulateUsage(conv, ev.usage, ev.costUsd);
+              renderConvUsage(conv);
               saveConvs();
               renderConvList();
             }
@@ -1257,7 +1457,7 @@ function renderMarkdown(text) {
   s = s.replace(/[*][*]([^*\\n]+)[*][*]/g, '<strong>$1</strong>');
   // Italic
   s = s.replace(/[*]([^*\\n]+)[*]/g, '<em>$1</em>');
-  s = s.replace(/_([^_\\n]+)_/g, '<em>$1</em>');
+  s = s.replace(/(^|[^\\w])_([^_\\n]+)_(?![\\w])/g, '$1<em>$2</em>');
   // Headers — # replaced with [#] to be safe
   s = s.replace(/^[#][#][#] (.+)$/gm, '<h5>$1</h5>');
   s = s.replace(/^[#][#] (.+)$/gm, '<h4>$1</h4>');

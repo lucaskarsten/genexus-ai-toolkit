@@ -2,7 +2,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-import { loadConfig, saveConfig, readRawConfig, detectChatConfig, loadConversations, saveConversations, ConversationRecord, Config, OracleConfig, ChatConfig } from '../config';
+import { loadConfig, saveConfig, readRawConfig, detectChatConfig, loadConversations, saveConversations, ConversationRecord, Config, OracleConfig, ChatConfig, CLAUDE_MODELS, EFFORT_LEVELS } from '../config';
 
 const pkg = require('../../package.json') as { version: string };
 import { bridge } from '../sdk-bridge/bridge';
@@ -126,6 +126,9 @@ export async function handleApi(
       body: {
         version: pkg.version,
         config: maskedConfig(loadConfig()),
+        chat: { model: loadConfig().chat?.model ?? '', effort: loadConfig().chat?.effort ?? '' },
+        models: CLAUDE_MODELS,
+        effortLevels: EFFORT_LEVELS,
         readonly: ctx.readonly,
         workerExists: workerExists(),
         clients: CLIENTS.map((c) => {
