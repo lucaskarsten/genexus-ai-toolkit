@@ -1,6 +1,6 @@
 {
   "name": "gx18-mcp",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "MCP server for GeneXus 18 — 47 tools, native SDK write, XPZ round-trip, chat UI, auto-update",
   "keywords": [
     "genexus",

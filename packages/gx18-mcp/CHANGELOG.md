@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.1.0](https://github.com/lucaskarsten/genexus-ai-toolkit/compare/gx18-mcp-v2.0.0...gx18-mcp-v2.1.0) (2026-06-26)
+
+
+### Features
+
+* **gx18-mcp:** chat com seletor de modelo/effort, comandos slash, uso/custo e streaming ([0d482f1](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/0d482f1f3d28c39be811414b4ada360373f29077))
+* **gx18-mcp:** create and modify WebPanel/WebComponent (type 43) via the SDK ([6529d4c](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/6529d4c8276c899e31bfa36006e26650ba52edfe))
+* **gx18-mcp:** create and modify WebPanel/WebComponent (type 43) via the SDK ([2d131ec](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/2d131ecafb0b4edb09d0f9c7dcfc0158835c22ed))
+
+
+### Bug Fixes
+
+* **gx18-mcp:** normalize future SDK timestamps and surface real KB Open errors ([dd89e6a](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/dd89e6a88490183aa866c9d899cea7fa74445b61))
+
 ## [1.9.4](https://github.com/lucaskarsten/genexus-ai-toolkit/compare/gx18-mcp-v1.9.3...gx18-mcp-v1.9.4) (2026-06-24)
 
 
