@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/icon-source.png" alt="GeneXus AI Toolkit" width="140" />
+  <img src="assets/nara.png" alt="GeneXus AI Toolkit" width="140" />
 
   <h1>GeneXus AI Toolkit</h1>
 
@@ -20,14 +20,14 @@
 
 ---
 
-## 🚀 Version 2.0 — A Massive Usability Leap
+## 🚀 Version 2.1 — A Massive Usability Leap
 
 <div align="center">
 
 ```
 ╔══════════════════════════════════════════════════════════════════════╗
 ║                                                                      ║
-║   🎉  We've reached v2.0 — GeneXus AI Toolkit is bigger than        ║
+║   🎉  We've reached v2.1 — GeneXus AI Toolkit is bigger than        ║
 ║       ever. 47 MCP tools, a full chat UI with Markdown and          ║
 ║       image paste, XPZ round-trip for UC scripts, SDK create        ║
 ║       for WBC/WBP, benchmark suite, auto-update, and much more.     ║
@@ -39,7 +39,7 @@
 
 </div>
 
-### What's new in v2.0
+### What's new in v2.1
 
 | Area | What changed |
 |---|---|
@@ -472,7 +472,7 @@ MIT — see [LICENSE](LICENSE).
 ---
 
 <div align="center">
-  <img src="assets/icon-source.png" alt="Nara" width="60" />
+  <img src="assets/nara.png" alt="Nara" width="60" />
   <br/>
-  <sub>Made with 🐕 by Nara and a lot of AI · GeneXus AI Toolkit v2.0</sub>
+  <sub>Made with 🐕 by Nara and a lot of AI · GeneXus AI Toolkit v2.1</sub>
 </div>
