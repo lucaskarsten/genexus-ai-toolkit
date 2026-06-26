@@ -16,6 +16,9 @@
 !/output/TRN/.gitkeep
 node_modules/
 packages/gx18-mcp/release/
+# Generated runtime artifacts (exported objects, benchmark run logs)
+packages/gx18-mcp/output/
+packages/gx18-mcp/benchmark/results/
 .mcp.json
 .claude/settings.local.json
 /gx-sugestoes/
