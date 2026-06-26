@@ -1,6 +1,6 @@
 {
   "fixtureVersion": 1,
-  "capturedAt": "2026-06-25T23:02:00.619Z",
+  "capturedAt": "2026-06-26T15:00:01.062Z",
   "tool": "gx_export",
   "args": {
     "name": "UcNucIAInsight",
@@ -9,8 +9,8 @@
   "response": {
     "ok": true,
     "name": "UcNucIAInsight",
-    "bytes": 2878
+    "bytes": 2879
   },
-  "checksum": "210043c6438a6268925c029af3492cdea484aa9b3fea1e803dbea13ebd4b25bc",
+  "checksum": "6316ad02a913403f4ef1ce981a882174406a24fcf5519b6f8730273dbc4ea3d7",
   "entityVersionId": null
 }

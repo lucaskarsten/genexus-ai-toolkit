@@ -308,7 +308,7 @@ that appears in raw blob decodes). The GUID form causes `ValidationException` on
 
 Modules are hierarchical namespaces. Use `gx_modules` to list them.
 
-Example: common modules in a FoccoLojas-type KB (run `gx_modules` to list yours):
+Example module structure (run `gx_modules` to list yours):
 
 | Module | EntityId | Contains |
 |--------|---------|---------|
@@ -357,6 +357,6 @@ Wrong UserId on writes = corrupted Team Development history.
 
 - **Write via gx18-mcp → IDE build** — gx_modify and gx_import update KB source but do not compile
 - **IDE Build All (F5)** regenerates Java, JavaScript, CSS from the KB
-- **Tomcat static/** at `C:\tomcat\webapps\FoccoLojasJava\static` — UC render.js and DSO CSS deployed here
+- **Tomcat static/** at `C:\tomcat\webapps\YourAppJava\static` — UC render.js and DSO CSS deployed here
 - **render.js** is auto-generated from UC template; edits here are overwritten on next build
 - After any gx_sql write to KB metadata, call **gx_reload** to clear the SDK worker's model cache

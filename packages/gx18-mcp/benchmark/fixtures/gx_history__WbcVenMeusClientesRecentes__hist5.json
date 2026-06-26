@@ -16,14 +16,14 @@
       {
         "versionId": "<entityVersionId>",
         "userId": 321,
-        "userName": "COMPUSOFT\\lucas.karsten",
+        "userName": "DOMAIN\\your.username",
         "timestamp": "<masked>",
         "description": "Dashboard Meus Clientes Recentes"
       },
       {
         "versionId": "<entityVersionId>",
         "userId": 321,
-        "userName": "COMPUSOFT\\lucas.karsten",
+        "userName": "DOMAIN\\your.username",
         "timestamp": "<masked>",
         "description": "Dashboard Meus Clientes Recentes"
       },

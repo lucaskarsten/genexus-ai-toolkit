@@ -63,15 +63,21 @@ export async function runCapture(opts: CaptureOptions): Promise<void> {
   const client = new GxMcpClient();
   await client.connect();
 
-  // Warm up the SDK before hitting any SDK-dependent tools (gx_variable, gx_export, etc.).
-  // The first SDK call after worker start always fails with NullRef (cold-start); the second
-  // succeeds immediately. We pay this cost once here so no matrix cell absorbs it.
-  process.stdout.write('  🔥 warming up SDK...');
-  const warmup = await client.callWithRetry('gx_export', {
-    name: 'UCTooltip',
-    type: 'usercontrol',
-  });
-  process.stdout.write(warmup.isError ? ' ⚠️  (warmup had error, proceeding)\n' : ' ✅\n');
+  // If any export cell is in scope, warm up the SDK first. The GX18 SDK's KnowledgeBase.Open()
+  // (needed by gx_export) cold-starts unreliably — the Enterprise Library static init can take
+  // 10-30s and the first several gx_export calls fail with NullRef until it settles. We loop
+  // gx_export here with long backoff until one succeeds, so the capture loop never absorbs it.
+  const hasExport = cells.some((c) => c.tool === 'gx_export');
+  if (hasExport) {
+    process.stdout.write('  🔥 warming up SDK (gx_export cold-start can take ~30s)...');
+    let warm = false;
+    for (let i = 0; i < 12 && !warm; i++) {
+      const r = await client.call('gx_export', { name: 'UCTooltip', type: 'usercontrol' }, 180_000);
+      if (!r.isError) { warm = true; break; }
+      await new Promise((res) => setTimeout(res, 5000));
+    }
+    process.stdout.write(warm ? ' ✅\n' : ' ⚠️  (still cold — exports may fail)\n');
+  }
 
   // Map fixtureKey → outputFile for XPZ dependency resolution
   const xpzPaths: Map<string, string> = new Map();

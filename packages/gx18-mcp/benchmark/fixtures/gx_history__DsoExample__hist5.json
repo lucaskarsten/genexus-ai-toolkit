@@ -3,12 +3,12 @@
   "capturedAt": "2026-06-25T23:02:00.711Z",
   "tool": "gx_history",
   "args": {
-    "name": "DsoFoccoLojas",
+    "name": "DsoExample",
     "type": 161,
     "limit": 5
   },
   "response": {
-    "name": "DsoFoccoLojas",
+    "name": "DsoExample",
     "entityTypeId": 161,
     "typeName": "DSO",
     "entityId": 9,

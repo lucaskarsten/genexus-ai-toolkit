@@ -4,10 +4,10 @@
   "tool": "gx_whoami",
   "args": {},
   "response": {
-    "windowsUser": "COMPUSOFT\\lucas.karsten",
+    "windowsUser": "DOMAIN\\your.username",
     "kbUserId": 321,
-    "kbPath": "C:\\KBs\\FoccoLojas_03",
-    "kbDatabase": "GX_KB_FoccoLojas_03",
+    "kbPath": "C:\\KBs\\ExampleKB",
+    "kbDatabase": "GX_KB_ExampleKB",
     "kbServer": "(localdb)\\MSSQLLocalDB",
     "kbOpen": false,
     "gx18Dir": "C:\\Program Files (x86)\\GeneXus\\GeneXus18U6",

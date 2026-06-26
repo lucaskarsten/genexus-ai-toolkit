@@ -167,7 +167,7 @@ well-formed in the KB. The `.xpz` is a ZIP containing the object XML
 
 ## Integration tests
 
-Tests that run the **real C# worker** against a KB clone (`FoccoLojas_SPIKE`):
+Tests that run the **real C# worker** against a KB clone (`ExampleKB_SPIKE`):
 
 ```
 cd packages/gx18-mcp
@@ -191,8 +191,8 @@ All integration suites are guarded by `describe.skipIf(!SPIKE_AVAILABLE)` — th
 Configure the spike KB in `test/integration/.env.spike`:
 ```
 GX_KB_SERVER=(localdb)\MSSQLLocalDB
-GX_KB_DATABASE=GX_KB_FoccoLojas_SPIKE
-GX_KB_PATH=C:\KBs\FoccoLojas_SPIKE
+GX_KB_DATABASE=GX_KB_ExampleKB_SPIKE
+GX_KB_PATH=C:\KBs\ExampleKB_SPIKE
 GX18_DIR=C:\Program Files (x86)\GeneXus\GeneXus18U6
 ```
 

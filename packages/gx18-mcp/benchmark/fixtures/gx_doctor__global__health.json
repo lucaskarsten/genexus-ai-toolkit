@@ -18,12 +18,12 @@
       {
         "name": "KB path",
         "status": "ok",
-        "detail": "C:\\KBs\\FoccoLojas_03"
+        "detail": "C:\\KBs\\ExampleKB"
       },
       {
         "name": "Worker ping",
         "status": "ok",
-        "detail": "user=COMPUSOFT\\lucas.karsten kbPath=C:\\KBs\\FoccoLojas_03 sdkReady=false sqlReady=true"
+        "detail": "user=DOMAIN\\your.username kbPath=C:\\KBs\\ExampleKB sdkReady=false sqlReady=true"
       },
       {
         "name": "SQL EntityVersion rows",

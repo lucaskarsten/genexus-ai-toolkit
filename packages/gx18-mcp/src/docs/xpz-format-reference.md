@@ -5,8 +5,7 @@ structure, variable typing, and silent-import failure modes.
 
 **See also:** `gx18://docs/xpz-workflow` for the `gx_export → gx_read_xpz → gx_patch_xpz → gx_import` round-trip guide.
 
-**Reference file:** `C:\KBs\FoccoLojas_02\FoccoLojas_03.xpz` — 461 real objects (Domains, SDTs,
-Procedures, UCs, WBCs, DSOs, External Objects) extracted from the active FoccoLojas_03 KB.
+**Reference file:** `C:\KBs\ExampleKB\ExampleKB.xpz` — exported from a real GX18 KB via Knowledge Manager → Export.
 
 ---
 
@@ -30,10 +29,10 @@ Procedures, UCs, WBCs, DSOs, External Objects) extracted from the active FoccoLo
     <MinorVersion>0</MinorVersion>
     <Build>177934</Build>
   </KMW>
-  <Source kb="9ced92e5-f7b4-47c3-9af8-c84b8f5c565a"
-          username="COMPUSOFT\lucas.karsten"
-          UNCPath="\\host\C$\KBs\FoccoLojas_03">
-    <Version guid="64e77778-2ac3-4a8b-b0c3-e641b98d1943" name="FoccoLojas_03" />
+  <Source kb="00000000-0000-0000-0000-000000000000"
+          username="DOMAIN\your.username"
+          UNCPath="\\host\C$\KBs\ExampleKB">
+    <Version guid="11111111-1111-1111-1111-111111111111" name="ExampleKB" />
   </Source>
   <Objects>
     <!-- 1..N <Object> elements -->
@@ -358,7 +357,7 @@ SELECT COUNT(*) FROM EntityVersion WHERE EntityTypeId = 34 AND EntityId = <id>
 ```powershell
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 
-$zip = [System.IO.Compression.ZipFile]::OpenRead("C:\KBs\FoccoLojas_02\FoccoLojas_03.xpz")
+$zip = [System.IO.Compression.ZipFile]::OpenRead("C:\KBs\ExampleKB\ExampleKB.xpz")
 $reader = [System.IO.StreamReader]::new($zip.Entries[0].Open())
 $xmlText = $reader.ReadToEnd()
 $reader.Close()
@@ -388,10 +387,10 @@ $xmlContent = @'
 <?xml version="1.0" encoding="utf-8"?>
 <ExportFile>
   <KMW><MajorVersion>4</MajorVersion><MinorVersion>0</MinorVersion><Build>177934</Build></KMW>
-  <Source kb="9ced92e5-f7b4-47c3-9af8-c84b8f5c565a"
-          username="COMPUSOFT\lucas.karsten"
-          UNCPath="\\host\C$\KBs\FoccoLojas_03">
-    <Version guid="64e77778-2ac3-4a8b-b0c3-e641b98d1943" name="FoccoLojas_03" />
+  <Source kb="00000000-0000-0000-0000-000000000000"
+          username="DOMAIN\your.username"
+          UNCPath="\\host\C$\KBs\ExampleKB">
+    <Version guid="11111111-1111-1111-1111-111111111111" name="ExampleKB" />
   </Source>
   <Objects>
     <!-- ONLY the target objects here — do not include unrelated hosts -->
