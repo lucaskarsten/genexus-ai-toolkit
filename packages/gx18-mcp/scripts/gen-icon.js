@@ -176,15 +176,33 @@ const icoFallback = Buffer.concat([iconDir, dirEntry, imageData])
 // ── Write ICO + favicon-b64.ts ────────────────────────────────────────────────
 
 ;(async () => {
+  const { execFileSync } = require('child_process')
   const srcPngPath = path.join(__dirname, '..', '..', '..', 'assets', 'icon-source.png')
   const outIco = path.join(__dirname, '..', 'assets', 'icon.ico')
   fs.mkdirSync(path.dirname(outIco), { recursive: true })
 
   let finalIco, faviconData, faviconMime
   if (fs.existsSync(srcPngPath)) {
+    // The source PNG is an opaque (24bpp) circular badge on white — mask it to a
+    // circle so corners are transparent, otherwise the taskbar / app icon shows a
+    // white square. Full-res masked PNG feeds the multi-resolution ICO; a small
+    // 64×64 masked PNG is the web favicon (keeps the embedded HTML light).
+    const maskScript = path.join(__dirname, 'make-circular-png.ps1')
+    const maskedPng  = path.join(__dirname, '..', 'assets', 'icon-source-rgba.png')
+    const faviconPng = path.join(__dirname, '..', 'assets', 'favicon-64.png')
+
+    execFileSync('powershell', [
+      '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', maskScript,
+      '-InPath', srcPngPath, '-OutPath', maskedPng,
+    ], { stdio: 'inherit' })
+    execFileSync('powershell', [
+      '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', maskScript,
+      '-InPath', srcPngPath, '-OutPath', faviconPng, '-Size', '64',
+    ], { stdio: 'inherit' })
+
     const pngToIco = require('png-to-ico').default
-    finalIco = await pngToIco(srcPngPath)
-    faviconData = fs.readFileSync(srcPngPath).toString('base64')
+    finalIco = await pngToIco(maskedPng)
+    faviconData = fs.readFileSync(faviconPng).toString('base64')
     faviconMime = 'image/png'
   } else {
     finalIco = icoFallback

@@ -1,39 +1,120 @@
 using System;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Windows.Forms;
 
+// GUI launcher (GeneXusAIToolkit.exe). A real WinForms window owns the Nara icon,
+// so the taskbar button shows it reliably — unlike a console window, whose icon is
+// dictated by the host (Windows Terminal ignores WM_SETICON entirely on Win11).
+// The window streams the core process's stdout/stderr into a log box and shuts the
+// core down when closed.
 class Launcher {
-    [DllImport("kernel32.dll")] static extern bool   FreeConsole();
-    [DllImport("kernel32.dll")] static extern bool   AllocConsole();
-    [DllImport("kernel32.dll")] static extern bool   SetConsoleTitle(string title);
-    [DllImport("kernel32.dll")] static extern IntPtr GetConsoleWindow();
-    [DllImport("kernel32.dll")] static extern IntPtr GetModuleHandle(string mod);
-    [DllImport("user32.dll")]   static extern IntPtr SendMessage(IntPtr hWnd, uint msg, IntPtr w, IntPtr l);
-    // LR_SHARED (0x8000) — system retains handle ownership, no DestroyIcon needed
-    [DllImport("user32.dll")]   static extern IntPtr LoadImage(IntPtr hInst, IntPtr name, uint type, int cx, int cy, uint flags);
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = false)]
+    static extern void SetCurrentProcessExplicitAppUserModelID(string appID);
 
-    // Detach from any inherited console (PS/CMD) and create our own.
-    // AllocConsole creates a new conhost window whose icon comes from this
-    // EXE's PE resources (/win32icon:Nara). WM_SETICON is belt-and-suspenders.
-    static void OwnConsole() {
-        FreeConsole();
-        AllocConsole();
-        SetConsoleTitle("GeneXus AI Toolkit");
+    [STAThread]
+    static int Main(string[] args) {
+        try { SetCurrentProcessExplicitAppUserModelID("GeneXusAIToolkit.App"); } catch { }
+
+        var dir  = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+        var core = Path.Combine(dir, "GeneXusAIToolkit.core.exe");
+
+        if (!File.Exists(core)) {
+            MessageBox.Show(
+                "GeneXusAIToolkit.core.exe não encontrado em:\n" + dir,
+                "GeneXus AI Toolkit", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return 1;
+        }
+
+        Application.EnableVisualStyles();
+        Application.SetCompatibleTextRenderingDefault(false);
+        using (var form = new LauncherForm(core, args)) {
+            Application.Run(form);
+            return form.ExitCode;
+        }
+    }
+}
+
+class LauncherForm : Form {
+    readonly TextBox _log;
+    Process _core;
+    public int ExitCode { get; private set; }
+
+    public LauncherForm(string corePath, string[] args) {
+        Text = "GeneXus AI Toolkit";
+        Width = 760;
+        Height = 460;
+        StartPosition = FormStartPosition.CenterScreen;
+        BackColor = Color.FromArgb(15, 17, 21);
+
+        // Window + taskbar icon come from this EXE's embedded PE icon (/win32icon:Nara).
+        try { Icon = Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location); } catch { }
+
+        _log = new TextBox {
+            Multiline = true,
+            ReadOnly = true,
+            Dock = DockStyle.Fill,
+            ScrollBars = ScrollBars.Vertical,
+            BackColor = Color.FromArgb(10, 12, 16),
+            ForeColor = Color.FromArgb(230, 233, 239),
+            Font = new Font("Consolas", 9f),
+            BorderStyle = BorderStyle.None,
+        };
+        Controls.Add(_log);
+
+        Load += (s, e) => StartCore(corePath, args);
+        FormClosing += (s, e) => StopCore();
+    }
+
+    void StartCore(string corePath, string[] args) {
+        var psi = new ProcessStartInfo(corePath) {
+            UseShellExecute        = false,
+            CreateNoWindow         = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError  = true,
+            Arguments              = args.Length > 0
+                ? string.Join(" ", Array.ConvertAll(args, QuoteArg))
+                : "",
+        };
+
+        _core = new Process { StartInfo = psi, EnableRaisingEvents = true };
+        _core.OutputDataReceived += (s, e) => Append(e.Data);
+        _core.ErrorDataReceived  += (s, e) => Append(e.Data);
+        _core.Exited += (s, e) => {
+            try { ExitCode = _core.ExitCode; } catch { }
+            // Core ended on its own — close the window too.
+            if (!IsDisposed) BeginInvoke((Action)(() => { if (!IsDisposed) Close(); }));
+        };
 
         try {
-            var hWnd  = GetConsoleWindow();
-            if (hWnd == IntPtr.Zero) return;
-            var hInst = GetModuleHandle(null);
-            const uint LR_SHARED = 0x8000;
-            var small = LoadImage(hInst, (IntPtr)1, 1 /*IMAGE_ICON*/, 16, 16, LR_SHARED);
-            var large = LoadImage(hInst, (IntPtr)1, 1 /*IMAGE_ICON*/, 32, 32, LR_SHARED);
-            if (small != IntPtr.Zero) SendMessage(hWnd, 0x0080 /*WM_SETICON*/, (IntPtr)0 /*ICON_SMALL*/, small);
-            if (large != IntPtr.Zero) SendMessage(hWnd, 0x0080 /*WM_SETICON*/, (IntPtr)1 /*ICON_BIG*/,   large);
+            _core.Start();
+            _core.BeginOutputReadLine();
+            _core.BeginErrorReadLine();
         } catch (Exception ex) {
-            Trace.WriteLine("OwnConsole icon error: " + ex.Message);
+            Append("ERRO ao iniciar o core: " + ex.Message);
         }
+    }
+
+    void StopCore() {
+        try {
+            if (_core != null && !_core.HasExited) {
+                _core.Kill();
+                _core.WaitForExit(3000);
+            }
+        } catch { }
+    }
+
+    void Append(string line) {
+        if (line == null || IsDisposed) return;
+        try {
+            BeginInvoke((Action)(() => {
+                if (IsDisposed) return;
+                _log.AppendText(line + Environment.NewLine);
+            }));
+        } catch { }
     }
 
     // CommandLineToArgvW quoting: backslashes are special only before a '"'.
@@ -57,30 +138,5 @@ class Launcher {
         sb.Append('\\', bs * 2); // trailing backslashes before closing quote
         sb.Append('"');
         return sb.ToString();
-    }
-
-    static int Main(string[] args) {
-        OwnConsole();
-
-        var dir  = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-        var core = Path.Combine(dir, "GeneXusAIToolkit.core.exe");
-
-        if (!File.Exists(core)) {
-            Console.Error.WriteLine("ERROR: GeneXusAIToolkit.core.exe not found in " + dir);
-            Console.Error.WriteLine("Press Enter to close...");
-            Console.ReadLine();
-            return 1;
-        }
-
-        var psi = new ProcessStartInfo(core) {
-            UseShellExecute = false,
-            Arguments       = args.Length > 0
-                ? string.Join(" ", Array.ConvertAll(args, QuoteArg))
-                : ""
-        };
-        var p = Process.Start(psi);
-        if (p == null) return 1;
-        p.WaitForExit();
-        return p.ExitCode;
     }
 }

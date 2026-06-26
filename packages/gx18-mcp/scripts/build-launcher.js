@@ -21,8 +21,13 @@ if (!csc) { console.error('csc.exe not found — .NET Framework 4 required'); pr
 
 if (fs.existsSync(out)) fs.unlinkSync(out)
 
+// /target:winexe — GUI subsystem, no console window allocated for the launcher
+// itself. WinForms + Drawing refs let the window own the Nara icon (taskbar-controllable,
+// unlike a console window under Windows Terminal which ignores WM_SETICON).
 execSync(
-  `"${csc}" /nologo /target:exe /platform:x64 /win32icon:"${ico}" /out:"${out}" "${cs}"`,
+  `"${csc}" /nologo /target:winexe /platform:x64 ` +
+  `/reference:System.Windows.Forms.dll /reference:System.Drawing.dll ` +
+  `/win32icon:"${ico}" /out:"${out}" "${cs}"`,
   { stdio: 'inherit', shell: 'cmd.exe' }
 )
 
