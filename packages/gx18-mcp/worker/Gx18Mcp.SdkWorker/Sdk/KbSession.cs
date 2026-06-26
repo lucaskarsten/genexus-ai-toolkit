@@ -72,6 +72,24 @@ namespace Gx18Mcp.SdkWorker.Sdk
             // which would corrupt our newline-delimited JSON-RPC protocol.
             var savedOut = Console.Out;
             var originalDir = Directory.GetCurrentDirectory();
+            // DIAGNOSTIC: the SDK's broken headless logger masks the real Open failure as a generic
+            // NullReferenceException (then a ThreadAbort tears the call down). FirstChanceException
+            // fires on the ORIGINAL exception the instant it's thrown, before any handler swallows it.
+            // We log every first-chance exception during Open so the true root cause is visible on stderr.
+            EventHandler<System.Runtime.ExceptionServices.FirstChanceExceptionEventArgs> fce = (s, e) =>
+            {
+                try
+                {
+                    var ex = e.Exception;
+                    Console.Error.WriteLine("[gx18-worker][FCE] " + ex.GetType().FullName + ": " +
+                        (ex.Message ?? "").Replace("\r", " ").Replace("\n", " "));
+                    var st = (ex.StackTrace ?? "").Split('\n');
+                    for (int i = 0; i < st.Length && i < 6; i++)
+                        Console.Error.WriteLine("[gx18-worker][FCE]    " + st[i].TrimEnd());
+                }
+                catch { }
+            };
+            AppDomain.CurrentDomain.FirstChanceException += fce;
             try
             {
                 Console.SetOut(Console.Error);
@@ -83,8 +101,19 @@ namespace Gx18Mcp.SdkWorker.Sdk
                 Directory.SetCurrentDirectory(_kbPath);
                 _kb = openMethod.Invoke(null, new object[] { options });
             }
+            catch (Exception openEx)
+            {
+                // Unwrap TargetInvocationException so the JSON-RPC error carries the real cause,
+                // not the reflection wrapper's generic NullReference.
+                var real = (openEx is TargetInvocationException tie && tie.InnerException != null)
+                    ? tie.InnerException : openEx;
+                Console.Error.WriteLine("[gx18-worker] Open FAILED: " + real.GetType().FullName + ": " + real.Message);
+                Console.Error.WriteLine(real.StackTrace);
+                throw new Exception("KB Open failed: " + real.GetType().Name + ": " + real.Message, real);
+            }
             finally
             {
+                AppDomain.CurrentDomain.FirstChanceException -= fce;
                 Directory.SetCurrentDirectory(originalDir);
                 Console.SetOut(savedOut);
             }

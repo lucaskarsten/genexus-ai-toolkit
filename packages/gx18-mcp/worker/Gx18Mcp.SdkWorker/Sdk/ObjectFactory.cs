@@ -588,6 +588,24 @@ namespace Gx18Mcp.SdkWorker.Sdk
             var savedOut = Console.Out;
             try { Console.SetOut(Console.Error); save.Invoke(obj, null); }
             finally { Console.SetOut(savedOut); }
+            NormalizeFutureTimestamps();
+        }
+
+        // The GX18 SDK stamps EntityVersionTimestamp in UTC, but GeneXus reads that column as
+        // local time — so on UTC-ahead-of-local machines every save lands "in the future", and
+        // the IDE/build warns "KB modified at <future> > current system time, time dependencies
+        // won't work" and incremental builds misfire. The worker does not write this column
+        // itself (only the SDK does), so we normalize any future-stamped rows back to local time
+        // right after each save. Defensive: never let this break the save it just completed.
+        private void NormalizeFutureTimestamps()
+        {
+            try
+            {
+                _sql.Execute(
+                    "UPDATE EntityVersion SET EntityVersionTimestamp = GETDATE() " +
+                    "WHERE EntityVersionTimestamp > DATEADD(minute, 1, GETDATE())");
+            }
+            catch { /* best-effort: a timestamp skew must never fail a write */ }
         }
 
         private object VerifyUserId(int entityTypeIdHint, int entityId, string name, string op)
