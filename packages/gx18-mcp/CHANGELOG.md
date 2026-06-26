@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.1](https://github.com/lucaskarsten/genexus-ai-toolkit/compare/gx18-mcp-v2.1.0...gx18-mcp-v2.1.1) (2026-06-26)
+
+
+### Bug Fixes
+
+* **gx18-mcp:** resolve headless KnowledgeBase.Open failure ([2dea074](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/2dea074e6b0d1c5ed1d2b17d096eddc63366b914))
+* **gx18-mcp:** resolve headless KnowledgeBase.Open failure (App.config + assembly resolver) ([605a16b](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/605a16b93e818dddb56f465af44962f7bbb9550a))
+
 ## [2.1.0](https://github.com/lucaskarsten/genexus-ai-toolkit/compare/gx18-mcp-v2.0.0...gx18-mcp-v2.1.0) (2026-06-26)
 
 
