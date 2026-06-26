@@ -3,7 +3,7 @@
   "capturedAt": "2026-06-25T23:02:00.685Z",
   "tool": "gx_find",
   "args": {
-    "pattern": "DsoFoccoLojas",
+    "pattern": "DsoExample",
     "type": 161
   },
   "response": [
@@ -11,7 +11,7 @@
       "entityTypeId": 161,
       "typeName": "DSO",
       "entityId": 9,
-      "name": "DsoFoccoLojas",
+      "name": "DsoExample",
       "lastModified": "<masked>",
       "module": ""
     },
@@ -19,7 +19,7 @@
       "entityTypeId": 161,
       "typeName": "DSO",
       "entityId": 9,
-      "name": "DsoFoccoLojas",
+      "name": "DsoExample",
       "lastModified": "<masked>",
       "module": ""
     },
@@ -27,7 +27,7 @@
       "entityTypeId": 161,
       "typeName": "DSO",
       "entityId": 9,
-      "name": "DsoFoccoLojas",
+      "name": "DsoExample",
       "lastModified": "<masked>",
       "module": ""
     }

@@ -9,7 +9,7 @@
       "type": "sqlserver",
       "description": "GeneXus KB database (Windows Integrated Security)",
       "server": "(localdb)\\MSSQLLocalDB",
-      "database": "GX_KB_FoccoLojas_03",
+      "database": "GX_KB_ExampleKB",
       "auth": "integrated",
       "ping": true
     },
@@ -17,10 +17,10 @@
       "name": "oracle",
       "type": "oracle",
       "description": "Oracle database (ODP.NET Managed, supports NNE)",
-      "host": "144.33.23.74",
+      "host": "your-oracle-host",
       "port": 7521,
-      "service": "teste.subnetdb.vcnfoccolojas.oraclevcn.com",
-      "user": "LOJAS_FOCCOLOJAS",
+      "service": "teste.subnetdb.example.oraclevcn.com",
+      "user": "YOUR_SCHEMA",
       "ping": true
     }
   ],

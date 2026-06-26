@@ -33,9 +33,17 @@ export class GxMcpClient {
   async connect(): Promise<void> {
     const { Client, StdioClientTransport } = await loadSdk();
 
+    // Run the server from the package root with a RELATIVE server path — exactly as the
+    // validated _mcp.mjs helper does. The C# worker's SDK bootstrap (GXprot DLL resolution,
+    // KnowledgeBase.Open) is cwd-sensitive; an absolute path + inherited cwd makes the SDK
+    // cold-start fail permanently for gx_export (UC/WBC). cwd = package root fixes it.
+    const pkgRoot = path.resolve(__dirname, '..');
+    const relServerPath = path.relative(pkgRoot, this.serverPath).replace(/\\/g, '/');
+
     this.transport = new (StdioClientTransport as any)({
       command: 'node',
-      args: [this.serverPath, 'start'],
+      args: [relServerPath, 'start'],
+      cwd: pkgRoot,
       // Critical: pass all env vars so GX_KB_* reach the worker.
       env: { ...process.env },
     });
@@ -86,20 +94,32 @@ export class GxMcpClient {
   // Retry once after a short delay — documented behaviour, second call always succeeds.
   private isColdStartError(result: CallResult): boolean {
     if (!result.isError || typeof result.raw !== 'string') return false;
-    return result.raw.includes('NullRef') || result.raw.includes('KB not open');
+    const msg = result.raw;
+    return (
+      msg.includes('NullRef') ||
+      msg.includes('KB not open') ||
+      msg.includes('cold-start') ||
+      msg.includes('DesignModel is null')
+    );
   }
 
+  // Retry up to `maxAttempts` times on cold-start errors. The GX18 SDK's first Open()
+  // after worker start can fail (Enterprise Library static init race); a second/third
+  // attempt — spaced out — always succeeds.
   async callWithRetry(
     tool: string,
     args: Record<string, unknown> = {},
-    timeoutMs = 120_000,
+    timeoutMs = 180_000,
+    maxAttempts = 8,
   ): Promise<CallResult> {
-    const first = await this.call(tool, args, timeoutMs);
-    if (this.isColdStartError(first)) {
-      await new Promise((r) => setTimeout(r, 2000));
-      return this.call(tool, args, timeoutMs);
+    let last = await this.call(tool, args, timeoutMs);
+    for (let attempt = 1; attempt < maxAttempts && this.isColdStartError(last); attempt++) {
+      // Exponential-ish backoff: the GX18 SDK Enterprise Library static init can take several
+      // seconds; spacing retries gives it room to finish before we hit it again.
+      await new Promise((r) => setTimeout(r, 2000 + attempt * 1000));
+      last = await this.call(tool, args, timeoutMs);
     }
-    return first;
+    return last;
   }
 
   // gx_export alias kept for backwards compat — NullRef-specific, same retry.

@@ -420,8 +420,8 @@ const TOOLS: Tool[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        kbPath: { type: 'string', description: 'Path to the GeneXus KB folder (containing the .gxw file), e.g. C:\\KBs\\FoccoLojas_03' },
-        kbDatabase: { type: 'string', description: 'SQL Server database name, e.g. GX_KB_FoccoLojas_03' },
+        kbPath: { type: 'string', description: 'Path to the GeneXus KB folder (containing the .gxw file), e.g. C:\\KBs\\MyKnowledgeBase' },
+        kbDatabase: { type: 'string', description: 'SQL Server database name, e.g. GX_KB_MyKnowledgeBase' },
         kbServer: { type: 'string', description: 'SQL Server instance, e.g. (localdb)\\MSSQLLocalDB' },
         gx18Dir: { type: 'string', description: 'GeneXus 18 install directory, e.g. C:\\Program Files (x86)\\GeneXus\\GeneXus18U6' },
       },
@@ -705,7 +705,7 @@ const TOOLS: Tool[] = [
       properties: {
         name: { type: 'string', description: 'Object name.' },
         type: { type: 'number', description: 'EntityTypeId.' },
-        targetDb: { type: 'string', description: 'Target SQL Server database name (e.g. "GX_KB_FoccoLojas_03").' },
+        targetDb: { type: 'string', description: 'Target SQL Server database name (e.g. "GX_KB_MyKnowledgeBase").' },
         section: { type: 'string', description: 'Section to compare (default: source).' },
       },
       required: ['name', 'type', 'targetDb'],

@@ -3,11 +3,11 @@
   "capturedAt": "2026-06-25T23:02:05.635Z",
   "tool": "gx_search",
   "args": {
-    "pattern": "DsoFoccoLojas",
+    "pattern": "DsoExample",
     "limit": 10
   },
   "response": {
-    "pattern": "DsoFoccoLojas",
+    "pattern": "DsoExample",
     "matches": [],
     "total": 0
   },

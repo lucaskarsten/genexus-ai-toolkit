@@ -85,11 +85,20 @@ export const StructureResultSchema = z.object({
   attributes: z.array(AttributeInfoSchema),
 });
 
-// gx_attribute → array of AttributeInfo
-export const AttributeListSchema = z.array(AttributeInfoSchema);
+// gx_attribute → { attributes[], total }
+export const AttributeListSchema = z.object({
+  attributes: z.array(z.object({}).passthrough()),
+  total: z.number(),
+}).passthrough();
 
-// gx_where_used → array of EntityInfo
-export const WhereUsedResultSchema = z.array(EntityInfoSchema);
+// gx_where_used → same shape as gx_analyze: { name, entityTypeId, entityId, action, results[] }
+export const WhereUsedResultSchema = z.object({
+  name: z.string(),
+  entityTypeId: z.number(),
+  entityId: z.number(),
+  action: z.string(),
+  results: z.array(z.object({}).passthrough()),
+}).passthrough();
 
 // gx_analyze → AnalyzeResult
 export const AnalyzeResultSchema = z.object({
@@ -100,10 +109,13 @@ export const AnalyzeResultSchema = z.object({
   results: z.array(AnalyzeRefSchema),
 });
 
-// gx_impact → object with name + affected list
+// gx_impact → { root, entityTypeId, depth, impacted[], total }
 export const ImpactResultSchema = z.object({
-  name: z.string(),
-  affected: z.array(z.object({ name: z.string(), entityTypeId: z.number() }).passthrough()),
+  root: z.string(),
+  entityTypeId: z.number(),
+  depth: z.number(),
+  impacted: z.array(z.object({}).passthrough()),
+  total: z.number(),
 }).passthrough();
 
 // gx_history → HistoryResult
@@ -129,26 +141,39 @@ export const DiffResultSchema = z.union([
   z.object({ diff: z.string() }).passthrough(),
 ]);
 
-// gx_lint → array of findings
-export const LintResultSchema = z.array(
-  z.object({
-    name: z.string(),
-    entityTypeId: z.number(),
-    severity: z.string(),
-    message: z.string(),
-  }).passthrough(),
-);
+// gx_lint → { entityTypeId, module, findings[], total }
+export const LintResultSchema = z.object({
+  entityTypeId: z.number(),
+  module: z.string().nullable(),
+  findings: z.array(z.object({}).passthrough()),
+  total: z.number(),
+}).passthrough();
 
-// gx_dead_code → array of EntityInfo
-export const DeadCodeResultSchema = z.array(EntityInfoSchema);
+// gx_dead_code → { entityTypeId, module, candidates[] }
+export const DeadCodeResultSchema = z.object({
+  entityTypeId: z.number(),
+  module: z.string().nullable(),
+  candidates: z.array(
+    z.object({
+      name: z.string(),
+      entityId: z.number(),
+      entityTypeId: z.number(),
+    }).passthrough(),
+  ),
+}).passthrough();
 
 // gx_stats → stats object
 export const StatsResultSchema = z.object({}).passthrough();
 
-// gx_modules → array of module objects
-export const ModulesResultSchema = z.array(
-  z.object({ id: z.number().optional(), name: z.string() }).passthrough(),
-);
+// gx_modules → { modules: [{ Id, Name, ParentId }] }
+export const ModulesResultSchema = z.object({
+  modules: z.array(
+    z.object({
+      Id: z.number(),
+      Name: z.string(),
+    }).passthrough(),
+  ),
+}).passthrough();
 
 // gx_whoami → IdentityInfo
 export const WhoamiResultSchema = z.object({

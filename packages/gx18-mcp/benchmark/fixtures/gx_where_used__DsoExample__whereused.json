@@ -1,15 +1,13 @@
 {
   "fixtureVersion": 1,
-  "capturedAt": "2026-06-25T23:02:02.152Z",
-  "tool": "gx_analyze",
+  "capturedAt": "2026-06-25T23:02:01.664Z",
+  "tool": "gx_where_used",
   "args": {
-    "name": "DsoFoccoLojas",
-    "type": 161,
-    "action": "usedby",
-    "limit": 30
+    "name": "DsoExample",
+    "type": 161
   },
   "response": {
-    "name": "DsoFoccoLojas",
+    "name": "DsoExample",
     "entityTypeId": 161,
     "entityId": 9,
     "action": "usedby",

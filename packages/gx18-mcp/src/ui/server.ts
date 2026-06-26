@@ -176,7 +176,7 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
     if (method === 'POST' && pathname === '/api/chat') {
       let chatBody: unknown;
       try { chatBody = await readBody(req); } catch (e) { send(res, 400, { error: String(e) }); return; }
-      const { message, sessionId } = (chatBody ?? {}) as { message?: string; sessionId?: string | null };
+      const { message, sessionId, model, effort } = (chatBody ?? {}) as { message?: string; sessionId?: string | null; model?: string; effort?: string };
       if (!message) { send(res, 400, { error: 'message is required' }); return; }
       res.writeHead(200, {
         'content-type': 'text/event-stream; charset=utf-8',
@@ -187,7 +187,7 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
       const ac = new AbortController();
       req.on('close', () => ac.abort());
       const { streamChat } = await import('./chat');
-      await streamChat(message, sessionId ?? null, ctx.readonly, res, ac.signal, ctx.port);
+      await streamChat(message, sessionId ?? null, model, effort, ctx.readonly, res, ac.signal, ctx.port);
       res.end();
       return;
     }

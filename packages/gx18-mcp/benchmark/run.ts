@@ -89,9 +89,11 @@ export async function runBenchmark(opts: RunOptions): Promise<void> {
 
     for (let i = 0; i < opts.runs; i++) {
       try {
+        // gx_export hits the SDK and can cold-start fail; retry it. All other tools are SQL-path
+        // and respond on the first call.
         const res =
           c.tool === 'gx_export'
-            ? await client.callExport(args)
+            ? await client.callWithRetry(c.tool, args)
             : await client.call(c.tool, args);
 
         samples.push(res.latencyMs);
@@ -133,15 +135,23 @@ export async function runBenchmark(opts: RunOptions): Promise<void> {
       const errMsg = typeof lastResult.raw === 'string'
         ? lastResult.raw
         : JSON.stringify(lastResult.raw);
+
+      // Expected-error fixtures: capture stored the error response (e.g. gx_diff on a
+      // single-version object). If the live error normalizes to the same checksum as the
+      // fixture, the behaviour is stable → pass. Otherwise it's a real regression.
+      const liveErrChecksum = checksum(normalizeResponse(c.tool, lastResult.raw));
+      const isExpectedError = liveErrChecksum === fixture.checksum;
+
       const rep: CellReport = {
         fixtureKey: c.fixtureKey,
         tool: c.tool,
         objectKey: c.objectKey,
-        status: 'error',
-        error: errMsg.slice(0, 200),
+        status: isExpectedError ? 'pass' : 'error',
+        error: isExpectedError ? undefined : errMsg.slice(0, 200),
+        diffSummary: isExpectedError ? 'expected-error (stable)' : undefined,
         schemaValid: false,
         latency,
-        liveChecksum: '',
+        liveChecksum: liveErrChecksum,
         fixtureChecksum: fixture.checksum,
       };
       cellReports.push(rep);

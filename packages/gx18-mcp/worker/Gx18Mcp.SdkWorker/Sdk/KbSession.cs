@@ -40,6 +40,31 @@ namespace Gx18Mcp.SdkWorker.Sdk
             SetProp(optionsType, options, "AvoidStartupUpdate", true);
             SetProp(optionsType, options, "AvoidIndexing", true);
 
+            // ConfirmOpen: the SDK fires this callback for the "opened with a DIFFERENT GeneXus
+            // installation than last time" prompt (the worker's Artech assemblies report version
+            // 11.0.0.0; the IDE stamps 18.0.177934, so after the IDE touches the KB the versions
+            // differ and the SDK asks for confirmation). Headless there is no UI to answer it, so the
+            // waiting thread is aborted (ThreadAbortException) and Open NullRefs. We install a handler
+            // that always answers "yes, open anyway" (return true) and "don't warn again" (out=true).
+            // Signature: bool Invoke(string message, ref bool doNotWarnAgain).
+            try
+            {
+                var confirmProp = optionsType.GetProperty("ConfirmOpen");
+                if (confirmProp != null && confirmProp.CanWrite)
+                {
+                    var handlerType = confirmProp.PropertyType; // KnowledgeBase+OpenOptions+ConfirmOpenHandler
+                    var method = typeof(KbSession).GetMethod(nameof(AlwaysConfirmOpen),
+                        BindingFlags.NonPublic | BindingFlags.Static);
+                    var del = Delegate.CreateDelegate(handlerType, method);
+                    confirmProp.SetValue(options, del);
+                    Console.Error.WriteLine("[gx18-worker] ConfirmOpen handler installed (auto-yes on version-mismatch prompt).");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine("[gx18-worker] WARN: could not install ConfirmOpen handler: " + ex.Message);
+            }
+
             var openMethod = _kbType.GetMethod("Open", new[] { optionsType });
             if (openMethod == null) throw new Exception("KnowledgeBase.Open(OpenOptions) not found");
 
@@ -47,6 +72,24 @@ namespace Gx18Mcp.SdkWorker.Sdk
             // which would corrupt our newline-delimited JSON-RPC protocol.
             var savedOut = Console.Out;
             var originalDir = Directory.GetCurrentDirectory();
+            // DIAGNOSTIC: the SDK's broken headless logger masks the real Open failure as a generic
+            // NullReferenceException (then a ThreadAbort tears the call down). FirstChanceException
+            // fires on the ORIGINAL exception the instant it's thrown, before any handler swallows it.
+            // We log every first-chance exception during Open so the true root cause is visible on stderr.
+            EventHandler<System.Runtime.ExceptionServices.FirstChanceExceptionEventArgs> fce = (s, e) =>
+            {
+                try
+                {
+                    var ex = e.Exception;
+                    Console.Error.WriteLine("[gx18-worker][FCE] " + ex.GetType().FullName + ": " +
+                        (ex.Message ?? "").Replace("\r", " ").Replace("\n", " "));
+                    var st = (ex.StackTrace ?? "").Split('\n');
+                    for (int i = 0; i < st.Length && i < 6; i++)
+                        Console.Error.WriteLine("[gx18-worker][FCE]    " + st[i].TrimEnd());
+                }
+                catch { }
+            };
+            AppDomain.CurrentDomain.FirstChanceException += fce;
             try
             {
                 Console.SetOut(Console.Error);
@@ -58,8 +101,19 @@ namespace Gx18Mcp.SdkWorker.Sdk
                 Directory.SetCurrentDirectory(_kbPath);
                 _kb = openMethod.Invoke(null, new object[] { options });
             }
+            catch (Exception openEx)
+            {
+                // Unwrap TargetInvocationException so the JSON-RPC error carries the real cause,
+                // not the reflection wrapper's generic NullReference.
+                var real = (openEx is TargetInvocationException tie && tie.InnerException != null)
+                    ? tie.InnerException : openEx;
+                Console.Error.WriteLine("[gx18-worker] Open FAILED: " + real.GetType().FullName + ": " + real.Message);
+                Console.Error.WriteLine(real.StackTrace);
+                throw new Exception("KB Open failed: " + real.GetType().Name + ": " + real.Message, real);
+            }
             finally
             {
+                AppDomain.CurrentDomain.FirstChanceException -= fce;
                 Directory.SetCurrentDirectory(originalDir);
                 Console.SetOut(savedOut);
             }
@@ -94,6 +148,17 @@ namespace Gx18Mcp.SdkWorker.Sdk
         {
             var p = t.GetProperty(name);
             if (p != null && p.CanWrite) p.SetValue(obj, value);
+        }
+
+        // Matches the ConfirmOpenHandler delegate: bool Invoke(string message, ref bool doNotWarnAgain).
+        // Always answers "yes, open anyway" and "don't warn again", so a headless Open never blocks on
+        // the version-mismatch confirmation dialog.
+        private static bool AlwaysConfirmOpen(string message, ref bool doNotWarnAgain)
+        {
+            Console.Error.WriteLine("[gx18-worker] ConfirmOpen auto-yes. SDK message: " +
+                (message ?? "").Replace("\r", " ").Replace("\n", " "));
+            doNotWarnAgain = true;
+            return true;
         }
 
         /// <summary>Returns the KB's resolved current user (Id + Name). This is the author stamped on Save.</summary>

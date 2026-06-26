@@ -29,7 +29,7 @@
 ║                                                                      ║
 ║   🎉  We've reached v2.0 — GeneXus AI Toolkit is bigger than        ║
 ║       ever. 47 MCP tools, a full chat UI with Markdown and          ║
-║       image paste, XPZ round-trip for UC scripts, SQL clone         ║
+║       image paste, XPZ round-trip for UC scripts, SDK create        ║
 ║       for WBC/WBP, benchmark suite, auto-update, and much more.     ║
 ║                                                                      ║
 ║   Nara (our labrador) is here to stay. 🐕                            ║
@@ -45,13 +45,13 @@
 |---|---|
 | 🔧 **47 MCP tools** | From 19 to 47 — `gx_clone`, `gx_bulk_modify`, `gx_compare`, `gx_diff`, `gx_lint`, `gx_stats`, `gx_modules`, `gx_attribute`, `gx_dead_code`, `gx_patch_xpz`, and much more |
 | 📝 **UC scripts via XPZ** | `gx_modify script:AfterShow` and `script:<Method>` — edit UserControl scripts directly without opening the IDE |
-| 🏗️ **SQL Clone for WBC/WBP** | `gx_clone` for WebComponent and WebPanel via 100% SQL — no headless NullRef |
+| 🏗️ **SDK create/modify for WBC/WBP** | `gx_create` and `gx_modify` for WebComponent/WebPanel run through the GX18 SDK headless — events/rules/conditions are tokenized correctly on save |
 | 💬 **Full Chat UI** | Markdown rendering, image paste, animations, streaming — professional chat interface integrated with MCP |
 | 📚 **Embedded MCP Resources** | 8 technical docs available as MCP resources to any client — no file copying needed |
 | 🐕 **Nara Mascot** | Refreshed visual identity with Nara the labrador |
 | 📊 **Benchmark Suite** | 47 tools × 12 objects — measures performance and automatically detects regressions |
 | ⚡ **Worker auto-recycle** | Eliminates progressive slowdown — the C# worker recycles automatically and doesn't leak resources |
-| 🔒 **Integrity protection** | `gx_import` and `gx_modify events` blocked for WBC/WBP — prevents corruption of tokenized blobs |
+| 🔒 **Integrity protection** | Writes go through the GX18 SDK, which validates and tokenizes source — invalid code is rejected (ValidationException) instead of corrupting the KB |
 
 ---
 
@@ -205,7 +205,7 @@ The `gx18` server exposes **47 tools** to your AI client, organized into categor
 | `gx_set_property` | Changes individual properties |
 | `gx_rename` | Renames an object |
 | `gx_delete` | Removes an object from the KB |
-| `gx_clone` | Clones an object (100% SQL for WBC/WBP — no NullRef) |
+| `gx_clone` | Clones an object (WBC/WBP via the GX18 SDK — copies events/rules/layout from the source) |
 | `gx_move` | Moves an object to another module |
 | `gx_bulk_modify` | Modifies multiple objects in batch |
 | `gx_variable` | Creates/updates variables of an object |

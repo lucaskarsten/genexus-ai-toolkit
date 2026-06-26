@@ -3,13 +3,13 @@
   "capturedAt": "2026-06-25T23:02:02.572Z",
   "tool": "gx_analyze",
   "args": {
-    "name": "DsoFoccoLojas",
+    "name": "DsoExample",
     "type": 161,
     "action": "dependencies",
     "limit": 30
   },
   "response": {
-    "name": "DsoFoccoLojas",
+    "name": "DsoExample",
     "entityTypeId": 161,
     "entityId": 9,
     "action": "dependencies",

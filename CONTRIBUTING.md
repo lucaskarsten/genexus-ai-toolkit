@@ -192,6 +192,6 @@ One sentence.
 - Hardcoded database connection strings or server paths (e.g., `C:\KBs\MyClientProject`)
 - API keys, tokens, or credentials of any kind
 - Company-specific business logic or workflows
-- FoccoLojas-specific object names, KB names, or Oracle credentials (those belong in `CLAUDE.local.md` which is gitignored)
+- Client-specific object names, KB names, or Oracle credentials (those belong in `CLAUDE.local.md` which is gitignored)
 
 Keep examples and skills generic so any GeneXus developer can drop them into any project.

@@ -85,5 +85,5 @@
 ### Documentation
 
 * **gx18-mcp:** FAQ + setup improvements + bump 1.6.0 ([3cbc491](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/3cbc491916f9dd859f4bc00b4ef4ff670f5816fb))
-* reorganize toolkit — gx18-mcp as primary, separate FoccoLojas from product ([ac06a50](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/ac06a507ea82de6a87af614d0e844aaacddb6a20))
+* reorganize toolkit — gx18-mcp as primary package ([ac06a50](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/ac06a507ea82de6a87af614d0e844aaacddb6a20))
 * tool selection guide — ferramenta certa para cada tarefa ([a560c2b](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/a560c2b7925809d0ceb53b66fdf7d9098c2fb582))

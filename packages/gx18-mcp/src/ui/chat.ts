@@ -7,18 +7,22 @@ import { writeFileSync, unlinkSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import type http from 'http';
-import { loadConfig, detectChatConfig } from '../config';
+import { loadConfig, detectChatConfig, CLAUDE_MODELS, EFFORT_LEVELS } from '../config';
+
+export type ChatUsage = { inputTokens?: number; outputTokens?: number };
 
 export type ChatEvent =
   | { type: 'delta'; text: string }
   | { type: 'tool_call'; id: string; name: string; args: unknown }
   | { type: 'tool_result'; id: string; name: string; result: string; isError: boolean }
-  | { type: 'done'; fullText: string; sessionId: string | null }
+  | { type: 'done'; fullText: string; sessionId: string | null; usage?: ChatUsage; costUsd?: number; model?: string }
   | { type: 'error'; message: string };
 
 export async function streamChat(
   userMessage: string,
   sessionId: string | null,
+  model: string | undefined,
+  effort: string | undefined,
   _readonly: boolean,
   res: http.ServerResponse,
   signal?: AbortSignal,
@@ -34,8 +38,22 @@ export async function streamChat(
     '--print', userMessage,
     '--output-format', 'stream-json',
     '--verbose',
+    '--include-partial-messages',
     '--dangerously-skip-permissions',
   ];
+
+  // Model: only pass a known id (fall back to whatever the saved config has, then CLI default).
+  const wantModel = (model ?? cfg.chat?.model ?? '').trim();
+  const selectedModel = CLAUDE_MODELS.find((m) => m.id === wantModel);
+  if (selectedModel) args.push('--model', selectedModel.id);
+
+  // Effort: only when the chosen model supports it and the level is valid.
+  if (selectedModel?.supportsEffort) {
+    const wantEffort = (effort ?? cfg.chat?.effort ?? '').trim();
+    if ((EFFORT_LEVELS as readonly string[]).includes(wantEffort)) {
+      args.push('--effort', wantEffort);
+    }
+  }
 
   // nexa skills: use saved override if set, else use detected path when it exists
   const nexaDir = cfg.chat?.nexaSkillsDir !== undefined
@@ -80,6 +98,10 @@ export async function streamChat(
     let buf = '';
     let fullText = '';
     let newSessionId: string | null = sessionId;
+    let usage: ChatUsage | undefined;
+    let costUsd: number | undefined;
+    let usedModel: string | undefined = selectedModel?.id;
+    let sawPartialText = false;  // when partial streaming works, ignore the aggregated assistant block
 
     proc.stdout.on('data', (chunk: Buffer) => {
       buf += chunk.toString();
@@ -100,11 +122,29 @@ export async function streamChat(
 
         const t = ev['type'] as string | undefined;
 
-        if (t === 'assistant') {
-          // stream-json: assistant turn with content blocks
+        if (t === 'stream_event') {
+          // --include-partial-messages: real token-by-token deltas.
+          const se = ev['event'] as Record<string, unknown> | undefined;
+          const seType = se?.['type'] as string | undefined;
+          if (seType === 'content_block_delta') {
+            const delta = se?.['delta'] as Record<string, unknown> | undefined;
+            if (delta?.['type'] === 'text_delta') {
+              const text = String(delta['text'] ?? '');
+              if (text) {
+                sawPartialText = true;
+                send({ type: 'delta', text });
+                fullText += text;
+              }
+            }
+          }
+        } else if (t === 'assistant') {
+          // stream-json: assistant turn with content blocks. When partial streaming
+          // already delivered the text, skip re-emitting it (avoids duplication);
+          // still surface tool_use blocks, which partial events don't carry as text.
           const msg = ev['message'] as { content?: Array<Record<string, unknown>> } | undefined;
           for (const block of (msg?.content ?? [])) {
             if (block['type'] === 'text') {
+              if (sawPartialText) continue;
               const text = String(block['text'] ?? '');
               send({ type: 'delta', text });
               fullText += text;
@@ -130,9 +170,18 @@ export async function streamChat(
             }
           }
         } else if (t === 'result') {
-          // Final result event: contains session_id
+          // Final result event: contains session_id, usage, cost, and the model used.
           const sid = ev['session_id'];
           if (typeof sid === 'string') newSessionId = sid;
+          const u = ev['usage'] as Record<string, unknown> | undefined;
+          if (u) {
+            usage = {
+              inputTokens: typeof u['input_tokens'] === 'number' ? u['input_tokens'] as number : undefined,
+              outputTokens: typeof u['output_tokens'] === 'number' ? u['output_tokens'] as number : undefined,
+            };
+          }
+          if (typeof ev['total_cost_usd'] === 'number') costUsd = ev['total_cost_usd'] as number;
+          if (typeof ev['model'] === 'string') usedModel = ev['model'] as string;
         } else if (t === 'text') {
           // Older / simpler text event format
           const text = String(ev['text'] ?? '');
@@ -150,7 +199,7 @@ export async function streamChat(
 
     proc.on('close', () => {
       if (tempMcpConfig) { try { unlinkSync(tempMcpConfig); } catch { /* ignore */ } }
-      send({ type: 'done', fullText, sessionId: newSessionId });
+      send({ type: 'done', fullText, sessionId: newSessionId, usage, costUsd, model: usedModel });
       resolve();
     });
 

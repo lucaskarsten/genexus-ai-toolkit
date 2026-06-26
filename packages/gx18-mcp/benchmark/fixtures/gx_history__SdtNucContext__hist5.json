@@ -16,16 +16,16 @@
       {
         "versionId": "<entityVersionId>",
         "userId": 321,
-        "userName": "COMPUSOFT\\lucas.karsten",
+        "userName": "DOMAIN\\your.username",
         "timestamp": "<masked>",
         "description": "Contexto de sessao do usuario"
       },
       {
         "versionId": "<entityVersionId>",
         "userId": 321,
-        "userName": "COMPUSOFT\\lucas.karsten",
+        "userName": "DOMAIN\\your.username",
         "timestamp": "<masked>",
-        "description": "Menu lateral de navegação FoccoLOJAS"
+        "description": "Menu lateral de navegação ExampleKB"
       },
       {
         "versionId": "<entityVersionId>",

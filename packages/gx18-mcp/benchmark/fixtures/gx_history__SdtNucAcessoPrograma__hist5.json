@@ -16,21 +16,21 @@
       {
         "versionId": "<entityVersionId>",
         "userId": 321,
-        "userName": "COMPUSOFT\\lucas.karsten",
+        "userName": "DOMAIN\\your.username",
         "timestamp": "<masked>",
         "description": "Payload de acesso intencional ao programa, enviado pelo UcNucMenu via pub/sub"
       },
       {
         "versionId": "<entityVersionId>",
         "userId": 321,
-        "userName": "COMPUSOFT\\lucas.karsten",
+        "userName": "DOMAIN\\your.username",
         "timestamp": "<masked>",
         "description": "Payload de acesso intencional ao programa, enviado pelo UcNucMenu via pub/sub"
       },
       {
         "versionId": "<entityVersionId>",
         "userId": 321,
-        "userName": "COMPUSOFT\\lucas.karsten",
+        "userName": "DOMAIN\\your.username",
         "timestamp": "<masked>",
         "description": "Payload de acesso intencional ao programa, enviado pelo UcNucMenu via pub/sub"
       }

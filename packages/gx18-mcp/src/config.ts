@@ -34,7 +34,37 @@ export interface ChatConfig {
   nexaSkillsDir?: string;
   /** Additional --add-dir paths (one per entry). */
   addDirs?: string[];
+  /** Default Claude model id passed via --model. Empty = CLI default. Must be in CLAUDE_MODELS. */
+  model?: string;
+  /** Default effort level passed via --effort. Must be in EFFORT_LEVELS; ignored for models without effort support. */
+  effort?: string;
 }
+
+export interface ClaudeModel {
+  /** Model id passed to `claude --model`. */
+  id: string;
+  /** Human-readable label for the UI dropdown. */
+  label: string;
+  /** Effort level applied when none is chosen (null = model has no effort knob). */
+  effortDefault: string | null;
+  /** Whether `--effort` is accepted for this model. */
+  supportsEffort: boolean;
+}
+
+/**
+ * Single source of truth for the chat model picker. The web UI fetches this list
+ * via /api/config so the HTML never hardcodes model ids; chat.ts validates against
+ * it before passing --model. To add another LLM provider later, this is the seam.
+ */
+export const CLAUDE_MODELS: ClaudeModel[] = [
+  { id: 'claude-opus-4-8', label: 'Opus 4.8 (mais capaz)', effortDefault: 'high', supportsEffort: true },
+  { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6 (equilíbrio)', effortDefault: 'high', supportsEffort: true },
+  { id: 'claude-haiku-4-5', label: 'Haiku 4.5 (rápido)', effortDefault: null, supportsEffort: false },
+  { id: 'claude-fable-5', label: 'Fable 5 (topo)', effortDefault: 'high', supportsEffort: true },
+];
+
+/** Effort levels accepted by `claude --effort` (high is the CLI default). */
+export const EFFORT_LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
 
 export interface ChatDetection {
   claudeCliPath: string;       // resolved binary path

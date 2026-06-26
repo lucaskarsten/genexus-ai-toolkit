@@ -53,16 +53,10 @@ export async function gxCreate(args: {
     );
   }
 
-  if ((typeKey === 'webpanel' || typeKey === 'webcomponent') &&
-      (args.events !== undefined || args.rules !== undefined || args.conditions !== undefined)) {
-    throw new Error(
-      'gx_create: events, rules, and conditions cannot be set at creation time for webpanel/webcomponent. ' +
-      'The GX18 SDK cannot tokenize raw source headless — passing these sections writes a raw-text blob ' +
-      'that the IDE rejects with "src0009: Cannot deserialize tokens".\n' +
-      'Workflow: create the empty shell (no events/rules/conditions), then open in the GX18 IDE to add ' +
-      'events/rules/conditions. Use gx_modify section=layout after creation to set the layout.'
-    );
-  }
+  // NOTE: events/rules/conditions ARE supported at creation time for webpanel/webcomponent.
+  // The SDK tokenizes them on Save() headless (proven via spike — the blob becomes a valid
+  // <TokenDataList> token stream, not raw text). Invalid source surfaces as a ValidationException
+  // that does not persist. The former blanket block here was based on a false premise and is removed.
 
   const payload: Record<string, unknown> = { type: typeKey, name: args.name, module: args.module };
   const a = args as Record<string, unknown>;

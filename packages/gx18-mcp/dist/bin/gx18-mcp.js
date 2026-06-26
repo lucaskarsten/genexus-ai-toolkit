@@ -19253,7 +19253,9 @@ var init_stdio2 = __esm({
 // src/config.ts
 var config_exports = {};
 __export(config_exports, {
+  CLAUDE_MODELS: () => CLAUDE_MODELS,
   CONFIG_FILE: () => CONFIG_FILE,
+  EFFORT_LEVELS: () => EFFORT_LEVELS,
   detectChatConfig: () => detectChatConfig,
   detectEnvironment: () => detectEnvironment,
   findProjectRoot: () => findProjectRoot,
@@ -19467,7 +19469,7 @@ function detectChatConfig(saved) {
   }
   return { claudeCliPath, claudeVersion, claudeOk, projectRoot, nexaSkillsDir, nexaExists, authInfo };
 }
-var import_path, import_fs, import_os, import_child_process, DEFAULT_GX18_DIR, CONFIG_FILE, CONV_FILE;
+var import_path, import_fs, import_os, import_child_process, CLAUDE_MODELS, EFFORT_LEVELS, DEFAULT_GX18_DIR, CONFIG_FILE, CONV_FILE;
 var init_config = __esm({
   "src/config.ts"() {
     "use strict";
@@ -19475,6 +19477,13 @@ var init_config = __esm({
     import_fs = __toESM(require("fs"));
     import_os = __toESM(require("os"));
     import_child_process = require("child_process");
+    CLAUDE_MODELS = [
+      { id: "claude-opus-4-8", label: "Opus 4.8 (mais capaz)", effortDefault: "high", supportsEffort: true },
+      { id: "claude-sonnet-4-6", label: "Sonnet 4.6 (equil\xEDbrio)", effortDefault: "high", supportsEffort: true },
+      { id: "claude-haiku-4-5", label: "Haiku 4.5 (r\xE1pido)", effortDefault: null, supportsEffort: false },
+      { id: "claude-fable-5", label: "Fable 5 (topo)", effortDefault: "high", supportsEffort: true }
+    ];
+    EFFORT_LEVELS = ["low", "medium", "high", "xhigh", "max"];
     DEFAULT_GX18_DIR = "C:\\Program Files (x86)\\GeneXus\\GeneXus18U6";
     CONFIG_FILE = import_path.default.join(import_os.default.homedir(), "AppData", "Local", "gx18-mcp", "config.json");
     CONV_FILE = import_path.default.join(import_path.default.dirname(CONFIG_FILE), "conversations.json");
@@ -20102,11 +20111,6 @@ async function gxCreate(args) {
   if (!SUPPORTED_WRITE_TYPES.includes(typeKey)) {
     throw new Error(
       `Write not yet supported for type '${args.type}'. Currently supported: ${SUPPORTED_WRITE_TYPES.join(", ")}.`
-    );
-  }
-  if ((typeKey === "webpanel" || typeKey === "webcomponent") && (args.events !== void 0 || args.rules !== void 0 || args.conditions !== void 0)) {
-    throw new Error(
-      'gx_create: events, rules, and conditions cannot be set at creation time for webpanel/webcomponent. The GX18 SDK cannot tokenize raw source headless \u2014 passing these sections writes a raw-text blob that the IDE rejects with "src0009: Cannot deserialize tokens".\nWorkflow: create the empty shell (no events/rules/conditions), then open in the GX18 IDE to add events/rules/conditions. Use gx_modify section=layout after creation to set the layout.'
     );
   }
   const payload = { type: typeKey, name: args.name, module: args.module };
@@ -21572,7 +21576,7 @@ var init_quick_reference = __esm({
 var usage_guide_default;
 var init_usage_guide = __esm({
   "src/docs/usage-guide.md"() {
-    usage_guide_default = '# gx18-mcp \u2014 Usage Guide\n\nGeneXus 18 MCP server. Reads the KB via direct SQL (zero revisions created); writes via the\nnative GX18 SDK using the current Windows identity (no Team Development UserId corruption).\n\n> For setup, configuration, build instructions, and architecture details see the README and\n> the project docs at https://github.com/lucaskarsten/genexus-ai-toolkit\n\n---\n\n## Tool Overview (47 tools)\n\n### Read tools \u2014 SQL, zero revisions\n\n| Tool | Args | Returns |\n|------|------|---------|\n| `gx_find` | `pattern`, `type?`, `limit?` | Objects matching name pattern (SQL LIKE) |\n| `gx_list` | `type`, `module?`, `limit?`, `offset?` | All objects of a type, paginated |\n| `gx_get` | `name`, `type` | Object header + sub-component list |\n| `gx_read` | `name`, `type`, `section?` | Reconstructed plain-text source (GZip blob decoded) |\n| `gx_properties` | `name`, `type` | Key\u2192value property bag |\n| `gx_structure` | `name` | Transaction attribute list (name, type, length, decimals, key) |\n| `gx_attribute` | `pattern?`, `limit?` | KB attributes with type, length, decimals, domain |\n| `gx_whoami` | \u2014 | Windows user, KB UserId, kbPath, sdkReady |\n\n### Analysis tools \u2014 SQL, zero revisions\n\n| Tool | Args | Returns |\n|------|------|---------|\n| `gx_analyze` | `name`, `type`, `action` | usedby / uses / dependencies |\n| `gx_where_used` | `name`, `type`, `limit?`, `exclude?` | Objects that reference this object |\n| `gx_impact` | `name`, `type?`, `depth?` | Transitive impact graph up to N levels |\n| `gx_dead_code` | `type?`, `module?`, `limit?`, `exclude?` | Objects with no inbound references |\n| `gx_search` | `pattern`, `type?`, `section?`, `limit?`, `module?` | Text matches across KB sources |\n| `gx_lint` | `type?`, `module?`, `severity?` | Bad patterns (jQuery reflow, missing guards, etc.) |\n| `gx_diff` | `name`, `type`, `section?`, `versionA?`, `versionB?` | Source diff between revisions |\n| `gx_compare` | `name`, `type`, `targetDb`, `section?` | Source diff between two KBs |\n| `gx_stats` | `module?` | Object counts by type and module; recently modified |\n| `gx_history` | `name`, `type`, `limit?` | Revision history (author, timestamp, description) |\n\n### Write tools \u2014 GX18 SDK, author verified after every save\n\nAll write tools require `confirm: true`. Result always includes `userIdOk`, `userId`,\n`expectedUserId` \u2014 fails loudly rather than silently writing the wrong author.\n\n| Tool | Args | What it does |\n|------|------|--------------|\n| `gx_create` | `type`, `name`, sections\u2026, `confirm` | Create new object |\n| `gx_modify` | `name`, `type`, `section`, `content`, `confirm` | Replace one section of existing object |\n| `gx_set_property` | `name`, `type`, `property`, `value`, `confirm` | Set a named property (Title, IsPrivate, etc.) |\n| `gx_rename` | `name`, `type`, `newName`, `confirm` | Rename an object |\n| `gx_delete` | `name`, `type`, `dryRun?`, `confirm` | Delete object (irreversible; use dryRun first) |\n| `gx_variable` | `action`, `name`, `type`, `varName?`, `dataType?`, `confirm?` | List/add/delete variables |\n| `gx_clone` | `type`, `name`, `newName`, `module?`, `confirm` | Copy to new name |\n| `gx_bulk_modify` | `type`, `names[]`, `section`, `content`, `confirm` | Apply same section to multiple objects (continues on failure, returns `succeeded[]`/`failed[]`) |\n| `gx_move` | `name`, `type`, `targetModule`, `confirm` | Move to different module |\n| `gx_export` | `name`, `type`, `outputDir?` | Export to `.xpz` via Knowledge Manager (also validates) |\n| `gx_import` | `xpzFile`, `type`, `name`, `fullOverwrite?`, `confirm` | Import `.xpz` via Knowledge Manager native |\n\n**gx_build** always returns an error \u2014 headless compilation is not supported. Use the GX18 IDE.\n\n### XPZ archive tools \u2014 file operations, no KB connection needed\n\n| Tool | Args | What it does |\n|------|------|--------------|\n| `gx_read_xpz` | `xpzFile`, `scriptName?` | List scripts in `.xpz` or read a specific script\'s CDATA |\n| `gx_patch_xpz` | `xpzFile`, `scriptName`, `content`, `outputFile?` | Patch a script CDATA \u2192 new `.xpz` file |\n\n### Database tools \u2014 named connections\n\n| Tool | Args | Returns |\n|------|------|---------|\n| `gx_sql` | `query`, `readOnly?`, `confirm?` | SQL on the KB SQL Server database |\n| `gx_db_connections` | \u2014 | Available connections (`kb`, `oracle` if configured) |\n| `gx_db_query` | `connection`, `query`, `readOnly?`, `limit?`, `confirm?` | SQL on named connection |\n\n### Configuration & server tools\n\n| Tool | Args | What it does |\n|------|------|--------------|\n| `gx_save_config` | `kbPath?`, `kbDatabase?`, `kbServer?`, `gx18Dir?` | Update server config and restart worker |\n| `gx_doctor` | \u2014 | Health check (worker, GX18 dir, KB path, SQL) |\n| `gx_reload` | \u2014 | Restart worker, reopen KB fresh |\n| `gx_validate` | `name`, `type` | Validate object for syntax errors |\n| `gx_modules` | \u2014 | List all KB modules with hierarchy |\n\n---\n\n## EntityTypeIds\n\nUsed as the `type` parameter throughout all tools. Write tools (`gx_modify`, `gx_export`,\n`gx_import`, `gx_validate`, `gx_rename`, `gx_delete`, etc.) accept either the numeric\nEntityTypeId **or** the string name (e.g. `"procedure"`) \u2014 both are normalised server-side.\nRead tools (`gx_read`, `gx_list`, `gx_get`, etc.) require the numeric form only.\n\n| Id | Type | Id | Type |\n|----|------|----|------|\n| 34 | Procedure | 147 | UserControl |\n| 36 | SDT | 161 | DSO |\n| 39 | Transaction | 86 | API |\n| 43 | WebPanel / WebComponent | 88 | DataSelector |\n\n> `43` is the SDK value for both WebPanel and WebComponent. Raw SQL on `EntityVersion` may\n> return different numeric values depending on the KB \u2014 always use `43` for tool calls.\n\n---\n\n## Sections\n\nUsed as the `section` parameter in `gx_read` and `gx_modify`.\n\n| Section | Object types | Content |\n|---------|-------------|---------|\n| `source` | Procedure, DSO | Procedure code; DSO styles (alias) |\n| `events` | WebPanel, WebComponent, Transaction | Events code |\n| `rules` | Procedure, WebPanel, WebComponent, Transaction | Rules |\n| `conditions` | Procedure, WebPanel, WebComponent | Conditions |\n| `layout` | WebPanel, WebComponent | WebForm layout (editable text) |\n| `variables` | Any | Object variables |\n| `template` | UserControl | Screen template HTML/CSS |\n| `properties` | UserControl | Property definitions XML |\n| `script:<Name>` | UserControl (`gx_modify` only) | AfterShow or a named Method: `script:AfterShow`, `script:Tooltip` |\n| `tokens` | DSO | Design tokens |\n| `styles` | DSO | Design styles |\n| `elements` | DSO | Design elements |\n\n---\n\n## Anti-patterns \u2014 Common Wrong Paths\n\n| \u274C Wrong path | \u2705 Correct tool | Why |\n|---|---|---|\n| Reading `javaoracle/web/src/main/java/<proc>.java` | `gx_read type=34 section=source` | Java is generated and may be stale; KB source is canonical |\n| Reading `static/UserControls/<uc>render.js` | `gx_read type=147 section=source` | render.js is regenerated on every build; edits are lost |\n| SQL `SELECT \u2026 FROM EntityVersion WHERE EntityVersionName LIKE \'%X%\'` | `gx_find pattern=X` | gx_find returns formatted results with real entityTypeId |\n| SQL on `EntityVersionComposition` for TRN structure | `gx_structure name=X` | gx_structure decodes the blob and returns structured output |\n| `gx_read type=147 section=events` for UC AfterShow/Methods | `gx_export` \u2192 `gx_read_xpz` | gx_read does NOT include UC script parts; XPZ is the only READ path |\n| Manual ZIP/regex on .xpz to read scripts | `gx_read_xpz` | Handles encoding, CDATA parsing, and script listing automatically |\n| Manual ZIP/regex on .xpz to patch scripts | `gx_patch_xpz` | Bumps lastUpdate, zeroes checksum, writes correct BOM/CRLF encoding |\n| `gx_import` to edit an existing object\'s source | `gx_modify section=source confirm:true` | gx_import skips existing objects without `fullOverwrite:true` |\n| XPZ round-trip to WRITE a UC script when you already know the content | `gx_modify type=147 section="script:AfterShow" content="..." confirm:true` | Simpler direct path when you don\'t need to read-then-patch |\n| `gx_read section=properties` for property values | `gx_properties` | gx_read returns the definition XML; gx_properties returns actual values |\n| `gx_db_query connection=kb` for KB SQL queries | `gx_sql` | Same database \u2014 gx_sql is the direct, preferred path |\n| Generating to `output/` when the intent is to write to the KB | `gx_create confirm:true` | output/ is a staging area for human review; gx_create writes directly |\n| Assuming UserId is correct and writing immediately | `gx_whoami` first | Wrong author permanently corrupts Team Development history |\n| Guessing impact of a change | `gx_impact name=X depth=2` | Traverses usedby graph transitively up to N levels |\n| Calling gxnext write tools on a GX18 KB | `gx18-mcp tools or GX18 IDE` | gxnext caused 76k spurious TD revisions \u2014 irreversible without SQL recovery |\n| `gx_export name=X type=procedure` (unquoted) | `gx_export name=X type=34` or `type="procedure"` | Unquoted identifier is invalid JSON \u2014 call fails before executing. Both number and string accepted by gx_export. |\n| `gx_import` to create a brand-new object (not yet in KB) | Create in GX18 IDE first, then `gx_import` to update | gx_import creates an `EntityVersion` shell without `EntityVersionComposition` parts \u2014 subsequent `gx_modify` throws NullReference |\n\n---\n\n## Complete Workflow Examples\n\n### Read the source of any object\n```\ngx_find pattern=PrcMyProcedure       \u2192 confirms entityTypeId (34 for procedure)\ngx_read name=PrcMyProcedure type=34 section=source\n```\n\n### Create a new procedure\n```\ngx_whoami                            \u2192 verify Windows identity\ngx_find pattern=PrcFoccoMyProc      \u2192 confirm it does not exist\ngx_create type=procedure name=PrcFoccoMyProc source="msg(\\"hello\\")" confirm:true\ngx_export name=PrcFoccoMyProc type=34   \u2192 validate + backup .xpz\n```\n\n### Edit source of an existing object\n```\ngx_whoami\ngx_read name=X type=34 section=source    \u2192 read current content\ngx_modify name=X type=34 section=source content="..." confirm:true\n```\n\n### Write a UC script directly (simplest path when content is already known)\n```\ngx_whoami\ngx_modify name=UCMyControl type=147 section="script:AfterShow" content="..." confirm:true\n# Works for any named method too: section="script:Tooltip", section="script:Show", etc.\n```\n\n### Read then patch a UC script (XPZ round-trip)\nUse this when you need to read the existing script before deciding what to write.\n```\ngx_whoami\ngx_export name=UCMyControl type=147      \u2192 generates output/UCMyControl.xpz\ngx_read_xpz xpzFile=output/UCMyControl.xpz                  \u2192 list all scripts\ngx_read_xpz xpzFile=output/UCMyControl.xpz scriptName=AfterShow  \u2192 read current script\ngx_patch_xpz xpzFile=output/UCMyControl.xpz scriptName=AfterShow content="..." outputFile=output/UCMyControl_patched.xpz\ngx_import xpzFile=output/UCMyControl_patched.xpz type=usercontrol name=UCMyControl fullOverwrite:true confirm:true\ngx_export name=UCMyControl type=147      \u2192 re-export to verify the edit landed\n```\n\n> See resource `gx18://docs/xpz-workflow` for the full annotated guide, including pitfalls.\n\n### Edit DSO styles\n```\ngx_whoami\ngx_read name=DsoMyTheme type=161 section=styles    \u2192 read current styles\ngx_modify name=DsoMyTheme type=161 section=styles content="@import DsoBase;\\n.my-class { \u2026 }" confirm:true\n# \u26A0 Use the friendly @import name (e.g. @import DsoBase;)\n#   NOT the GUID form (@import @<guid>@) that appears in raw blob decodes \u2014 it causes ValidationException\n```\n\n### Analysis & Inspection\n```\n# Who calls this procedure?\ngx_where_used name=PrcVenCalcDesconto type=34\n\n# What would break if I change this UC?\ngx_impact name=UCTooltip depth=2\n\n# Are there dead procedures in the VEN module?\ngx_dead_code type=34 module=VEN\n\n# What changed in the last 2 revisions?\ngx_diff name=PrcVenCalcDesconto type=34\n\n# Are there jQuery reflow patterns in UCs?\ngx_lint type=147\n```\n\n### Query Oracle\n```\ngx_db_connections                    \u2192 confirm "oracle" is listed\ngx_db_query connection=oracle query="SELECT COUNT(*) FROM USER_TABLES"\n```\n\n### After direct SQL write to KB metadata\n```\ngx_sql query="UPDATE EntityVersion SET EntityVersionDescription=... WHERE ..." readOnly:false confirm:true\ngx_reload    \u2192 restart worker so SDK cache is cleared; worker reopens KB fresh (~30s)\n```\n\n---\n\n## Sections per Type\n\n### `gx_create` \u2014 initial content\n\n| Type | Accepted sections |\n|------|------------------|\n| `procedure` | `source`, `rules`, `conditions` |\n| `webpanel`, `webcomponent` | `events`, `rules`, `conditions`, `layout` |\n| `api` | `source` (service group), `events` |\n| `usercontrol` | `template`, `properties` |\n| `dso` | `tokens`, `styles`, `elements` |\n| `sdt`, `transaction` | `structure` (array of `{ name, type, length?, decimals?, key? }`) |\n\n### `gx_modify` \u2014 writable sections per type\n\n| Type | Writable sections | Notes |\n|------|------------------|-------|\n| `procedure` | `source`, `rules`, `conditions`, `variables` | SDK path |\n| `webpanel`, `webcomponent` | `events`, `rules`, `conditions`, `layout`, `variables` | events/rules/conditions via SQL blob; layout via SDK |\n| `usercontrol` | `template`, `properties`, `script:<Name>` | template/properties via SDK; scripts via SQL blob in-place |\n| `dso` | `tokens`, `styles`, `elements` | SDK path; use friendly `@import Name;` (not GUID form) |\n| `api` | `source`, `events` | SDK path |\n\n> `dataselector` and `transaction` are **not writable** via `gx_modify` \u2014 use the GX18 IDE.\n\n`structure` member `type` values: `Character`, `VarChar`, `LongVarChar`, `Numeric`, `Int`,\n`Date`, `DateTime`, `Boolean`, `GUID`.\n\n---\n\n## Safety Rules\n\n1. **Test writes in a KB clone, never in the live KB.**\n2. **gxnext MCP is forbidden for writes on GeneXus 18 KBs.** On 2026-06-17 it caused ~76k\n   spurious Team Development revisions, requiring 6 hours of SQL recovery.\n   Safe gxnext-only tools (no KB session opened): `export_kb_to_text`,\n   `validate_kb_text_files`, `get_kb_property`, `search_modules`.\n3. **All writes \u2192 gx18-mcp tools or the GX18 IDE. Never gxnext.**\n4. **`GX18_READONLY=1`** disables all write tools server-side (useful for read-only environments).\n5. **After direct SQL writes to KB metadata**, call `gx_reload` \u2014 the SDK worker caches the object model.\n';
+    usage_guide_default = '# gx18-mcp \u2014 Usage Guide\n\nGeneXus 18 MCP server. Reads the KB via direct SQL (zero revisions created); writes via the\nnative GX18 SDK using the current Windows identity (no Team Development UserId corruption).\n\n> For setup, configuration, build instructions, and architecture details see the README and\n> the project docs at https://github.com/lucaskarsten/genexus-ai-toolkit\n\n---\n\n## Tool Overview (47 tools)\n\n### Read tools \u2014 SQL, zero revisions\n\n| Tool | Args | Returns |\n|------|------|---------|\n| `gx_find` | `pattern`, `type?`, `limit?` | Objects matching name pattern (SQL LIKE) |\n| `gx_list` | `type`, `module?`, `limit?`, `offset?` | All objects of a type, paginated |\n| `gx_get` | `name`, `type` | Object header + sub-component list |\n| `gx_read` | `name`, `type`, `section?` | Reconstructed plain-text source (GZip blob decoded) |\n| `gx_properties` | `name`, `type` | Key\u2192value property bag |\n| `gx_structure` | `name` | Transaction attribute list (name, type, length, decimals, key) |\n| `gx_attribute` | `pattern?`, `limit?` | KB attributes with type, length, decimals, domain |\n| `gx_whoami` | \u2014 | Windows user, KB UserId, kbPath, sdkReady |\n\n### Analysis tools \u2014 SQL, zero revisions\n\n| Tool | Args | Returns |\n|------|------|---------|\n| `gx_analyze` | `name`, `type`, `action` | usedby / uses / dependencies |\n| `gx_where_used` | `name`, `type`, `limit?`, `exclude?` | Objects that reference this object |\n| `gx_impact` | `name`, `type?`, `depth?` | Transitive impact graph up to N levels |\n| `gx_dead_code` | `type?`, `module?`, `limit?`, `exclude?` | Objects with no inbound references |\n| `gx_search` | `pattern`, `type?`, `section?`, `limit?`, `module?` | Text matches across KB sources |\n| `gx_lint` | `type?`, `module?`, `severity?` | Bad patterns (jQuery reflow, missing guards, etc.) |\n| `gx_diff` | `name`, `type`, `section?`, `versionA?`, `versionB?` | Source diff between revisions |\n| `gx_compare` | `name`, `type`, `targetDb`, `section?` | Source diff between two KBs |\n| `gx_stats` | `module?` | Object counts by type and module; recently modified |\n| `gx_history` | `name`, `type`, `limit?` | Revision history (author, timestamp, description) |\n\n### Write tools \u2014 GX18 SDK, author verified after every save\n\nAll write tools require `confirm: true`. Result always includes `userIdOk`, `userId`,\n`expectedUserId` \u2014 fails loudly rather than silently writing the wrong author.\n\n| Tool | Args | What it does |\n|------|------|--------------|\n| `gx_create` | `type`, `name`, sections\u2026, `confirm` | Create new object |\n| `gx_modify` | `name`, `type`, `section`, `content`, `confirm` | Replace one section of existing object |\n| `gx_set_property` | `name`, `type`, `property`, `value`, `confirm` | Set a named property (Title, IsPrivate, etc.) |\n| `gx_rename` | `name`, `type`, `newName`, `confirm` | Rename an object |\n| `gx_delete` | `name`, `type`, `dryRun?`, `confirm` | Delete object (irreversible; use dryRun first) |\n| `gx_variable` | `action`, `name`, `type`, `varName?`, `dataType?`, `confirm?` | List/add/delete variables |\n| `gx_clone` | `type`, `name`, `newName`, `module?`, `confirm` | Copy to new name |\n| `gx_bulk_modify` | `type`, `names[]`, `section`, `content`, `confirm` | Apply same section to multiple objects (continues on failure, returns `succeeded[]`/`failed[]`) |\n| `gx_move` | `name`, `type`, `targetModule`, `confirm` | Move to different module |\n| `gx_export` | `name`, `type`, `outputDir?` | Export to `.xpz` via Knowledge Manager (also validates) |\n| `gx_import` | `xpzFile`, `type`, `name`, `fullOverwrite?`, `confirm` | Import `.xpz` via Knowledge Manager native |\n\n**gx_build** always returns an error \u2014 headless compilation is not supported. Use the GX18 IDE.\n\n### XPZ archive tools \u2014 file operations, no KB connection needed\n\n| Tool | Args | What it does |\n|------|------|--------------|\n| `gx_read_xpz` | `xpzFile`, `scriptName?` | List scripts in `.xpz` or read a specific script\'s CDATA |\n| `gx_patch_xpz` | `xpzFile`, `scriptName`, `content`, `outputFile?` | Patch a script CDATA \u2192 new `.xpz` file |\n\n### Database tools \u2014 named connections\n\n| Tool | Args | Returns |\n|------|------|---------|\n| `gx_sql` | `query`, `readOnly?`, `confirm?` | SQL on the KB SQL Server database |\n| `gx_db_connections` | \u2014 | Available connections (`kb`, `oracle` if configured) |\n| `gx_db_query` | `connection`, `query`, `readOnly?`, `limit?`, `confirm?` | SQL on named connection |\n\n### Configuration & server tools\n\n| Tool | Args | What it does |\n|------|------|--------------|\n| `gx_save_config` | `kbPath?`, `kbDatabase?`, `kbServer?`, `gx18Dir?` | Update server config and restart worker |\n| `gx_doctor` | \u2014 | Health check (worker, GX18 dir, KB path, SQL) |\n| `gx_reload` | \u2014 | Restart worker, reopen KB fresh |\n| `gx_validate` | `name`, `type` | Validate object for syntax errors |\n| `gx_modules` | \u2014 | List all KB modules with hierarchy |\n\n---\n\n## EntityTypeIds\n\nUsed as the `type` parameter throughout all tools. Write tools (`gx_modify`, `gx_export`,\n`gx_import`, `gx_validate`, `gx_rename`, `gx_delete`, etc.) accept either the numeric\nEntityTypeId **or** the string name (e.g. `"procedure"`) \u2014 both are normalised server-side.\nRead tools (`gx_read`, `gx_list`, `gx_get`, etc.) require the numeric form only.\n\n| Id | Type | Id | Type |\n|----|------|----|------|\n| 34 | Procedure | 147 | UserControl |\n| 36 | SDT | 161 | DSO |\n| 39 | Transaction | 86 | API |\n| 43 | WebPanel / WebComponent | 88 | DataSelector |\n\n> `43` is the SDK value for both WebPanel and WebComponent. Raw SQL on `EntityVersion` may\n> return different numeric values depending on the KB \u2014 always use `43` for tool calls.\n\n---\n\n## Sections\n\nUsed as the `section` parameter in `gx_read` and `gx_modify`.\n\n| Section | Object types | Content |\n|---------|-------------|---------|\n| `source` | Procedure, DSO | Procedure code; DSO styles (alias) |\n| `events` | WebPanel, WebComponent, Transaction | Events code |\n| `rules` | Procedure, WebPanel, WebComponent, Transaction | Rules |\n| `conditions` | Procedure, WebPanel, WebComponent | Conditions |\n| `layout` | WebPanel, WebComponent | WebForm layout (editable text) |\n| `variables` | Any | Object variables |\n| `template` | UserControl | Screen template HTML/CSS |\n| `properties` | UserControl | Property definitions XML |\n| `script:<Name>` | UserControl (`gx_modify` only) | AfterShow or a named Method: `script:AfterShow`, `script:Tooltip` |\n| `tokens` | DSO | Design tokens |\n| `styles` | DSO | Design styles |\n| `elements` | DSO | Design elements |\n\n---\n\n## Anti-patterns \u2014 Common Wrong Paths\n\n| \u274C Wrong path | \u2705 Correct tool | Why |\n|---|---|---|\n| Reading `javaoracle/web/src/main/java/<proc>.java` | `gx_read type=34 section=source` | Java is generated and may be stale; KB source is canonical |\n| Reading `static/UserControls/<uc>render.js` | `gx_read type=147 section=source` | render.js is regenerated on every build; edits are lost |\n| SQL `SELECT \u2026 FROM EntityVersion WHERE EntityVersionName LIKE \'%X%\'` | `gx_find pattern=X` | gx_find returns formatted results with real entityTypeId |\n| SQL on `EntityVersionComposition` for TRN structure | `gx_structure name=X` | gx_structure decodes the blob and returns structured output |\n| `gx_read type=147 section=events` for UC AfterShow/Methods | `gx_export` \u2192 `gx_read_xpz` | gx_read does NOT include UC script parts; XPZ is the only READ path |\n| Manual ZIP/regex on .xpz to read scripts | `gx_read_xpz` | Handles encoding, CDATA parsing, and script listing automatically |\n| Manual ZIP/regex on .xpz to patch scripts | `gx_patch_xpz` | Bumps lastUpdate, zeroes checksum, writes correct BOM/CRLF encoding |\n| `gx_import` to edit an existing object\'s source | `gx_modify section=source confirm:true` | gx_import skips existing objects without `fullOverwrite:true` |\n| XPZ round-trip to WRITE a UC script when you already know the content | `gx_modify type=147 section="script:AfterShow" content="..." confirm:true` | Simpler direct path when you don\'t need to read-then-patch |\n| `gx_read section=properties` for property values | `gx_properties` | gx_read returns the definition XML; gx_properties returns actual values |\n| `gx_db_query connection=kb` for KB SQL queries | `gx_sql` | Same database \u2014 gx_sql is the direct, preferred path |\n| Generating to `output/` when the intent is to write to the KB | `gx_create confirm:true` | output/ is a staging area for human review; gx_create writes directly |\n| Assuming UserId is correct and writing immediately | `gx_whoami` first | Wrong author permanently corrupts Team Development history |\n| Guessing impact of a change | `gx_impact name=X depth=2` | Traverses usedby graph transitively up to N levels |\n| Calling gxnext write tools on a GX18 KB | `gx18-mcp tools or GX18 IDE` | gxnext caused 76k spurious TD revisions \u2014 irreversible without SQL recovery |\n| `gx_export name=X type=procedure` (unquoted) | `gx_export name=X type=34` or `type="procedure"` | Unquoted identifier is invalid JSON \u2014 call fails before executing. Both number and string accepted by gx_export. |\n| `gx_import` to create a brand-new object (not yet in KB) | Create in GX18 IDE first, then `gx_import` to update | gx_import creates an `EntityVersion` shell without `EntityVersionComposition` parts \u2014 subsequent `gx_modify` throws NullReference |\n\n---\n\n## Complete Workflow Examples\n\n### Read the source of any object\n```\ngx_find pattern=PrcMyProcedure       \u2192 confirms entityTypeId (34 for procedure)\ngx_read name=PrcMyProcedure type=34 section=source\n```\n\n### Create a new procedure\n```\ngx_whoami                            \u2192 verify Windows identity\ngx_find pattern=PrcFoccoMyProc      \u2192 confirm it does not exist\ngx_create type=procedure name=PrcFoccoMyProc source="msg(\\"hello\\")" confirm:true\ngx_export name=PrcFoccoMyProc type=34   \u2192 validate + backup .xpz\n```\n\n### Edit source of an existing object\n```\ngx_whoami\ngx_read name=X type=34 section=source    \u2192 read current content\ngx_modify name=X type=34 section=source content="..." confirm:true\n```\n\n### Write a UC script directly (simplest path when content is already known)\n```\ngx_whoami\ngx_modify name=UCMyControl type=147 section="script:AfterShow" content="..." confirm:true\n# Works for any named method too: section="script:Tooltip", section="script:Show", etc.\n```\n\n### Read then patch a UC script (XPZ round-trip)\nUse this when you need to read the existing script before deciding what to write.\n```\ngx_whoami\ngx_export name=UCMyControl type=147      \u2192 generates output/UCMyControl.xpz\ngx_read_xpz xpzFile=output/UCMyControl.xpz                  \u2192 list all scripts\ngx_read_xpz xpzFile=output/UCMyControl.xpz scriptName=AfterShow  \u2192 read current script\ngx_patch_xpz xpzFile=output/UCMyControl.xpz scriptName=AfterShow content="..." outputFile=output/UCMyControl_patched.xpz\ngx_import xpzFile=output/UCMyControl_patched.xpz type=usercontrol name=UCMyControl fullOverwrite:true confirm:true\ngx_export name=UCMyControl type=147      \u2192 re-export to verify the edit landed\n```\n\n> See resource `gx18://docs/xpz-workflow` for the full annotated guide, including pitfalls.\n\n### Edit DSO styles\n```\ngx_whoami\ngx_read name=DsoMyTheme type=161 section=styles    \u2192 read current styles\ngx_modify name=DsoMyTheme type=161 section=styles content="@import DsoBase;\\n.my-class { \u2026 }" confirm:true\n# \u26A0 Use the friendly @import name (e.g. @import DsoBase;)\n#   NOT the GUID form (@import @<guid>@) that appears in raw blob decodes \u2014 it causes ValidationException\n```\n\n### Analysis & Inspection\n```\n# Who calls this procedure?\ngx_where_used name=PrcVenCalcDesconto type=34\n\n# What would break if I change this UC?\ngx_impact name=UCTooltip depth=2\n\n# Are there dead procedures in the VEN module?\ngx_dead_code type=34 module=VEN\n\n# What changed in the last 2 revisions?\ngx_diff name=PrcVenCalcDesconto type=34\n\n# Are there jQuery reflow patterns in UCs?\ngx_lint type=147\n```\n\n### Query Oracle\n```\ngx_db_connections                    \u2192 confirm "oracle" is listed\ngx_db_query connection=oracle query="SELECT COUNT(*) FROM USER_TABLES"\n```\n\n### After direct SQL write to KB metadata\n```\ngx_sql query="UPDATE EntityVersion SET EntityVersionDescription=... WHERE ..." readOnly:false confirm:true\ngx_reload    \u2192 restart worker so SDK cache is cleared; worker reopens KB fresh (~30s)\n```\n\n---\n\n## Sections per Type\n\n### `gx_create` \u2014 initial content\n\n| Type | Accepted sections |\n|------|------------------|\n| `procedure` | `source`, `rules`, `conditions` |\n| `webpanel`, `webcomponent` | `events`, `rules`, `conditions`, `layout` |\n| `api` | `source` (service group), `events` |\n| `usercontrol` | `template`, `properties` |\n| `dso` | `tokens`, `styles`, `elements` |\n| `sdt`, `transaction` | `structure` (array of `{ name, type, length?, decimals?, key? }`) |\n\n### `gx_modify` \u2014 writable sections per type\n\n| Type | Writable sections | Notes |\n|------|------------------|-------|\n| `procedure` | `source`, `rules`, `conditions`, `variables` | SDK path |\n| `webpanel`, `webcomponent` | `events`, `rules`, `conditions`, `layout`, `variables` | all via the SDK \u2014 events/rules/conditions are tokenized on Save (invalid source \u2192 ValidationException, no change). layout via SDK |\n| `usercontrol` | `template`, `properties`, `script:<Name>` | template/properties via SDK; scripts via SQL blob in-place |\n| `dso` | `tokens`, `styles`, `elements` | SDK path; use friendly `@import Name;` (not GUID form) |\n| `api` | `source`, `events` | SDK path |\n\n> `dataselector` and `transaction` are **not writable** via `gx_modify` \u2014 use the GX18 IDE.\n\n`structure` member `type` values: `Character`, `VarChar`, `LongVarChar`, `Numeric`, `Int`,\n`Date`, `DateTime`, `Boolean`, `GUID`.\n\n---\n\n## Safety Rules\n\n1. **Test writes in a KB clone, never in the live KB.**\n2. **gxnext MCP is forbidden for writes on GeneXus 18 KBs.** On 2026-06-17 it caused ~76k\n   spurious Team Development revisions, requiring 6 hours of SQL recovery.\n   Safe gxnext-only tools (no KB session opened): `export_kb_to_text`,\n   `validate_kb_text_files`, `get_kb_property`, `search_modules`.\n3. **All writes \u2192 gx18-mcp tools or the GX18 IDE. Never gxnext.**\n4. **`GX18_READONLY=1`** disables all write tools server-side (useful for read-only environments).\n5. **After direct SQL writes to KB metadata**, call `gx_reload` \u2014 the SDK worker caches the object model.\n';
   }
 });
 
@@ -52360,6 +52364,9 @@ async function handleApi(ctx, method, pathname, body) {
       body: {
         version: pkg2.version,
         config: maskedConfig(loadConfig()),
+        chat: { model: loadConfig().chat?.model ?? "", effort: loadConfig().chat?.effort ?? "" },
+        models: CLAUDE_MODELS,
+        effortLevels: EFFORT_LEVELS,
         readonly: ctx.readonly,
         workerExists: workerExists(),
         clients: CLIENTS.map((c) => {
@@ -52694,6 +52701,22 @@ pre.out.err{border-color:var(--fail);color:#ffb4ae;}
                       white-space:pre-wrap;word-break:break-all;max-height:200px;overflow-y:auto;
                       color:var(--muted);font-size:11px;}
 .chat-tool .tool-body.err{color:#ffb4ae;}
+.chat-toolbar{display:flex;gap:14px;align-items:center;margin-bottom:8px;flex-wrap:wrap;}
+.chat-toolbar label{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);}
+.chat-toolbar select{background:#0e1014;color:var(--fg);border:1px solid var(--line);
+                     border-radius:6px;padding:4px 6px;font:12px var(--font);outline:none;cursor:pointer;}
+.chat-toolbar select:focus{border-color:var(--accent);}
+.chat-toolbar select:disabled{opacity:.45;cursor:not-allowed;}
+.chat-slash{position:absolute;bottom:100%;left:0;margin-bottom:6px;background:var(--panel);
+            border:1px solid var(--line);border-radius:8px;padding:6px;min-width:280px;z-index:20;
+            box-shadow:0 4px 16px rgba(0,0,0,.4);font-size:12px;}
+.chat-slash .slash-item{padding:5px 8px;border-radius:5px;cursor:pointer;display:flex;gap:8px;}
+.chat-slash .slash-item:hover,.chat-slash .slash-item.sel{background:#1a2040;}
+.chat-slash .slash-cmd{color:var(--accent);font-family:var(--mono);}
+.chat-slash .slash-desc{color:var(--muted);}
+.chat-usage{font-size:10px;color:var(--muted);margin-top:6px;font-family:var(--mono);}
+.chat-sysmsg{align-self:center;font-size:11px;color:var(--muted);font-style:italic;
+             background:#161a26;border:1px solid var(--line);border-radius:7px;padding:5px 12px;max-width:90%;}
 .chat-input-row{display:flex;gap:8px;align-items:flex-end;}
 .chat-input{flex:1;background:#0e1014;color:var(--fg);border:1px solid var(--line);
             border-radius:8px;padding:10px 12px;font:13px/1.5 var(--font);
@@ -52965,15 +52988,25 @@ pre.out.err{border-color:var(--fail);color:#ffb4ae;}
             <span id="chat-img-label"></span>
             <button onclick="clearChatImage()" style="margin-left:8px;background:none;border:none;color:var(--fail);cursor:pointer;font-size:12px">&#10005; remover</button>
           </div>
-          <div class="chat-input-row">
+          <div class="chat-toolbar">
+            <label>Model
+              <select id="chat-model" onchange="onModelChange()"></select>
+            </label>
+            <label>Effort
+              <select id="chat-effort" onchange="onEffortChange()"></select>
+            </label>
+            <span id="chat-conv-usage" class="muted" style="margin-left:auto;font-size:11px"></span>
+          </div>
+          <div class="chat-input-row" style="position:relative">
+            <div id="chat-slash" class="chat-slash" style="display:none"></div>
             <textarea id="chat-in" class="chat-input" rows="2"
-              placeholder="Ask anything about the GeneXus KB&#10;e.g. What web panels exist in the VEN module?&#10;Ctrl+V to paste a screenshot"
-              onkeydown="chatKey(event)" onpaste="chatPaste(event)"></textarea>
+              placeholder="Ask anything about the GeneXus KB&#10;e.g. What web panels exist in the VEN module?&#10;/help for commands &#183; Ctrl+V to paste a screenshot"
+              onkeydown="chatKey(event)" oninput="chatSlashHint()" onpaste="chatPaste(event)"></textarea>
             <button class="act" id="chat-send" onclick="chatSend()">Send</button>
             <button class="act sec" id="chat-cancel" onclick="chatCancel()" style="display:none">Cancel</button>
           </div>
           <p class="muted" style="font-size:11px;margin-top:6px">
-            Shift+Enter = new line &nbsp;&#183;&nbsp; Enter = send &nbsp;&#183;&nbsp; Ctrl+V = colar imagem &nbsp;&#183;&nbsp; uses local <code>claude</code> CLI
+            Shift+Enter = new line &nbsp;&#183;&nbsp; Enter = send &nbsp;&#183;&nbsp; / = comandos &nbsp;&#183;&nbsp; Ctrl+V = colar imagem &nbsp;&#183;&nbsp; uses local <code>claude</code> CLI
           </p>
         </div>
       </section>
@@ -53049,6 +53082,7 @@ function bootApp() {
       setVal('chatNexaDir', c.chat.nexaSkillsDir||'');
       setVal('chatAddDirs', (c.chat.addDirs||[]).join('\\n'));
     }
+    initChatPickers(r.body.models||[], r.body.effortLevels||[], (r.body.chat||{}));
     var b = el('cfg-banners'); b.innerHTML = '';
     if (!r.body.workerExists) b.innerHTML += '<div class="banner fail">Worker not built. Run <b>npm run build:worker</b>.</div>';
     if (READONLY)             b.innerHTML += '<div class="banner warn">Read-only mode (GX18_READONLY): write tools are hidden.</div>';
@@ -53465,6 +53499,136 @@ var _chatSessionId = null;
 var _chatBusy = false;
 var _chatAbort = null;
 
+// \u2500\u2500 Model / effort pickers \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+var _models = [];          // [{id,label,effortDefault,supportsEffort}]
+var _effortLevels = [];
+var _chatModel = '';       // active model id
+var _chatEffort = '';      // active effort level
+
+function modelById(id){ for (var i=0;i<_models.length;i++){ if(_models[i].id===id) return _models[i]; } return null; }
+
+function initChatPickers(models, efforts, chatCfg){
+  _models = models || [];
+  _effortLevels = efforts || [];
+  var msel = el('chat-model'); var esel = el('chat-effort');
+  if (!msel || !esel) return;
+  msel.innerHTML = _models.map(function(m){ return '<option value="'+m.id+'">'+escHtml(m.label)+'</option>'; }).join('');
+  esel.innerHTML = _effortLevels.map(function(lv){ return '<option value="'+lv+'">'+lv+'</option>'; }).join('');
+  // Default from saved config, else first model.
+  _chatModel = (chatCfg && chatCfg.model) || (_models[0] ? _models[0].id : '');
+  var m = modelById(_chatModel) || _models[0];
+  if (m) { _chatModel = m.id; msel.value = m.id; }
+  _chatEffort = (chatCfg && chatCfg.effort) || (m && m.effortDefault) || 'high';
+  esel.value = _chatEffort;
+  syncEffortEnabled();
+}
+
+function syncEffortEnabled(){
+  var m = modelById(_chatModel); var esel = el('chat-effort');
+  if (!esel) return;
+  esel.disabled = !(m && m.supportsEffort);
+}
+
+function onModelChange(){
+  _chatModel = el('chat-model').value;
+  var m = modelById(_chatModel);
+  // adopt the model's default effort when switching
+  if (m && m.supportsEffort && m.effortDefault){ _chatEffort = m.effortDefault; el('chat-effort').value = _chatEffort; }
+  syncEffortEnabled();
+  persistChatDefaults();
+  // remember per-conversation
+  var conv = currentConv(); if (conv){ conv.model = _chatModel; conv.effort = _chatEffort; saveConvs(); }
+}
+function onEffortChange(){
+  _chatEffort = el('chat-effort').value;
+  persistChatDefaults();
+  var conv = currentConv(); if (conv){ conv.effort = _chatEffort; saveConvs(); }
+}
+function persistChatDefaults(){
+  api('POST','/api/config', { chat: { model: _chatModel, effort: _chatEffort } });
+}
+
+// Restore a conversation's saved model/effort into the pickers (called from selectConv).
+function applyConvPickers(conv){
+  if (conv && conv.model && modelById(conv.model)){ _chatModel = conv.model; }
+  if (conv && conv.effort){ _chatEffort = conv.effort; }
+  var msel = el('chat-model'); var esel = el('chat-effort');
+  if (msel) msel.value = _chatModel;
+  var m = modelById(_chatModel);
+  if (esel) esel.value = (m && m.supportsEffort) ? _chatEffort : (esel.value||'');
+  syncEffortEnabled();
+}
+
+// \u2500\u2500 Slash commands \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+var SLASH_CMDS = [
+  { cmd: '/help',   desc: 'lista os comandos dispon\xEDveis' },
+  { cmd: '/clear',  desc: 'limpa as mensagens da conversa' },
+  { cmd: '/new',    desc: 'inicia uma nova conversa' },
+  { cmd: '/model',  desc: 'troca o modelo (ex: /model haiku)' },
+  { cmd: '/effort', desc: 'troca o effort (ex: /effort xhigh)' }
+];
+function chatSlashHint(){
+  var box = el('chat-slash'); var v = (el('chat-in').value||'');
+  if (v.charAt(0) !== '/' || v.indexOf('\\n') >= 0){ box.style.display='none'; return; }
+  var typed = v.toLowerCase();
+  var hits = SLASH_CMDS.filter(function(c){ return c.cmd.indexOf(typed.split(' ')[0]) === 0; });
+  if (!hits.length){ box.style.display='none'; return; }
+  box.innerHTML = hits.map(function(c){
+    return '<div class="slash-item" onclick="pickSlash(\\''+c.cmd+'\\')"><span class="slash-cmd">'+c.cmd+'</span><span class="slash-desc">'+c.desc+'</span></div>';
+  }).join('');
+  box.style.display='block';
+}
+function pickSlash(cmd){
+  el('chat-in').value = cmd + ' ';
+  el('chat-slash').style.display='none';
+  el('chat-in').focus();
+}
+function chatSysMsg(text){
+  showMsgs();
+  var d = document.createElement('div');
+  d.className = 'chat-sysmsg';
+  d.textContent = text;
+  el('chat-msgs').appendChild(d);
+  chatScrollBottom();
+}
+// Returns true if the input was a locally-handled command (don't send to Claude).
+function handleSlash(text){
+  if (text.charAt(0) !== '/') return false;
+  var parts = text.slice(1).split(/\\s+/);
+  var cmd = (parts[0]||'').toLowerCase();
+  var arg = parts.slice(1).join(' ').trim();
+  if (cmd === 'help'){
+    chatSysMsg('Comandos: ' + SLASH_CMDS.map(function(c){return c.cmd;}).join(', ') + '. Qualquer outro /comando \xE9 repassado ao Claude.');
+    return true;
+  }
+  if (cmd === 'clear'){
+    var conv = currentConv(); if (conv){ conv.msgs = []; saveConvs(); }
+    el('chat-msgs').innerHTML=''; _chatSessionId = conv ? null : _chatSessionId;
+    chatSysMsg('Conversa limpa.');
+    return true;
+  }
+  if (cmd === 'new'){ newConv(); return true; }
+  if (cmd === 'model'){
+    if (!arg){ chatSysMsg('Modelo atual: '+_chatModel+'. Op\xE7\xF5es: '+_models.map(function(m){return m.id;}).join(', ')); return true; }
+    var found = modelById(arg) || _models.filter(function(m){ return m.id.indexOf(arg.toLowerCase()) >= 0 || m.label.toLowerCase().indexOf(arg.toLowerCase()) >= 0; })[0];
+    if (!found){ chatSysMsg('Modelo n\xE3o encontrado: '+arg); return true; }
+    _chatModel = found.id; el('chat-model').value = found.id;
+    if (found.supportsEffort && found.effortDefault){ _chatEffort = found.effortDefault; el('chat-effort').value=_chatEffort; }
+    syncEffortEnabled(); persistChatDefaults();
+    chatSysMsg('Modelo \u2192 '+found.label);
+    return true;
+  }
+  if (cmd === 'effort'){
+    var m = modelById(_chatModel);
+    if (!m || !m.supportsEffort){ chatSysMsg(_chatModel+' n\xE3o suporta effort.'); return true; }
+    if (_effortLevels.indexOf(arg) < 0){ chatSysMsg('Effort inv\xE1lido. Op\xE7\xF5es: '+_effortLevels.join(', ')); return true; }
+    _chatEffort = arg; el('chat-effort').value = arg; persistChatDefaults();
+    chatSysMsg('Effort \u2192 '+arg);
+    return true;
+  }
+  return false; // unknown /command \u2192 forward to Claude CLI
+}
+
 var CONV_KEY = 'gx18_convs';
 function loadConvs() {
   try { _convs = JSON.parse(localStorage.getItem(CONV_KEY) || '[]'); } catch(e) { _convs = []; }
@@ -53510,15 +53674,43 @@ function newConv() {
   if (_chatBusy) return;
   _convId = null;
   _chatSessionId = null;
+  renderConvUsage(null);
   showEmpty();
   el('chat-in').focus();
   renderConvList();
+}
+function renderConvUsage(conv){
+  var box = el('chat-conv-usage'); if (!box) return;
+  var t = conv && conv.usageTotal;
+  if (t && (t.costUsd || t.inputTokens || t.outputTokens)){
+    box.textContent = 'conversa: \u2191'+(t.inputTokens||0)+' \u2193'+(t.outputTokens||0)+' tok \xB7 $'+(t.costUsd||0).toFixed(4);
+  } else { box.textContent = ''; }
+}
+function buildUsageBadge(usage, costUsd, model){
+  if (!usage && costUsd == null && !model) return null;
+  var d = document.createElement('div');
+  d.className = 'chat-usage';
+  var bits = [];
+  if (usage){ bits.push('\u2191'+(usage.inputTokens||0)+' \u2193'+(usage.outputTokens||0)+' tok'); }
+  if (costUsd != null){ bits.push('$'+Number(costUsd).toFixed(4)); }
+  if (model){ bits.push(model); }
+  d.textContent = bits.join(' \xB7 ');
+  return d;
+}
+function accumulateUsage(conv, usage, costUsd){
+  if (!conv) return;
+  var t = conv.usageTotal || { inputTokens:0, outputTokens:0, costUsd:0 };
+  if (usage){ t.inputTokens += (usage.inputTokens||0); t.outputTokens += (usage.outputTokens||0); }
+  if (costUsd != null){ t.costUsd += Number(costUsd); }
+  conv.usageTotal = t;
 }
 function switchConv(id) {
   if (_chatBusy) return;
   _convId = id;
   var conv = currentConv();
   _chatSessionId = conv ? (conv.sessionId || null) : null;
+  applyConvPickers(conv);
+  renderConvUsage(conv);
   showMsgs();
   el('chat-msgs').innerHTML = '';
   if (conv && (conv.msgs||[]).length) {
@@ -53567,6 +53759,10 @@ function renderStoredMsg(m) {
       div.parentNode.insertBefore(det, div.nextSibling);
     });
   }
+  if (m.role === 'assistant' && (m.usage || m.costUsd != null || m.model)) {
+    var badge = buildUsageBadge(m.usage, m.costUsd, m.model);
+    if (badge) div.appendChild(badge);
+  }
 }
 
 // \u2500\u2500 Chat \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -53609,6 +53805,9 @@ function chatSend() {
   if (_chatBusy) return;
   var text = (el('chat-in').value||'').trim();
   if (!text && !_pendingImagePath) return;
+  el('chat-slash').style.display = 'none';
+  // Local slash commands are handled in-UI and never reach Claude.
+  if (text && !_pendingImagePath && handleSlash(text)) { el('chat-in').value=''; return; }
   // Append image reference so Claude can Read() it
   if (_pendingImagePath) {
     text = (text ? text + '\\n\\n' : '') + '[Imagem anexada: ' + _pendingImagePath + ']';
@@ -53624,7 +53823,7 @@ function chatSend() {
   if (!_convId) {
     _convId = 'conv-' + Date.now();
     var ts = Date.now();
-    _convs.push({ id: _convId, title: text.slice(0,60), sessionId: null, msgs: [], createdAt: ts, updatedAt: ts });
+    _convs.push({ id: _convId, title: text.slice(0,60), sessionId: null, msgs: [], createdAt: ts, updatedAt: ts, model: _chatModel, effort: _chatEffort });
     saveConvs();
   }
   var _pendingTools = [];  // tool calls accumulating during this turn
@@ -53646,7 +53845,7 @@ function chatSend() {
     method: 'POST',
     signal: _chatAbort ? _chatAbort.signal : undefined,
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ message: text, sessionId: _chatSessionId })
+    body: JSON.stringify({ message: text, sessionId: _chatSessionId, model: _chatModel, effort: _chatEffort })
   }).then(function(resp) {
     if (!resp.ok) {
       return resp.json().then(function(j) {
@@ -53674,8 +53873,12 @@ function chatSend() {
           var ev;
           try { ev = JSON.parse(line); } catch(e) { return; }
           if (ev.type === 'delta') {
+            // First token: drop the "Thinking\u2026" placeholder and switch to live text.
+            if (firstChunk) { aDiv.classList.remove('thinking'); aDiv.textContent = ''; firstChunk = false; }
             fullText += ev.text;
-            chatStatus('thinking', 'Claude est\xE1 pensando\u2026');
+            aDiv.textContent = fullText;   // incremental plain-text; markdown rendered on done
+            chatScrollBottom();
+            chatStatus('thinking', 'Claude est\xE1 respondendo\u2026');
           } else if (ev.type === 'tool_call') {
             typingStop(aDiv);
             var label = toolLabel(ev.name, ev.args || {});
@@ -53710,7 +53913,9 @@ function chatSend() {
             typingStop(aDiv);
             chatStatus('done', 'Pronto');
             aDiv.classList.remove('thinking');
-            aDiv.innerHTML = renderMarkdown(ev.fullText || '(no response)');
+            aDiv.innerHTML = renderMarkdown(ev.fullText || fullText || '(no response)');
+            var usageBadge = buildUsageBadge(ev.usage, ev.costUsd, ev.model);
+            if (usageBadge) aDiv.appendChild(usageBadge);
             if (ev.sessionId) _chatSessionId = ev.sessionId;
             // Persist this turn to the conversation
             var conv = currentConv();
@@ -53719,7 +53924,9 @@ function chatSend() {
               conv.updatedAt = Date.now();
               conv.msgs = conv.msgs || [];
               conv.msgs.push({ role: 'user', content: text });
-              conv.msgs.push({ role: 'assistant', content: ev.fullText||'', tools: _pendingTools.slice() });
+              conv.msgs.push({ role: 'assistant', content: ev.fullText||fullText||'', tools: _pendingTools.slice(), usage: ev.usage, costUsd: ev.costUsd, model: ev.model });
+              accumulateUsage(conv, ev.usage, ev.costUsd);
+              renderConvUsage(conv);
               saveConvs();
               renderConvList();
             }
@@ -53759,7 +53966,7 @@ function renderMarkdown(text) {
   s = s.replace(/[*][*]([^*\\n]+)[*][*]/g, '<strong>$1</strong>');
   // Italic
   s = s.replace(/[*]([^*\\n]+)[*]/g, '<em>$1</em>');
-  s = s.replace(/_([^_\\n]+)_/g, '<em>$1</em>');
+  s = s.replace(/(^|[^\\w])_([^_\\n]+)_(?![\\w])/g, '$1<em>$2</em>');
   // Headers \u2014 # replaced with [#] to be safe
   s = s.replace(/^[#][#][#] (.+)$/gm, '<h5>$1</h5>');
   s = s.replace(/^[#][#] (.+)$/gm, '<h4>$1</h4>');
@@ -54043,7 +54250,7 @@ var chat_exports = {};
 __export(chat_exports, {
   streamChat: () => streamChat
 });
-async function streamChat(userMessage, sessionId, _readonly, res, signal, serverPort) {
+async function streamChat(userMessage, sessionId, model, effort, _readonly, res, signal, serverPort) {
   const cfg = loadConfig();
   const detected = detectChatConfig(cfg.chat);
   const claudeBin = cfg.chat?.claudeCliPath?.trim() || detected.claudeCliPath;
@@ -54054,8 +54261,19 @@ async function streamChat(userMessage, sessionId, _readonly, res, signal, server
     "--output-format",
     "stream-json",
     "--verbose",
+    "--include-partial-messages",
     "--dangerously-skip-permissions"
   ];
+  const wantModel = (model ?? cfg.chat?.model ?? "").trim();
+  const selectedModel = CLAUDE_MODELS.find((m) => m.id === wantModel);
+  if (selectedModel)
+    args.push("--model", selectedModel.id);
+  if (selectedModel?.supportsEffort) {
+    const wantEffort = (effort ?? cfg.chat?.effort ?? "").trim();
+    if (EFFORT_LEVELS.includes(wantEffort)) {
+      args.push("--effort", wantEffort);
+    }
+  }
   const nexaDir = cfg.chat?.nexaSkillsDir !== void 0 ? cfg.chat.nexaSkillsDir : detected.nexaExists ? detected.nexaSkillsDir : "";
   if (nexaDir)
     args.push("--add-dir", nexaDir);
@@ -54105,6 +54323,10 @@ async function streamChat(userMessage, sessionId, _readonly, res, signal, server
     let buf = "";
     let fullText = "";
     let newSessionId = sessionId;
+    let usage;
+    let costUsd;
+    let usedModel = selectedModel?.id;
+    let sawPartialText = false;
     proc.stdout.on("data", (chunk) => {
       buf += chunk.toString();
       const lines = buf.split("\n");
@@ -54122,10 +54344,26 @@ async function streamChat(userMessage, sessionId, _readonly, res, signal, server
           continue;
         }
         const t = ev["type"];
-        if (t === "assistant") {
+        if (t === "stream_event") {
+          const se = ev["event"];
+          const seType = se?.["type"];
+          if (seType === "content_block_delta") {
+            const delta = se?.["delta"];
+            if (delta?.["type"] === "text_delta") {
+              const text = String(delta["text"] ?? "");
+              if (text) {
+                sawPartialText = true;
+                send2({ type: "delta", text });
+                fullText += text;
+              }
+            }
+          }
+        } else if (t === "assistant") {
           const msg = ev["message"];
           for (const block of msg?.content ?? []) {
             if (block["type"] === "text") {
+              if (sawPartialText)
+                continue;
               const text = String(block["text"] ?? "");
               send2({ type: "delta", text });
               fullText += text;
@@ -54150,6 +54388,17 @@ async function streamChat(userMessage, sessionId, _readonly, res, signal, server
           const sid = ev["session_id"];
           if (typeof sid === "string")
             newSessionId = sid;
+          const u = ev["usage"];
+          if (u) {
+            usage = {
+              inputTokens: typeof u["input_tokens"] === "number" ? u["input_tokens"] : void 0,
+              outputTokens: typeof u["output_tokens"] === "number" ? u["output_tokens"] : void 0
+            };
+          }
+          if (typeof ev["total_cost_usd"] === "number")
+            costUsd = ev["total_cost_usd"];
+          if (typeof ev["model"] === "string")
+            usedModel = ev["model"];
         } else if (t === "text") {
           const text = String(ev["text"] ?? "");
           send2({ type: "delta", text });
@@ -54167,7 +54416,7 @@ async function streamChat(userMessage, sessionId, _readonly, res, signal, server
         } catch {
         }
       }
-      send2({ type: "done", fullText, sessionId: newSessionId });
+      send2({ type: "done", fullText, sessionId: newSessionId, usage, costUsd, model: usedModel });
       resolve();
     });
     proc.on("error", (err) => {
@@ -54363,7 +54612,7 @@ async function handleRequest(req, res, ctx) {
         send(res, 400, { error: String(e) });
         return;
       }
-      const { message, sessionId } = chatBody ?? {};
+      const { message, sessionId, model, effort } = chatBody ?? {};
       if (!message) {
         send(res, 400, { error: "message is required" });
         return;
@@ -54377,7 +54626,7 @@ async function handleRequest(req, res, ctx) {
       const ac = new AbortController();
       req.on("close", () => ac.abort());
       const { streamChat: streamChat2 } = await Promise.resolve().then(() => (init_chat(), chat_exports));
-      await streamChat2(message, sessionId ?? null, ctx.readonly, res, ac.signal, ctx.port);
+      await streamChat2(message, sessionId ?? null, model, effort, ctx.readonly, res, ac.signal, ctx.port);
       res.end();
       return;
     }

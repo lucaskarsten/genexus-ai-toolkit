@@ -97,34 +97,12 @@ namespace Gx18Mcp.SdkWorker.Sdk
             if (string.IsNullOrEmpty(name)) throw new Exception("name is required");
             var spec = Spec(typeKey);
 
-            // WebPanel/WebComponent: SDK WebPanel.Save() hangs headlessly — WinFormPart generation
-            // blocks waiting for layout/theme services that require the IDE (message pump / COM init).
-            // Solution: build a minimal blank XPZ and import via IKnowledgeManagerService.ImportFile,
-            // which is proven to work headlessly and stamps the correct Windows UserId.
-            if (spec.EntityTypeId == 43)
-            {
-                bool isComponent = typeKey.Equals("webcomponent", StringComparison.OrdinalIgnoreCase);
-                int folderId = ResolveModuleFolderId(module);
-                string eventsContent = null, rulesContent = null, conditionsContent = null, layoutContent = null;
-                if (sections != null)
-                {
-                    if (sections.TryGetValue("events",     out var ev) && ev != null) eventsContent     = ev.ToString();
-                    if (sections.TryGetValue("rules",      out var ru) && ru != null) rulesContent      = ru.ToString();
-                    if (sections.TryGetValue("conditions", out var co) && co != null) conditionsContent = co.ToString();
-                    if (sections.TryGetValue("layout",     out var la) && la != null) layoutContent     = la.ToString();
-                }
-                var tempXpz = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"{name}_{Guid.NewGuid():N}.xpz");
-                Console.Error.WriteLine($"[gx18-worker] type=43 create '{name}' (isComponent={isComponent}, folderId={folderId}): using XPZ import path");
-                try
-                {
-                    BuildBlankWebPanelXpz(name, isComponent, folderId, eventsContent, rulesContent, conditionsContent, layoutContent, tempXpz);
-                    return ImportXpz(tempXpz, typeKey, name, fullOverwrite: false);
-                }
-                finally
-                {
-                    try { System.IO.File.Delete(tempXpz); } catch { }
-                }
-            }
+            // WebPanel/WebComponent (type 43) is created through the SAME SDK path as every other type
+            // below. The long-held assumption that "WebPanel.Save() hangs/NullRefs headless" was FALSE:
+            // proven via spike, WebComponent.Create()+Save() runs cleanly headless and tokenizes any
+            // events/rules supplied. (The original failure was an EntityId collision from a stale worker,
+            // misread as an SDK limitation.) The prior SQL-INSERT clone path produced objects the SDK
+            // could not even re-open (NullRef in EnsureDeserialization) — it has been removed.
 
             var concrete = Resolve(spec);
             var kb = _session.KnowledgeBase;
@@ -177,24 +155,13 @@ namespace Gx18Mcp.SdkWorker.Sdk
                 return VerifyUserId(spec.EntityTypeId, ucEntityId, name, "modify-uc-script-sql");
             }
 
-            // WebPanel/WBC (type 43) — events, rules, conditions: SDK NullRefs headless because
-            // theme/layout services are not initialized without the IDE. Bypass entirely via SQL
-            // raw-UTF-8 blob write (format 0x02). componentEntityTypeId: 64=Events, 69=Rules, 57=Conditions.
-            if (spec.EntityTypeId == 43 && (
-                section.Equals("events",     StringComparison.OrdinalIgnoreCase) ||
-                section.Equals("rules",      StringComparison.OrdinalIgnoreCase) ||
-                section.Equals("conditions", StringComparison.OrdinalIgnoreCase)))
-            {
-                int compTypeId = section.Equals("rules",      StringComparison.OrdinalIgnoreCase) ? 69
-                               : section.Equals("conditions", StringComparison.OrdinalIgnoreCase) ? 57
-                               : 64; // events
-                int wbEntityId = _sql.FindEntityId(spec.EntityTypeId, name);
-                Console.Error.WriteLine(
-                    $"[gx18-worker] WB/WBC '{name}' {section}: SQL raw-UTF8 blob write (SDK unsupported headless).");
-                var blobNote = _sql.WriteTextPartBlob(spec.EntityTypeId, wbEntityId, compTypeId, content);
-                Console.Error.WriteLine($"[gx18-worker] SQL blob write: {blobNote}");
-                return VerifyUserId(spec.EntityTypeId, wbEntityId, name, $"modify-{section}-sql");
-            }
+            // WebPanel/WBC (type 43) — events, rules, conditions: handled by the SDK path below.
+            // The SDK's EventsPart/RulesPart/ConditionsPart accept .Source and Save() TOKENIZES the
+            // content into the proper GX token stream headless (proven via spike: blob becomes
+            // <TokenDataList>). Earlier versions wrongly assumed the SDK fails headless and wrote raw
+            // UTF-8 source into the blob (which corrupts it — "src0009: Cannot deserialize tokens").
+            // That SQL bypass is removed: invalid source now surfaces as a ValidationException (which
+            // does NOT persist — KB untouched), exactly like procedures.
 
             // WebPanel/WBC layout uses the SDK — but a 0-byte Documentation blob causes NullRef on load.
             // Pre-flight: null it out if needed so the SDK can open the object cleanly.
@@ -234,22 +201,18 @@ namespace Gx18Mcp.SdkWorker.Sdk
                            "not the GUID form (`@import @<guid>@`). " +
                            "The GUID form is internal — the SDK resolves it on save from the friendly name.";
                 }
-                // Safety fallback for WBC events/rules/conditions if somehow the early-exit above was
-                // not reached (e.g. future code path change). Should be unreachable in normal flow.
-                bool isValidation = inner.GetType().Name.IndexOf("Validation", StringComparison.OrdinalIgnoreCase) >= 0
-                    || inner.Message.IndexOf("validação", StringComparison.OrdinalIgnoreCase) >= 0
-                    || inner.Message.IndexOf("validation", StringComparison.OrdinalIgnoreCase) >= 0;
-                if (isValidation && spec.EntityTypeId == 43)
+                // For WBC events/rules/conditions a ValidationException means the SOURCE is invalid —
+                // it must surface to the caller (the SDK already rejected it; KB is untouched). We do
+                // NOT fall back to a raw-UTF-8 SQL blob write here: that produced a corrupt token stream
+                // ("src0009: Cannot deserialize tokens"). The SDK is the only correct writer.
+                if (spec.EntityTypeId == 43 && (
+                    section.Equals("events", StringComparison.OrdinalIgnoreCase) ||
+                    section.Equals("rules", StringComparison.OrdinalIgnoreCase) ||
+                    section.Equals("conditions", StringComparison.OrdinalIgnoreCase)))
                 {
-                    int compTypeId = section.Equals("rules",      StringComparison.OrdinalIgnoreCase) ? 69
-                                   : section.Equals("conditions", StringComparison.OrdinalIgnoreCase) ? 57
-                                   : 64; // events (default)
-                    Console.Error.WriteLine(
-                        $"[gx18-worker] WBC '{name}' {section}: ValidationException fallback — SQL raw-UTF8 blob write.");
-                    int entityId = Convert.ToInt32(GetProp(obj, "Id"));
-                    var blobNote = _sql.WriteTextPartBlob(spec.EntityTypeId, entityId, compTypeId, content);
-                    Console.Error.WriteLine($"[gx18-worker] SQL blob write: {blobNote}");
-                    return VerifyUserId(spec.EntityTypeId, entityId, name, $"modify-{section}-sql-fallback");
+                    msg += "\nHint: the SDK validates and tokenizes this section. A ValidationException " +
+                           "means the source itself is invalid for this object (e.g. an undeclared variable, " +
+                           "an unknown event, or a syntax error) — fix the source and retry. The KB was not modified.";
                 }
                 throw new Exception(msg, inner);
             }
@@ -449,13 +412,33 @@ namespace Gx18Mcp.SdkWorker.Sdk
 
         private void SetComponentFlag(object webPanel)
         {
-            // WebPanel has a property that marks it as a Web Component (varies: "IsWebComponent" / a property value).
-            var p = webPanel.GetType().GetProperty("IsWebComponent");
+            // The IDE "Type" property (Component / Master Page / Web Page) is stored in the GeneXus
+            // property bag under "WEB_COMP" (Yes = Web Component). A real WebComponent has WEB_COMP=Yes
+            // (ModelEntityProperty PropId 30). The strongly-typed "IsWebComponent" CLR property does NOT
+            // exist on WebPanel — the prior code set nothing and the object was created as a Web Page.
+            // Set via the property bag (SetPropertyValue) which is the same path gx_set_property uses.
+            var setMeth = FindMethodByParams(webPanel.GetType(), "SetPropertyValue", typeof(string), typeof(string))
+                ?? FindMethodByParams(webPanel.GetType(), "SetPropertyValue", typeof(string), typeof(object));
+            if (setMeth != null)
+            {
+                bool ok = false;
+                // Try the known property keys in order; the SDK ignores unknown keys silently, so we
+                // verify by reading back where possible.
+                foreach (var key in new[] { "WEB_COMP", "Type", "ComponentType" })
+                {
+                    var val = key == "WEB_COMP" ? "Yes" : "Component";
+                    try { setMeth.Invoke(webPanel, new object[] { key, val }); ok = true; Console.Error.WriteLine($"[gx18-worker] SetComponentFlag: SetPropertyValue(\"{key}\",\"{val}\")"); }
+                    catch (Exception ex) { Console.Error.WriteLine($"[gx18-worker] SetComponentFlag: \"{key}\" failed: {Unwrap(ex).Message}"); }
+                }
+                if (ok) return;
+            }
+            // Last-resort: a strongly-typed property, if a future SDK exposes one.
+            var p = FindProp(webPanel.GetType(), "IsWebComponent");
             if (p != null && p.CanWrite) { p.SetValue(webPanel, true); return; }
-            // Fallback: set via SetPropertyValue("ComponentType"/"Type") if present — best effort.
+            Console.Error.WriteLine("[gx18-worker] WARN: SetComponentFlag found no way to mark Web Component — object will be a Web Page.");
         }
 
-        // ---- WebPanel/WebComponent XPZ creation helpers ----
+        // ---- WebPanel/WebComponent XPZ creation helpers (unused — kept for reference) ----
 
         // Part-type GUIDs — constants in the GX18 SDK; same across all KB instances.
         private const string WpTypeGuid      = "c9584656-94b6-4ccd-890f-332d11fc2c25";
@@ -605,6 +588,24 @@ namespace Gx18Mcp.SdkWorker.Sdk
             var savedOut = Console.Out;
             try { Console.SetOut(Console.Error); save.Invoke(obj, null); }
             finally { Console.SetOut(savedOut); }
+            NormalizeFutureTimestamps();
+        }
+
+        // The GX18 SDK stamps EntityVersionTimestamp in UTC, but GeneXus reads that column as
+        // local time — so on UTC-ahead-of-local machines every save lands "in the future", and
+        // the IDE/build warns "KB modified at <future> > current system time, time dependencies
+        // won't work" and incremental builds misfire. The worker does not write this column
+        // itself (only the SDK does), so we normalize any future-stamped rows back to local time
+        // right after each save. Defensive: never let this break the save it just completed.
+        private void NormalizeFutureTimestamps()
+        {
+            try
+            {
+                _sql.Execute(
+                    "UPDATE EntityVersion SET EntityVersionTimestamp = GETDATE() " +
+                    "WHERE EntityVersionTimestamp > DATEADD(minute, 1, GETDATE())");
+            }
+            catch { /* best-effort: a timestamp skew must never fail a write */ }
         }
 
         private object VerifyUserId(int entityTypeIdHint, int entityId, string name, string op)
@@ -627,9 +628,15 @@ namespace Gx18Mcp.SdkWorker.Sdk
                         entityTypeId = Convert.ToInt32(first["EntityTypeId"]);
                 }
             }
-            var info = _session.GetUserInfo();
-            var infoId = GetProp(info, "id");
-            int expected = infoId == null ? 0 : Convert.ToInt32(infoId);
+            // Get expected userId: prefer SQL-based identity (works even when SDK session is not open).
+            int expected = _identity != null ? _identity.GetKbUserId()
+                           : (_session != null ? Convert.ToInt32(GetProp(_session.GetUserInfo(), "id") ?? 0) : 0);
+            string kbUserName = null;
+            if (_session?.KnowledgeBase != null)
+            {
+                var uinfo = _session.GetUserInfo();
+                kbUserName = Convert.ToString(GetProp(uinfo, "name"));
+            }
             return new
             {
                 op,
@@ -638,7 +645,7 @@ namespace Gx18Mcp.SdkWorker.Sdk
                 entityId,
                 userId,
                 expectedUserId = expected,
-                kbUserName = Convert.ToString(GetProp(info, "name")),
+                kbUserName,
                 userIdOk = expected <= 0 || userId == expected,
                 recentVersions = rows == null ? 0 : rows.Count
             };
@@ -1252,6 +1259,175 @@ namespace Gx18Mcp.SdkWorker.Sdk
         private static MethodInfo FindMethodByParams(Type t, string name, params Type[] paramTypes)
         {
             return t.GetMethod(name, BindingFlags.Public | BindingFlags.Instance, null, paramTypes, null);
+        }
+
+        // ---- DEV SPIKE: can a WebPanel Events part be tokenized headless? ----
+        //
+        // Hypothesis: EventsPart : SourcePart (same base as ProcedurePart, which tokenizes fine headless).
+        // The thing that hangs headless is WinFormPart generation on full-object Save() — NOT the source
+        // part's own serialization. So: resolve the WBC, get its Events part, set .Source to a trivial
+        // event, then probe whether the SDK produces tokenized output WITHOUT a full Save().
+        //
+        // We try three escalating probes and report what each yields (or how it fails):
+        //   A) read-back  — set Source, read Source back (round-trips through the part's buffer).
+        //   B) serialize  — call KBObjectPart.Serialize(TextWriter): does it emit <TokenDataList>?
+        //   C) full save  — InvokeSave(obj): does it persist (and does the blob become token XML)?
+        // Each probe is isolated in try/catch so one NullRef doesn't mask the others' results.
+        // This is a NON-WRITE diagnostic for A/B; C does write — only run against the SPIKE clone.
+        public object TokenizeSpike(string wbcName, string testSource, bool allowSave)
+        {
+            if (string.IsNullOrEmpty(wbcName)) throw new Exception("TokenizeSpike: wbcName required");
+            if (string.IsNullOrEmpty(testSource))
+                testSource = "Event Start\r\n\tComposite\r\n\t\t// spike\r\n\tEndComposite\r\nEndEvent";
+
+            var spec = Spec("webcomponent");
+            var concrete = Resolve(spec);
+            var kb = _session.KnowledgeBase;
+            if (kb == null) throw new Exception("KB not open");
+            var model = _session.KbType.GetProperty("DesignModel").GetValue(kb);
+            var obj = ResolveByName(concrete, model, wbcName);
+            if (obj == null) throw new Exception($"TokenizeSpike: WBC '{wbcName}' not found");
+
+            // Locate the Events part: spec section "events" → PartProp on the object.
+            if (!spec.Sections.TryGetValue("events", out var sec))
+                throw new Exception("TokenizeSpike: 'events' section not in webcomponent spec");
+            var part = GetProp(obj, sec.PartProp);
+            if (part == null) throw new Exception($"TokenizeSpike: Events part ('{sec.PartProp}') is null");
+
+            string probeA = "n/a", probeB = "n/a", probeC = "n/a";
+            string partType = part.GetType().FullName;
+            string originalSource = null;
+            try { originalSource = GetProp(part, "Source") as string; } catch { }
+
+            // Probe A: set Source, read it back.
+            try
+            {
+                SetProp(part, "Source", testSource);
+                var back = GetProp(part, "Source") as string;
+                probeA = back == null ? "set ok, read-back NULL"
+                       : (back.IndexOf("Event", StringComparison.OrdinalIgnoreCase) >= 0
+                          ? $"set+read ok ({back.Length} chars)"
+                          : $"read-back unexpected ({back.Length} chars)");
+            }
+            catch (Exception ex) { probeA = $"FAIL: {Unwrap(ex).GetType().Name}: {Unwrap(ex).Message}"; }
+
+            // Probe B: serialize the part to a TextWriter and inspect the output.
+            try
+            {
+                var serialize = FindMethodByParams(part.GetType(), "Serialize", typeof(System.IO.TextWriter));
+                if (serialize == null)
+                {
+                    // try the 2-arg overload with default SerializationMode
+                    foreach (var m in part.GetType().GetMethods(BindingFlags.Public | BindingFlags.Instance))
+                        if (m.Name == "Serialize" && m.GetParameters().Length >= 1 &&
+                            m.GetParameters()[0].ParameterType == typeof(System.IO.TextWriter)) { serialize = m; break; }
+                }
+                if (serialize == null) probeB = "no Serialize(TextWriter) found";
+                else
+                {
+                    var sw = new System.IO.StringWriter();
+                    var ps = serialize.GetParameters();
+                    var savedOut = Console.Out;
+                    try
+                    {
+                        Console.SetOut(Console.Error);
+                        if (ps.Length == 1) serialize.Invoke(part, new object[] { sw });
+                        else serialize.Invoke(part, new object[] { sw, Enum.GetValues(ps[1].ParameterType).GetValue(0) });
+                    }
+                    finally { Console.SetOut(savedOut); }
+                    var outp = sw.ToString();
+                    bool hasTokens = outp.IndexOf("TokenDataList", StringComparison.OrdinalIgnoreCase) >= 0;
+                    probeB = $"serialized {outp.Length} chars; hasTokenDataList={hasTokens}; head={outp.Substring(0, Math.Min(120, outp.Length)).Replace("\r", " ").Replace("\n", " ")}";
+                }
+            }
+            catch (Exception ex) { probeB = $"FAIL: {Unwrap(ex).GetType().Name}: {Unwrap(ex).Message}"; }
+
+            // Probe C: full Save() — writes. Only if explicitly allowed (SPIKE only).
+            if (allowSave)
+            {
+                try { InvokeSave(obj); probeC = "Save() ok"; }
+                catch (Exception ex) { probeC = $"FAIL: {Unwrap(ex).GetType().Name}: {Unwrap(ex).Message}"; }
+            }
+            else probeC = "skipped (allowSave=false)";
+
+            return new
+            {
+                wbc = wbcName,
+                eventsPartType = partType,
+                originalSourceLen = originalSource?.Length ?? -1,
+                probeA_setReadBack = probeA,
+                probeB_serialize = probeB,
+                probeC_fullSave = probeC,
+                verdict = "see probes — B with hasTokenDataList=true means headless tokenization is reachable"
+            };
+        }
+
+        private static Exception Unwrap(Exception ex)
+            => ex is System.Reflection.TargetInvocationException tie && tie.InnerException != null ? tie.InnerException : ex;
+
+        // ---- DEV SPIKE: create a WebPanel/WebComponent via the pure SDK path, headless. ----
+        //
+        // The production code assumes WebPanel.Create()+Save() fails headless and diverts to SQL.
+        // This proves/disproves that assumption AND captures the REAL exception — the SDK's own
+        // ExceptionManager.LogException is broken headless (EnterpriseLibrary config NullRef) and
+        // MASKS the original error. We hook AppDomain.FirstChanceException to capture every exception
+        // the instant it is thrown, BEFORE the broken logger swallows it.
+        public object SdkCreateSpike(string name, bool isComponent, string module)
+        {
+            var firstChance = new List<string>();
+            EventHandler<System.Runtime.ExceptionServices.FirstChanceExceptionEventArgs> handler = (s, e) =>
+            {
+                // Ignore the EnterpriseLibrary logger's own NullRef noise; capture everything else.
+                var et = e.Exception.GetType().FullName ?? "";
+                if (et.IndexOf("EnterpriseLibrary", StringComparison.OrdinalIgnoreCase) >= 0) return;
+                var st = e.Exception.StackTrace ?? "";
+                // Only keep frames that look like the real deserialization/save failure.
+                firstChance.Add($"{e.Exception.GetType().Name}: {e.Exception.Message} | top: {st.Split('\n').FirstOrDefault()?.Trim()}");
+            };
+            AppDomain.CurrentDomain.FirstChanceException += handler;
+            string step = "start";
+            try
+            {
+                var spec = Spec(isComponent ? "webcomponent" : "webpanel");
+                var concrete = Resolve(spec);
+                var kb = _session.KnowledgeBase;
+                if (kb == null) throw new Exception("KB not open");
+                var model = _session.KbType.GetProperty("DesignModel").GetValue(kb);
+
+                step = "Create";
+                var createMethod = concrete.GetMethod("Create", BindingFlags.Public | BindingFlags.Static, null, new[] { model.GetType() }, null)
+                    ?? FindStaticCreate(concrete, model.GetType());
+                if (createMethod == null) throw new Exception($"{concrete.Name}.Create(KBModel) not found");
+                var obj = createMethod.Invoke(null, new[] { model });
+
+                step = "SetName";
+                SetProp(obj, "Name", name);
+                step = "AssignModule";
+                AssignModule(obj, model, module);
+                if (isComponent) { step = "SetComponentFlag"; SetComponentFlag(obj); }
+
+                step = "Save";
+                var savedOut = Console.Out;
+                try { Console.SetOut(Console.Error); InvokeSave(obj); }
+                finally { Console.SetOut(savedOut); }
+
+                step = "done";
+                int newId = Convert.ToInt32(GetProp(obj, "Id"));
+                return new { ok = true, step, newId, firstChanceCount = firstChance.Count, firstChance = firstChance.Take(15).ToList() };
+            }
+            catch (Exception ex)
+            {
+                var inner = Unwrap(ex);
+                return new
+                {
+                    ok = false,
+                    failedAtStep = step,
+                    exception = $"{inner.GetType().Name}: {inner.Message}",
+                    firstChanceCount = firstChance.Count,
+                    firstChance = firstChance.Take(15).ToList()
+                };
+            }
+            finally { AppDomain.CurrentDomain.FirstChanceException -= handler; }
         }
     }
 }
