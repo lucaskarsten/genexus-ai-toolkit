@@ -128,7 +128,24 @@ namespace Gx18Mcp.SdkWorker.Sdk
                 if (!string.IsNullOrEmpty(verr)) throw new Exception("Validation: " + verr);
             }
 
-            InvokeSave(obj);
+            // Type.Create(model) returns an object with Id=0; the real EntityId is allocated INSIDE
+            // EntityDataAdapter.InsertEntity() during Save, from the adapter's in-memory snapshot — NOT
+            // from obj.Id (setting obj.Id is a no-op for the insert). On the _03 KB the Save can throw
+            // gxioSQL...EntityDuplicateKeyException even though the target ids are free in the KB, which
+            // points at a stale adapter snapshot (suspected: IDE holding the KB open concurrently under
+            // EnableMultiUser). We surface a clear, actionable error instead of the raw SDK exception.
+            try
+            {
+                InvokeSave(obj);
+            }
+            catch (Exception ex) when (IsDuplicateKey(ex))
+            {
+                throw new Exception(
+                    $"EntityId allocation collided creating '{name}' (type {spec.EntityTypeId}). " +
+                    "The KB rows are free, so the SDK's in-memory id allocator is out of sync — typically because the " +
+                    "GeneXus IDE has this KB open at the same time. Close the IDE, then retry (the worker reopens fresh).",
+                    ex);
+            }
 
             int newId = Convert.ToInt32(GetProp(obj, "Id"));
             return VerifyUserId(spec.EntityTypeId, newId, name, "create");
@@ -579,6 +596,20 @@ namespace Gx18Mcp.SdkWorker.Sdk
                 return string.IsNullOrWhiteSpace(errText) ? null : errText.Replace("\r", " ").Replace("\n", " | ");
             }
             catch (Exception ex) { return "validate-probe failed: " + ex.Message; }
+        }
+
+        // The SDK throws Artech...EntityDuplicateKeyException on an EntityId clash, but reflection Save
+        // wraps it in TargetInvocationException. Walk the inner-exception chain and match by type name
+        // (we have no compile-time reference to the SDK exception type).
+        private static bool IsDuplicateKey(Exception ex)
+        {
+            for (var e = ex; e != null; e = e.InnerException)
+            {
+                var n = e.GetType().Name;
+                if (n.IndexOf("DuplicateKey", StringComparison.OrdinalIgnoreCase) >= 0) return true;
+                if ((e.Message ?? "").IndexOf("duplicate key", StringComparison.OrdinalIgnoreCase) >= 0) return true;
+            }
+            return false;
         }
 
         private void InvokeSave(object obj)
