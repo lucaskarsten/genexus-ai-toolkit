@@ -40,6 +40,31 @@ namespace Gx18Mcp.SdkWorker.Sdk
             SetProp(optionsType, options, "AvoidStartupUpdate", true);
             SetProp(optionsType, options, "AvoidIndexing", true);
 
+            // ConfirmOpen: the SDK fires this callback for the "opened with a DIFFERENT GeneXus
+            // installation than last time" prompt (the worker's Artech assemblies report version
+            // 11.0.0.0; the IDE stamps 18.0.177934, so after the IDE touches the KB the versions
+            // differ and the SDK asks for confirmation). Headless there is no UI to answer it, so the
+            // waiting thread is aborted (ThreadAbortException) and Open NullRefs. We install a handler
+            // that always answers "yes, open anyway" (return true) and "don't warn again" (out=true).
+            // Signature: bool Invoke(string message, ref bool doNotWarnAgain).
+            try
+            {
+                var confirmProp = optionsType.GetProperty("ConfirmOpen");
+                if (confirmProp != null && confirmProp.CanWrite)
+                {
+                    var handlerType = confirmProp.PropertyType; // KnowledgeBase+OpenOptions+ConfirmOpenHandler
+                    var method = typeof(KbSession).GetMethod(nameof(AlwaysConfirmOpen),
+                        BindingFlags.NonPublic | BindingFlags.Static);
+                    var del = Delegate.CreateDelegate(handlerType, method);
+                    confirmProp.SetValue(options, del);
+                    Console.Error.WriteLine("[gx18-worker] ConfirmOpen handler installed (auto-yes on version-mismatch prompt).");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine("[gx18-worker] WARN: could not install ConfirmOpen handler: " + ex.Message);
+            }
+
             var openMethod = _kbType.GetMethod("Open", new[] { optionsType });
             if (openMethod == null) throw new Exception("KnowledgeBase.Open(OpenOptions) not found");
 
@@ -94,6 +119,17 @@ namespace Gx18Mcp.SdkWorker.Sdk
         {
             var p = t.GetProperty(name);
             if (p != null && p.CanWrite) p.SetValue(obj, value);
+        }
+
+        // Matches the ConfirmOpenHandler delegate: bool Invoke(string message, ref bool doNotWarnAgain).
+        // Always answers "yes, open anyway" and "don't warn again", so a headless Open never blocks on
+        // the version-mismatch confirmation dialog.
+        private static bool AlwaysConfirmOpen(string message, ref bool doNotWarnAgain)
+        {
+            Console.Error.WriteLine("[gx18-worker] ConfirmOpen auto-yes. SDK message: " +
+                (message ?? "").Replace("\r", " ").Replace("\n", " "));
+            doNotWarnAgain = true;
+            return true;
         }
 
         /// <summary>Returns the KB's resolved current user (Id + Name). This is the author stamped on Save.</summary>

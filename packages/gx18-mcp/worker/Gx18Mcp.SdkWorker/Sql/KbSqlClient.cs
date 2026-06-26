@@ -116,6 +116,13 @@ namespace Gx18Mcp.SdkWorker.Sql
             }
         }
 
+        public int Execute(string sql)
+        {
+            using (var conn = Open())
+            using (var cmd = new SqlCommand(sql, conn))
+                return cmd.ExecuteNonQuery();
+        }
+
         // EntityType display-name map — derived from the canonical spec (spec/entity-types.json)
         // via EntityTypeRegistry. Single source of truth shared with the TS server.
         internal static readonly Dictionary<int, string> TYPE_NAMES = BuildTypeNames();
@@ -344,6 +351,12 @@ namespace Gx18Mcp.SdkWorker.Sql
         // Convenience wrapper — keeps callers that pass events (component 64) unchanged.
         public string WriteEventsBlob(int compoundEntityTypeId, int compoundEntityId, string newText)
             => WriteTextPartBlob(compoundEntityTypeId, compoundEntityId, 64, newText);
+
+        // NOTE: the SQL-based SqlCloneWbc/PatchWbcProps helpers were removed. They created type-43
+        // objects via direct SQL INSERT, but those objects were not SDK-re-openable (NullRef in
+        // Entity.EnsureDeserialization) and the approach was a losing game of replicating everything
+        // the IDE writes across many tables. Type 43 is now created through the GX18 SDK
+        // (ObjectFactory.CreateByKey), which produces complete, valid, SDK-re-editable objects.
 
         // Sets the Documentation part blob (EntityTypeId 62) to NULL when it exists but is 0/short.
         // A 0-byte Documentation blob causes NullReferenceException in the SDK when loading the object
@@ -1284,7 +1297,7 @@ namespace Gx18Mcp.SdkWorker.Sql
 
         // --- SQL-based XPZ export for object types whose SDK Export fails headlessly ---
         // Constructs a valid, importable XPZ by reading blobs directly from the KB SQL database.
-        // Confirmed part-type GUIDs come from real IDE-exported XPZ files (FoccoLojas_02).
+        // Confirmed part-type GUIDs come from real IDE-exported XPZ files.
         public object SqlExportXpz(string name, int entityTypeId, string outputFile)
         {
             var _step = "init";
@@ -1307,7 +1320,7 @@ namespace Gx18Mcp.SdkWorker.Sql
                 { 69, "9b0a32a3-de6d-4be1-a4dd-1b85d3741534" },  // Rules
                 { 72, "e4c4ade7-53f0-4a56-bdfd-843735b66f47" },  // Variables
                 { 74, "d24a58ad-57ba-41b7-9e6e-eaca3543c778" },  // WebForm
-                // UserControl parts (confirmed from IDE-exported UCSeletorLoja.xpz, FoccoLojas_03)
+                // UserControl parts (confirmed from real IDE-exported XPZ files)
                 { 148, "3dd92fe7-b095-44d3-9fa0-8488fa3f0c67" },  // UC ScreenTemplate
                 { 149, "8e9e4a7c-a4d3-4c36-8e8e-fb6702402f63" },  // UC Properties (Definition XML)
             };

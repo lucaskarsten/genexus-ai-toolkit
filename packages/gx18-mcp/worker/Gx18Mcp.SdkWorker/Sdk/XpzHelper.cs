@@ -10,7 +10,7 @@ namespace Gx18Mcp.SdkWorker.Sdk
     internal static class XpzHelper
     {
         // Maps <Part type="GUID"> GUIDs to friendly section names.
-        // Confirmed from real IDE-exported XPZ files (FoccoLojas_02, June 2026).
+        // Confirmed from real IDE-exported XPZ files (GX18 IDE, Knowledge Manager → Export).
         private static readonly Dictionary<string, string> PartGuidToName =
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
@@ -22,6 +22,11 @@ namespace Gx18Mcp.SdkWorker.Sdk
                 { "9b0a32a3-de6d-4be1-a4dd-1b85d3741534", "Rules" },
                 { "e4c4ade7-53f0-4a56-bdfd-843735b66f47", "Variables" },
                 { "d24a58ad-57ba-41b7-9e6e-eaca3543c778", "WebForm" },
+                // UserControl parts (must match the GUIDs emitted by SqlExportXpz in KbSqlClient).
+                // ScreenTemplate (148) is exported as <Part><Source>; Properties (149) is exported as
+                // <Definition> and its inner <Script> elements are surfaced individually by scriptRx.
+                { "3dd92fe7-b095-44d3-9fa0-8488fa3f0c67", "ScreenTemplate" },
+                { "8e9e4a7c-a4d3-4c36-8e8e-fb6702402f63", "Properties" },
             };
 
         private static readonly Dictionary<string, string> PartNameToGuid =

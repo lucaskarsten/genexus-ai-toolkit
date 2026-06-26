@@ -253,7 +253,7 @@ gx_reload    → restart worker so SDK cache is cleared; worker reopens KB fresh
 | Type | Writable sections | Notes |
 |------|------------------|-------|
 | `procedure` | `source`, `rules`, `conditions`, `variables` | SDK path |
-| `webpanel`, `webcomponent` | `events`, `rules`, `conditions`, `layout`, `variables` | events/rules/conditions via SQL blob; layout via SDK |
+| `webpanel`, `webcomponent` | `events`, `rules`, `conditions`, `layout`, `variables` | all via the SDK — events/rules/conditions are tokenized on Save (invalid source → ValidationException, no change). layout via SDK |
 | `usercontrol` | `template`, `properties`, `script:<Name>` | template/properties via SDK; scripts via SQL blob in-place |
 | `dso` | `tokens`, `styles`, `elements` | SDK path; use friendly `@import Name;` (not GUID form) |
 | `api` | `source`, `events` | SDK path |

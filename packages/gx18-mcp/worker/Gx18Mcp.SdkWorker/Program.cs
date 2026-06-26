@@ -159,7 +159,12 @@ namespace Gx18Mcp.SdkWorker
                     var sections = new Dictionary<string, object>();
                     foreach (var key in new[] { "source", "events", "rules", "conditions", "layout", "properties", "template", "tokens", "styles", "elements", "structure" })
                         if (p.ContainsKey(key) && p[key] != null) sections[key] = p[key];
-                    return EnsureSdk().CreateByKey(S(p, "type"), S(p, "name"), S(p, "module"), sections);
+                    // ALL types — including webpanel/webcomponent (type 43) — create through the SDK.
+                    // (The former SQL-only bypass for type 43 was removed: the SDK creates type 43
+                    // cleanly headless and tokenizes events/rules, while the SQL clone produced objects
+                    // the SDK could not re-open.) EnsureSdk() initializes StartBL + KB open + the
+                    // assembly resolver that ObjectFactory.Resolve() needs to load Artech.Genexus.Common.
+                    return EnsureSdk().CreateByKey(S(p, "type") ?? "", S(p, "name"), S(p, "module"), sections);
                 }
                 case "modify":   return EnsureSdk().ModifyByKey(S(p, "name"), S(p, "type"), S(p, "section"), S(p, "content"));
                 case "export_xpz":
@@ -188,6 +193,8 @@ namespace Gx18Mcp.SdkWorker
                 case "analyze":  return _sql.Analyze(S(p, "name"), N(p, "type"), S(p, "action", "usedby"), N(p, "limit", 50), S(p, "exclude"));
                 case "history":  return _sql.GetHistory(S(p, "name"), N(p, "type"), N(p, "limit", 10));
                 case "move":     return _sql.MoveToModule(S(p, "name"), N(p, "type"), S(p, "targetModule"));
+                case "tokenize_spike": return EnsureSdk().TokenizeSpike(S(p, "name"), S(p, "source"), B(p, "allowSave", false));
+                case "sdk_create_spike": return EnsureSdk().SdkCreateSpike(S(p, "name"), B(p, "isComponent", true), S(p, "module"));
                 case "open_spike": return OpenSpike();
                 case "import_spike": return ImportSpike(S(p, "xpzFile"), S(p, "type"), S(p, "name"), B(p, "fullOverwrite", true));
                 case "probe_sdk": return SdkProbe.Run(
