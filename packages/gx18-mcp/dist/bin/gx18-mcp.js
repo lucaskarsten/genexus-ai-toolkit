@@ -3069,7 +3069,7 @@ var require_package = __commonJS({
   "package.json"(exports2, module2) {
     module2.exports = {
       name: "gx18-mcp",
-      version: "2.1.2",
+      version: "2.1.3",
       description: "MCP server for GeneXus 18 \u2014 47 tools, native SDK write, XPZ round-trip, chat UI, auto-update",
       keywords: [
         "genexus",

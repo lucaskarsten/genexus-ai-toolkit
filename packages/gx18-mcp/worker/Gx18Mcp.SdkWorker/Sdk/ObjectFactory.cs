@@ -198,16 +198,50 @@ namespace Gx18Mcp.SdkWorker.Sdk
             var spec = Spec(typeKey);
 
             // UC scripts require SQL blob patch — IKnowledgeManagerService fails headless for type=147.
-            // Caller uses section="script:SljShow" (prefix "script:" + script name).
+            // Caller uses section="script:ScriptName" (prefix "script:" + script name).
+            // After the SQL blob patch, we re-save the template via SDK to create a new EntityVersion
+            // so the IDE/Team Development sees the object as modified and Build All picks it up.
             if (spec.EntityTypeId == 147 && section.StartsWith("script:", StringComparison.OrdinalIgnoreCase))
             {
                 string scriptName = section.Substring("script:".Length).Trim();
                 if (string.IsNullOrEmpty(scriptName))
-                    throw new Exception("section 'script:' requires a script name, e.g. 'script:SljShow'");
+                    throw new Exception("section 'script:' requires a script name, e.g. 'script:AfterShow'");
                 int ucEntityId = _sql.FindEntityId(spec.EntityTypeId, name);
                 string blobNote = _sql.PatchUCScriptBlob(ucEntityId, scriptName, content);
                 Console.Error.WriteLine($"[gx18-worker] UC '{name}' script '{scriptName}': {blobNote}");
-                return VerifyUserId(spec.EntityTypeId, ucEntityId, name, "modify-uc-script-sql");
+
+                // Re-save the template via SDK to bump EntityVersion so the IDE sees it as modified.
+                try
+                {
+                    var ucConcrete = Resolve(spec);
+                    var ucKb = _session.KnowledgeBase;
+                    var ucModel = ucKb != null ? _session.KbType.GetProperty("DesignModel").GetValue(ucKb) : null;
+                    if (ucModel != null)
+                    {
+                        var ucObj = ResolveByName(ucConcrete, ucModel, name);
+                        if (ucObj != null)
+                        {
+                            // Read the current template and write it back unchanged — this alone triggers
+                            // EntityVersion creation via the SDK, making the IDE see the object as modified.
+                            var templateSpec = spec.Sections["template"];
+                            var ucPart = GetProp(ucObj, templateSpec.PartProp);
+                            if (ucPart != null)
+                            {
+                                var currentTemplate = GetProp(ucPart, "EditableContent")?.ToString() ?? "";
+                                SetProp(ucPart, "EditableContent", currentTemplate);
+                                InvokeSave(ucObj);
+                                Console.Error.WriteLine($"[gx18-worker] UC '{name}': template re-saved to bump EntityVersion");
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Non-fatal: script blob was already patched. Log and continue.
+                    Console.Error.WriteLine($"[gx18-worker] UC '{name}': template re-save failed (non-fatal): {ex.Message}");
+                }
+
+                return VerifyUserId(spec.EntityTypeId, ucEntityId, name, "modify-uc-script");
             }
 
             // WebPanel/WBC (type 43) — events, rules, conditions: handled by the SDK path below.
@@ -288,7 +322,7 @@ namespace Gx18Mcp.SdkWorker.Sdk
                 if (!spec.Sections.TryGetValue(kv.Key, out var sec))
                 {
                     var hint = spec.TypeName.IndexOf("UserControl", StringComparison.OrdinalIgnoreCase) >= 0
-                        ? " AfterShow/Methods scripts are not writable via gx_modify — use gx_export → patch CDATA → gx_import."
+                        ? " AfterShow/Methods scripts are writable via gx_modify with section='script:ScriptName' (e.g. script:AfterShow)."
                         : "";
                     throw new Exception(
                         $"Section '{kv.Key}' not supported for type '{spec.TypeName.Split('.').Last()}'. " +
