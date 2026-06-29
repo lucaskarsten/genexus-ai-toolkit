@@ -12,8 +12,48 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
-      - uses: googleapis/release-please-action@v4
+      - id: release
+        uses: googleapis/release-please-action@v4
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+  # Builds the Windows .exe and attaches it to the release that release-please
+  # just created. Kept in the SAME workflow run (not a separate tag-triggered
+  # workflow) because tags pushed by the release-please GITHUB_TOKEN do not
+  # trigger other workflows — so this job, gated on release_created, is the
+  # reliable way to publish the artifact without re-pushing the tag.
+  build-windows:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Sync package version to tag
+        working-directory: packages/gx18-mcp
+        run: |
+          $tag = "${{ needs.release-please.outputs.tag_name }}"
+          $version = $tag -replace '^gx18-mcp-v', ''
+          npm version $version --no-git-tag-version --allow-same-version
+          Write-Host "Version set to $version"
+      - name: Install & build
+        working-directory: packages/gx18-mcp
+        run: |
+          npm install
+          npm rebuild
+          npm run build
+          npx pkg dist/bin/launcher.js --target node18-win-x64 --output release/GeneXusAIToolkit.exe --icon assets/icon.ico
+          node scripts/build-release.js
+      - name: Upload release zip
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.release-please.outputs.tag_name }}
+          files: packages/gx18-mcp/release/GeneXusAIToolkit-*-windows.zip
