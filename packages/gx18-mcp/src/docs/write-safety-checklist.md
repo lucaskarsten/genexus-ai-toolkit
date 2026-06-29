@@ -76,7 +76,30 @@ Then kill the worker so the SDK reloads from the DB:
 Get-Process Gx18Mcp.SdkWorker -ErrorAction SilentlyContinue | Stop-Process -Force
 ```
 
-### Step 4 — Kill the worker if you made any SQL changes in this session
+### Step 4 — Be aware: SDK saves stamp `EntityVersionTimestamp` in UTC
+
+The native GeneXus SDK `Save()` stamps `EntityVersion.EntityVersionTimestamp` in **UTC**, but GeneXus
+reads that `datetime` column as **local time**. On a machine behind UTC (e.g. UTC−3) every SDK write is
+born "in the future" by the local offset, which breaks incremental-build time dependencies with:
+*"The Knowledge Base was last modified at HH:MM, which is greater than the current system time."*
+
+This is **not** a clock problem and not an MCP-tool bug — it is the SDK writing the column. Detect it:
+
+```sql
+SELECT COUNT(*) FROM EntityVersion WHERE EntityVersionTimestamp > GETDATE()
+```
+
+If `> 0`, normalize the future stamps (then `gx_reload`):
+
+```sql
+UPDATE EntityVersion SET EntityVersionTimestamp = GETDATE() WHERE EntityVersionTimestamp > GETDATE()
+```
+
+The worker normalizes new SDK saves automatically (1-minute margin preserves legitimate concurrent
+saves), so this manual cleanup is only needed for stamps written before that fix. After changing the
+Windows clock (`w32tm /resync`), restart the resident worker so it does not carry cached time state.
+
+### Step 5 — Kill the worker if you made any SQL changes in this session
 
 The GX18 SDK keeps the KB in memory after `Open()`. SQL changes made after `Open()` are invisible
 to the SDK until the worker restarts. Always kill the worker after any `gx_sql readOnly:false`:
@@ -224,3 +247,75 @@ For a domain: `idBasedOn=Domain:NomeDominio` is safe (only attribute-based is un
 | DateTime without format | `&dt.ToFormattedString()` | Assign to `Date` var first, then call `ToFormattedString()` |
 | SDT with AttCollection on root | Root-level `AttCollection=True` makes vars auto-collection | Remove the flag in the IDE if individual access is needed |
 | gx_variable for SDT vars | `gx_variable` only supports base types | Use XPZ Variables section patch for SDT / domain / collection vars |
+| `.IsEmpty()` on undeclared Character var | `if &CharVar.IsEmpty()` | `if &CharVar <> ''` |
+| Assign VarChar to a domain var | `&DomainVar = &CharVar` | `&DomainVar = MyDomain.Convert(&CharVar)` |
+| `.ToString()` on a domain var (e.g. in WebSession.Set) | `&WebSession.Set(&k, &DomainVar.ToString())` | `&Char = &DomainVar` (implicit convert) then `&WebSession.Set(&k, &Char)` |
+| `return` inside a `Sub` with nested `For Each ... When None` | `Sub 'X' ... For Each ... return ... EndSub` | Keep the `return`s in the main body, not in a subroutine |
+| Default value on a `Parm` parameter | `Parm(in:&p=MyDomain.Sim, ...)` | Not supported by the GX18 generator — the new param is mandatory; every caller must pass it |
+| `not exists(Table where ...)` inline | `where not exists(Table where ...)` | Use nested `For Each ... When None` to express "does not exist" |
+
+---
+
+## ValidationException on `gx_modify` section=source/rules (Procedure)
+
+`gx_modify` returns a generic `ValidationException: A validação de Procedure '<name>' falhou` with **no line number**.
+The write is rejected (KB untouched). To find the offending construct, **isolate incrementally**:
+
+1. First re-save the original known-good source — confirms the worker/KB are healthy (not a stale-worker crash).
+2. Add ONE block/line at a time and re-save until it fails. The last addition is the culprit.
+
+The most common culprits are the syntax pitfalls in the table above (domain assignment, `.IsEmpty()`,
+`.ToString()`, default on Parm). The specifier's detailed message is not surfaced through MCP, so
+incremental isolation is the only reliable way.
+
+**Worker crash (exit code -1 / 4294967295) on `gx_modify`:** after direct SQL writes the resident worker
+can enter a bad state and crash deterministically on the next SDK write. `gx_reload` (restart + fresh Open)
+clears it. If the KB Open itself fails with `NotSupportedException: memory stream is not expandable`, a blob
+has a corrupted declared-size header — see the blob-repair section / `feedback_kb_blob_repair`.
+
+---
+
+## `gx_where_used` has a blind spot — do not trust it alone before changing a signature
+
+`gx_where_used` / `gx_analyze usedby` does **not** list every caller. Observed: it failed to list a
+WebComponent header that demonstrably calls a procedure (the call lived in a UserControl-driven
+subroutine inside a tokenized Events blob, which is not indexed).
+
+**Implication:** before adding/removing a **parameter** on a procedure (which is always mandatory in GX18 —
+no Parm defaults), an undetected caller will break the build silently. Cross-check with a grep of the
+generated Java (`grep "new <procname>("`) and the runtime stack if available.
+
+**Prefer changes that keep the `Parm` signature stable** when the caller set is uncertain: an internal
+WebSession cache, a session flag read inside the proc, etc. Example pattern — caching an expensive
+per-row helper to collapse an N+1 in a master-page header (computes once per distinct key per session):
+
+```
+&CacheKey = !"MyCache_" + Trim(Str(&Id, 9, 0))
+&CacheVal = &WebSession.Get(&CacheKey)
+if &CacheVal <> ''
+    &Out = MyDomain.Convert(&CacheVal)
+    return
+endif
+... compute &Out ...
+&CacheVal = &Out               // domain → Character (implicit), do NOT use .ToString()
+&WebSession.Set(&CacheKey, &CacheVal)
+```
+
+This avoids editing any caller (including tokenized type=43 Events, which cannot be safely re-tokenized
+via `gx_modify events` — see `feedback_wbp_events_gx_modify_blocked`).
+
+---
+
+## Reading tokenized Events (type=43) from the blob when export comes back empty
+
+`gx_export` of a type=43 object via the SQL fallback sometimes returns an 18-byte (empty) Events script.
+The real Events live in the part blob (ComponentEntityTypeId=64). To read the actual source: `DECOMPRESS`
+the blob (skip the 11-byte header), then rebuild by concatenating the `<Word>` tokens in order:
+
+```bash
+grep -o '<Word>[^<]*</Word>' token.xml | sed 's|<Word>||g; s|</Word>||g' | tr -d '\n'
+```
+
+The reconstruction is faithful (indentation, subs preserved) and is good for **reading/auditing**. But the
+`\r\n` come through as literals that resist normalization — re-tokenizing and writing back via
+`gx_modify events` is NOT reliable. To EDIT type=43 Events, use the IDE.
