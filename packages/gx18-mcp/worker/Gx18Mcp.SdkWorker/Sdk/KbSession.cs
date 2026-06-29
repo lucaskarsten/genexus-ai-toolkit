@@ -177,6 +177,20 @@ namespace Gx18Mcp.SdkWorker.Sdk
             };
         }
 
+        /// <summary>
+        /// Closes and re-opens the KB on the same session instance. Used to recover from a stale
+        /// in-memory UDM identity-map / EntityId allocator snapshot: the EntityDataAdapter computes
+        /// the next EntityId from state loaded at Open, and certain KB histories (e.g. an orphan
+        /// duplicate model in UdmModel, or rows mutated by direct SQL while a worker was live) leave
+        /// that snapshot out of sync with the DB, so Save throws EntityDuplicateKeyException even
+        /// though the target ids are free. A fresh Open rebuilds the snapshot from current DB state.
+        /// </summary>
+        public void Reopen()
+        {
+            Dispose();
+            Open();
+        }
+
         public void Dispose()
         {
             if (_kb != null)

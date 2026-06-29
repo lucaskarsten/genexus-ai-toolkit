@@ -104,6 +104,63 @@ namespace Gx18Mcp.SdkWorker.Sdk
             // misread as an SDK limitation.) The prior SQL-INSERT clone path produced objects the SDK
             // could not even re-open (NullRef in EnsureDeserialization) — it has been removed.
 
+            // Type.Create(model) returns an object with Id=0; the real EntityId is allocated INSIDE
+            // EntityDataAdapter.InsertEntity() during Save, from the UDM's in-memory identity-map /
+            // next-Id snapshot loaded at Open — NOT from obj.Id (setting obj.Id is a no-op for the
+            // insert). On some KB histories the Save throws gxioSQL...EntityDuplicateKeyException even
+            // though the target ids are free in the DB: the adapter's snapshot is stale relative to the
+            // DB high-water mark. This is NOT caused by the IDE being open (refuted 2026-06-29: it
+            // collides with no IDE process running and a freshly-opened worker).
+            //
+            // The exact KB-state trigger is NOT yet identified. RULED OUT (2026-06-29, on _03): removing
+            // an "extra" duplicate Design model from UdmModel, and removing ghost Entity master rows
+            // (master with no EntityVersion) — NEITHER fixed it. WARNING: do NOT delete "extra" UdmModel
+            // rows as a repair — a KB may legitimately have additional models (Environments / generation
+            // targets); deleting one DESTROYS the IDE Environment and forces a full KB restore (this
+            // happened and was recovered from backup). Treat UdmModel as off-limits.
+            //
+            // A fresh Open rebuilds that snapshot from current DB state, so on a duplicate-key clash we
+            // Dispose+reopen the session and rebuild+save once. The whole build is redone because the
+            // half-built obj is bound to the now-disposed model. Deterministic and side-effect-free
+            // (the failed Save never committed — the KB is untouched on the dup-key path).
+            int newId;
+            try
+            {
+                newId = BuildAndSave(spec, typeKey, name, module, sections);
+            }
+            catch (Exception ex) when (IsDuplicateKey(ex))
+            {
+                Console.Error.WriteLine(
+                    $"[gx18-worker] EntityId allocation collided creating '{name}' (type {spec.EntityTypeId}); " +
+                    "reopening KB to rebuild the SDK id-allocator snapshot, then retrying once.");
+                _session.Reopen();
+                try
+                {
+                    newId = BuildAndSave(spec, typeKey, name, module, sections);
+                }
+                catch (Exception ex2) when (IsDuplicateKey(ex2))
+                {
+                    throw new Exception(
+                        $"EntityId allocation still collided creating '{name}' (type {spec.EntityTypeId}) " +
+                        "after a fresh KB reopen. The SDK's in-memory id allocator is out of sync with the KB. " +
+                        "Create the object via the GeneXus IDE instead. " +
+                        "DO NOT delete extra rows from UdmModel: a KB may legitimately have more than the base " +
+                        "Design+Java models (e.g. additional Environments/generation targets) — deleting one " +
+                        "destroys the IDE Environment and requires a full KB restore. (Verified 2026-06-29: " +
+                        "removing the extra 'Design' model and ghost Entity rows did NOT fix the collision and " +
+                        "wiped the Environment.)",
+                        ex2);
+                }
+            }
+
+            return VerifyUserId(spec.EntityTypeId, newId, name, "create");
+        }
+
+        // Builds the object from scratch against the session's CURRENT DesignModel and saves it.
+        // Kept separate from CreateByKey so the dup-key recovery path can re-run it on a reopened
+        // session (the object is bound to the model instance, so a reopen requires a full rebuild).
+        private int BuildAndSave(TypeSpec spec, string typeKey, string name, string module, IDictionary<string, object> sections)
+        {
             var concrete = Resolve(spec);
             var kb = _session.KnowledgeBase;
             if (kb == null) throw new Exception("KB not open");
@@ -128,27 +185,8 @@ namespace Gx18Mcp.SdkWorker.Sdk
                 if (!string.IsNullOrEmpty(verr)) throw new Exception("Validation: " + verr);
             }
 
-            // Type.Create(model) returns an object with Id=0; the real EntityId is allocated INSIDE
-            // EntityDataAdapter.InsertEntity() during Save, from the adapter's in-memory snapshot — NOT
-            // from obj.Id (setting obj.Id is a no-op for the insert). On the _03 KB the Save can throw
-            // gxioSQL...EntityDuplicateKeyException even though the target ids are free in the KB, which
-            // points at a stale adapter snapshot (suspected: IDE holding the KB open concurrently under
-            // EnableMultiUser). We surface a clear, actionable error instead of the raw SDK exception.
-            try
-            {
-                InvokeSave(obj);
-            }
-            catch (Exception ex) when (IsDuplicateKey(ex))
-            {
-                throw new Exception(
-                    $"EntityId allocation collided creating '{name}' (type {spec.EntityTypeId}). " +
-                    "The KB rows are free, so the SDK's in-memory id allocator is out of sync — typically because the " +
-                    "GeneXus IDE has this KB open at the same time. Close the IDE, then retry (the worker reopens fresh).",
-                    ex);
-            }
-
-            int newId = Convert.ToInt32(GetProp(obj, "Id"));
-            return VerifyUserId(spec.EntityTypeId, newId, name, "create");
+            InvokeSave(obj);
+            return Convert.ToInt32(GetProp(obj, "Id"));
         }
 
         public object ModifyByKey(string name, string typeKey, string section, string content)
