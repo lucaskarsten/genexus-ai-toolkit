@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.2](https://github.com/lucaskarsten/genexus-ai-toolkit/compare/gx18-mcp-v2.1.1...gx18-mcp-v2.1.2) (2026-06-29)
+
+
+### Bug Fixes
+
+* **gx18-mcp:** clear error on SDK EntityId-allocation collision in create ([e703864](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/e7038647be68948253d80714a78b9fce04b3d568))
+
 ## [2.1.1](https://github.com/lucaskarsten/genexus-ai-toolkit/compare/gx18-mcp-v2.1.0...gx18-mcp-v2.1.1) (2026-06-26)
 
 
