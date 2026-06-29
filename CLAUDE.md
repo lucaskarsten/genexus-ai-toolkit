@@ -128,11 +128,29 @@ Ferramentas seguras (não abrem sessão KB): `export_kb_to_text`, `validate_kb_t
 
 **Toda escrita → gx18-mcp tools ou IDE GX18.** Para o guia completo de segurança e a tabela de ferramentas proibidas, veja `docs/genexus-for-agents.md`.
 
-## Learnings
+## Learnings — route every new knowledge by scope
 
-If you discover something new about the project environment during a session (a new path, an undocumented API, unexpected SQL structure), record it using the project memory system.
+When you discover something new during a session, **classify it before saving**. This routing is part of every task, not an afterthought: generic GeneXus knowledge must land where it ships with the tool (embedded in the gx18-mcp server / `.exe`), and project context must stay local.
 
-**Project-specific knowledge** (KB paths, object locations, new objects created, SQL findings, deploy paths, naming patterns) goes into `CLAUDE.local.md` at the project root — not in memory. That file is local-only (`*.local.*` is gitignored) and is the single source of truth for the active project's context. Update it proactively whenever you learn something that would help a future session understand the environment faster.
+### Decision: generic vs project-specific
+
+| If the knowledge is… | It goes to… | Why |
+|---|---|---|
+| **Generic GeneXus 18** — reusable in any KB/project (syntax pitfalls, blob format/repair, KB SQL tables, XPZ round-trip, performance/N+1 patterns, UC/DSO/runtime patterns) | the matching doc in **`packages/gx18-mcp/src/docs/`** (append to an existing one if the topic fits; create a new one + register it in `src/resources.ts` if not) | esbuild inlines these `.md` into the bundle and `pkg` ships them inside `GeneXusAIToolkit.exe`, served as `gx18://docs/*`. Generic knowledge written anywhere else is lost outside this project. |
+| **FoccoLojas-specific** — KB paths, EntityIds, object catalog, deploy paths, active blockers, incident state | **`CLAUDE.local.md`** (slim active reference) or **`CLAUDE.local.HISTORY.md`** (chronological narrative) | local-only (`*.local.*` gitignored); never embedded in the distributable. |
+
+**Examples.** "`.IsEmpty()` on an undeclared Character var throws ValidationException" → generic → `src/docs/write-safety-checklist.md`. "Blob header is magic+flag+declared-size" → generic → `src/docs/kb-blob-repair.md`. "KB _03 lives at `C:\KBs\FoccoLojas_03` and create-headless is blocked there" → project → `CLAUDE.local.md`.
+
+### Rules when writing to an embedded doc
+
+- **Anonymize.** Strip FoccoLojas object names (`PipnVer…`, `WbcNuc…`), concrete EntityIds, KB names, and host IPs. Use placeholders (`<type>`, `<id>`) and anonymous examples. The real case stays as a short pointer in `CLAUDE.local.md`.
+- **Append before creating.** Prefer extending `write-safety-checklist.md`, `genexus-knowledge.md`, `xpz-format-reference.md`, etc. Only create a new `src/docs/*.md` (and wire it into `src/resources.ts` + the resource list in `src/server.ts`) for a genuinely new topic.
+- **Follow the doc checklist** in `docs/llm-engineering.md` before writing any doc or skill.
+- **Rebuild to ship it.** `cd packages/gx18-mcp && npm run build` re-inlines the docs; `npm run build:exe` repackages the `.exe`. A doc not rebuilt is not yet in the server.
+
+### Keeping `CLAUDE.local.md` slim
+
+`CLAUDE.local.md` is the **active** project reference (environment, object catalog, live blockers, project-only SOPs) — keep it scannable. Push resolved-incident narrative and superseded investigations to `CLAUDE.local.HISTORY.md`. Do **not** let generic knowledge accumulate in `.local` — that's what the embedded `gx18://docs/*` resources are for.
 
 ## Project environment variables
 

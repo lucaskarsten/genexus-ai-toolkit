@@ -43,6 +43,8 @@ export async function run(): Promise<void> {
 - gx18://docs/pitfalls — Real-world GX18 pitfalls: event timing, AJAX, property types
 - gx18://docs/css-conventions — BEM/DSO CSS naming conventions
 - gx18://docs/kb-sql — KB SQL table reference for advanced queries
+- gx18://docs/kb-blob-repair — Blob format + repair (Memory stream / deserialize-tokens errors)
+- gx18://docs/performance — N+1 diagnosis (thread dumps, EXPLAIN) and in-session cache fix
 
 ### Specialized skills
 - gx18://skills/genexus-uc — User Control specialist (create, debug, integrate)

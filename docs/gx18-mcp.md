@@ -13,6 +13,8 @@ without the Team Development corruption caused by GeneXus Next's MCP (`gxnext`).
 > **Quer só usar?** Veja o guia em português: [`gx18-mcp-uso.md`](gx18-mcp-uso.md) — variáveis,
 > como subir, comandos do CLI e tools que funcionam. Este arquivo cobre arquitetura e internals.
 
+> **Developer/architecture documentation.** For LLM/agent tool-usage guidance at runtime, read the embedded `gx18://docs/*` resources — they are canonical and version-synced with the server.
+
 ---
 
 ## Architecture
@@ -67,44 +69,13 @@ Opening a GX18 KB from a process **outside** the install dir requires, in order:
 
 ## Tool reference
 
-### Read (SQL, zero revisions)
-| Tool | Purpose |
-|---|---|
-| `gx_find` | Search objects by name pattern |
-| `gx_list` | List objects of a type/module |
-| `gx_get` | Object header + components |
-| `gx_read` | Reconstructed source (blob GZip → token XML → text) |
-| `gx_properties` | Property bag |
-| `gx_structure` | Transaction attributes |
-| `gx_whoami` | Windows user → KB UserId |
-| `gx_sql` | Direct SQL on the KB (read-only by default) |
+The canonical, always-current tool reference is served as embedded resources by the running server:
 
-### Database
-| Tool | Purpose |
-|---|---|
-| `gx_db_connections` | List connections (`kb` always; `oracle` if `ORACLE_*` set) |
-| `gx_db_query` | SQL on a named connection. `kb` = SQL Server (Win auth); `oracle` = ODP.NET Managed (supports NNE) |
+- `gx18://docs/usage-guide` — full tool reference, anti-patterns, and workflow examples
+- `gx18://docs/quick-reference` — task→tool decision table, mandatory sequences, EntityTypeIds
+- `gx18://docs/entity-types` — write-support matrix for all object types
 
-### Write (SDK, UserId-verified)
-| Tool | Purpose |
-|---|---|
-| `gx_create` | Create an object (see type matrix below). Requires `confirm:true` |
-| `gx_modify` | Replace a source section of an object. Requires `confirm:true` |
-| `gx_export` | Export an object to a real `.xpz` (Knowledge Manager) — also validates it |
-| `gx_import` | Import a `.xpz` via the native Knowledge Manager (`ImportFile`). Requires `confirm:true`. UserId-verified. The export→edit→import round-trip reaches sections the SDK write path can't (e.g. UC `AfterShow`/`Methods` scripts in CDATA) |
-| `gx_set_property` | Set a named property on an object (e.g. `Description`). Requires `confirm:true`. UserId-verified. |
-| `gx_rename` | Rename an object. Requires `confirm:true`. UserId-verified. |
-| `gx_delete` | Delete an object. Supports `dryRun:true` for a no-op preview. Requires `confirm:true`. |
-| `gx_move` | Move an object to a different module (SQL UPDATE on `ModelEntityVersion`). |
-| `gx_variable` | List, add, or delete variables on an object (`action:"list"\|"add"\|"delete"`). |
-| `gx_validate` | Stub — confirms object exists in the KB (headless syntax validation is incompatible with the GX18 SDK). |
-| `gx_build` | Stub — always returns error. Build must be performed from the GX18 IDE (F5 / Build All). |
-
-### Config
-| Tool | Purpose |
-|---|---|
-| `gx_save_config` | Update KB paths (`GX_KB_PATH`, `GX_KB_DATABASE`, etc.) and restart the worker — usable from chat without opening the browser UI |
-| `gx_reload` | Force-restart the worker and reopen the KB fresh — use after `gx_sql readOnly:false` writes that modify KB schema or metadata (e.g. INSERT into properties tables). Takes ~30s cold-start. |
+Read those resources at runtime; they are version-synced with the server and supersede any static list here.
 
 ---
 

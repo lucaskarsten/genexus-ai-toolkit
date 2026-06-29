@@ -461,11 +461,21 @@ namespace Gx18Mcp.SdkWorker.Sql
             if (!rx.IsMatch(xml))
                 throw new Exception($"Script '{scriptName}' not found in UC Properties blob. " +
                     "Use gx_read_xpz to list available scripts.");
-            // Escape any ]]> in newContent — it would prematurely close the CDATA section.
-            // Split into adjacent sections: ]]> → ]]]]><![CDATA[>
-            string safeContent = newContent.Replace("]]>", "]]]]><![CDATA[>");
+            // The RAW KB Properties blob stores <Script> bodies WITHOUT a CDATA wrapper — the
+            // whole Definition is the content, and the GX parser tolerates raw <, >, & inside a
+            // <Script> element (it just must not contain the literal ]]> ... but only because, in
+            // the IDE's XPZ form, the entire Definition is itself wrapped in one outer CDATA).
+            // Writing an INNER <![CDATA[...]]> here nests CDATA: the inner ]]> closes the OUTER
+            // CDATA prematurely when the object is later exported/opened → "Invalid User Control
+            // Definition" + NullRef in the IDE. So we insert the body RAW, never CDATA-wrapped.
+            // (gx_export is the only path that adds CDATA, and it does so around the whole part.)
+            // Guard: a body containing ]]> would still break the eventual outer CDATA on export —
+            // reject it rather than silently corrupt.
+            if (newContent.IndexOf("]]>", StringComparison.Ordinal) >= 0)
+                throw new Exception("UC script body contains ']]>', which would corrupt the Properties " +
+                    "definition on export. Remove the ']]>' sequence from the script.");
             string newXml = rx.Replace(xml,
-                m => m.Groups[1].Value + "<![CDATA[" + safeContent + "]]>" + m.Groups[3].Value);
+                m => m.Groups[1].Value + newContent + m.Groups[3].Value);
             byte[] textBytes = Encoding.UTF8.GetBytes(newXml);
             byte[] compressed;
             using (var ms = new MemoryStream())
@@ -474,8 +484,13 @@ namespace Gx18Mcp.SdkWorker.Sql
                     gz.Write(textBytes, 0, textBytes.Length);
                 compressed = ms.ToArray();
             }
+            // Header is magic(6) + flag(1) + uncompressed-size LE(4). The size MUST match the new
+            // uncompressed length, or the IDE throws "Memory stream is not expandable". Copy magic+flag
+            // from the original, then write the freshly-computed size — do NOT reuse the old size bytes.
             var newBlob = new byte[11 + compressed.Length];
-            Array.Copy(current, 0, newBlob, 0, 11);
+            Array.Copy(current, 0, newBlob, 0, 7); // magic (6) + flag (1)
+            byte[] sizeLE = BitConverter.GetBytes(textBytes.Length); // LE on x86/x64
+            Array.Copy(sizeLE, 0, newBlob, 7, 4);
             Array.Copy(compressed, 0, newBlob, 11, compressed.Length);
             const string updateSql =
                 "UPDATE EntityVersion SET EntityVersionData = @blob " +

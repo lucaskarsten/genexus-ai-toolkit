@@ -5,6 +5,8 @@ import xpzWorkflow from './docs/xpz-workflow.md';
 import genexusKnowledge from './docs/genexus-knowledge.md';
 import writeSafetyChecklist from './docs/write-safety-checklist.md';
 import xpzFormatRef from './docs/xpz-format-reference.md';
+import kbBlobRepair from './docs/kb-blob-repair.md';
+import performancePatterns from './docs/performance-patterns.md';
 import spec from '../spec/entity-types.json';
 import userControlsGuide from '../../../docs/user-controls-guide.md';
 import runtimeApi from '../../../docs/runtime-api-reference.md';
@@ -25,6 +27,8 @@ const XPZ_WORKFLOW_URI = 'gx18://docs/xpz-workflow';
 const GENEXUS_KNOWLEDGE_URI = 'gx18://docs/genexus-knowledge';
 const WRITE_SAFETY_URI = 'gx18://docs/write-safety';
 const XPZ_FORMAT_REF_URI = 'gx18://docs/xpz-format-reference';
+const KB_BLOB_REPAIR_URI = 'gx18://docs/kb-blob-repair';
+const PERFORMANCE_URI = 'gx18://docs/performance';
 const USER_CONTROLS_URI = 'gx18://docs/user-controls';
 const RUNTIME_API_URI = 'gx18://docs/runtime-api';
 const COMMON_PITFALLS_URI = 'gx18://docs/pitfalls';
@@ -95,6 +99,24 @@ export const RESOURCES: Resource[] = [
       'EntityType GUIDs, Part type GUIDs, per-object structure (UC/SDT/Procedure/WBC), ' +
       'variable typing (ATTCUSTOMTYPE vs idBasedOn), silent-import failure modes, ' +
       'and PowerShell snippets for reading and generating XPZ files.',
+    mimeType: 'text/markdown',
+  },
+  {
+    uri: KB_BLOB_REPAIR_URI,
+    name: 'KB Blob Format & Corruption Repair',
+    description:
+      'GeneXus 18 KB blob format (header magic/flag/declared-size, GZip vs raw UTF-8) and repair ' +
+      'procedures for "Memory stream is not expandable" (size mismatch) and "Cannot deserialize tokens" ' +
+      '(raw source in a tokenized code part). Includes the integrity-scan SQL and the gx_reload reminder.',
+    mimeType: 'text/markdown',
+  },
+  {
+    uri: PERFORMANCE_URI,
+    name: 'Performance Diagnosis & N+1 Patterns',
+    description:
+      'How to diagnose GeneXus 18 runtime slowness: the per-row helper-proc N+1 round-trip anti-pattern, ' +
+      'live thread-dump + EXPLAIN PLAN methodology, false leads to avoid, and the in-session WebSession ' +
+      'cache fix that collapses N+1 without changing any caller signature.',
     mimeType: 'text/markdown',
   },
   {
@@ -229,6 +251,10 @@ export function readResource(uri: string): { contents: ResourceContents[] } | nu
       return { contents: [{ uri, mimeType: 'text/markdown', text: writeSafetyChecklist }] };
     case XPZ_FORMAT_REF_URI:
       return { contents: [{ uri, mimeType: 'text/markdown', text: xpzFormatRef }] };
+    case KB_BLOB_REPAIR_URI:
+      return { contents: [{ uri, mimeType: 'text/markdown', text: kbBlobRepair }] };
+    case PERFORMANCE_URI:
+      return { contents: [{ uri, mimeType: 'text/markdown', text: performancePatterns }] };
     case USER_CONTROLS_URI:
       return { contents: [{ uri, mimeType: 'text/markdown', text: userControlsGuide }] };
     case RUNTIME_API_URI:
