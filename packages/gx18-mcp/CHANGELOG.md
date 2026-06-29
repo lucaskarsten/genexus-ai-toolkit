@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.1.3](https://github.com/lucaskarsten/genexus-ai-toolkit/compare/gx18-mcp-v2.1.2...gx18-mcp-v2.1.3) (2026-06-29)
+
+
+### Bug Fixes
+
+* **gx18-mcp:** stop rewriting SDK timestamps; UTC is correct for Team Dev ([281dda1](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/281dda1cf5353d3fa396d35a87863dd374ba7d0a))
+* **gx18-mcp:** UTC timestamp no-op + embedded-doc updates ([fe2fffa](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/fe2fffa89995bc47a39e1aa624a60069906fffb2))
+
+
+### Documentation
+
+* **gx18-mcp:** id-counter resync, direct UC-script modify, blob-repair cases ([64d5ec8](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/64d5ec8340d134253920cbe5a1df709c062998b2))
+
 ## [2.1.2](https://github.com/lucaskarsten/genexus-ai-toolkit/compare/gx18-mcp-v2.1.1...gx18-mcp-v2.1.2) (2026-06-29)
 
 
