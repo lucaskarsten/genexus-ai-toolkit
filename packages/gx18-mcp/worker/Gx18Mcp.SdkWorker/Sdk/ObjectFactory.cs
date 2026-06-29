@@ -660,21 +660,21 @@ namespace Gx18Mcp.SdkWorker.Sdk
             NormalizeFutureTimestamps();
         }
 
-        // The GX18 SDK stamps EntityVersionTimestamp in UTC, but GeneXus reads that column as
-        // local time — so on UTC-ahead-of-local machines every save lands "in the future", and
-        // the IDE/build warns "KB modified at <future> > current system time, time dependencies
-        // won't work" and incremental builds misfire. The worker does not write this column
-        // itself (only the SDK does), so we normalize any future-stamped rows back to local time
-        // right after each save. Defensive: never let this break the save it just completed.
+        // Timestamp handling — CORRECTED 2026-06-29 after empirical test:
+        // The GX18 SDK stamps EntityVersionTimestamp AND ModelEntityHistory.HistoryTimestamp in UTC.
+        // GeneXus Team Development reads these columns AS UTC and converts to local for the "Modified On"
+        // column — so the SDK's native UTC stamp is CORRECT and the column displays the right local time.
+        // (Proven: a row set to GETUTCDATE() showed local time in Team Dev; a row set to GETDATE() showed
+        // 3h-too-early.) An EARLIER version of this method "normalized" future-stamped rows back to local
+        // (GETDATE()) on the theory that GeneXus reads them as local — that theory was WRONG and made every
+        // touched object display 3h behind in Team Development. The SDK stamp must be LEFT ALONE.
+        //
+        // If a genuine "KB modified in the future" build warning ever recurs, it is a real wall-clock/NTP
+        // skew on the machine (not a UTC-vs-local artifact) and must be fixed at the OS clock level — do
+        // NOT rewrite these columns here, or Team Dev "Modified On" breaks again.
         private void NormalizeFutureTimestamps()
         {
-            try
-            {
-                _sql.Execute(
-                    "UPDATE EntityVersion SET EntityVersionTimestamp = GETDATE() " +
-                    "WHERE EntityVersionTimestamp > DATEADD(minute, 1, GETDATE())");
-            }
-            catch { /* best-effort: a timestamp skew must never fail a write */ }
+            // Intentionally a no-op: the SDK's UTC timestamps are correct for both Team Dev and build.
         }
 
         private object VerifyUserId(int entityTypeIdHint, int entityId, string name, string op)
