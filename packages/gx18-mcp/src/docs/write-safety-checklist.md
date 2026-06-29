@@ -76,28 +76,102 @@ Then kill the worker so the SDK reloads from the DB:
 Get-Process Gx18Mcp.SdkWorker -ErrorAction SilentlyContinue | Stop-Process -Force
 ```
 
-### Step 4 — Be aware: SDK saves stamp `EntityVersionTimestamp` in UTC
+### Step 4 — Timestamps are stored in UTC and that is CORRECT — do not "normalize" them
 
-The native GeneXus SDK `Save()` stamps `EntityVersion.EntityVersionTimestamp` in **UTC**, but GeneXus
-reads that `datetime` column as **local time**. On a machine behind UTC (e.g. UTC−3) every SDK write is
-born "in the future" by the local offset, which breaks incremental-build time dependencies with:
-*"The Knowledge Base was last modified at HH:MM, which is greater than the current system time."*
+The native GeneXus SDK `Save()` stamps `EntityVersion.EntityVersionTimestamp` **and**
+`ModelEntityHistory.HistoryTimestamp` in **UTC**. GeneXus Team Development reads these columns **as UTC
+and converts to local** for the "Modified On" column — so the SDK's native UTC stamp is **correct** and
+the IDE displays the right local time.
 
-This is **not** a clock problem and not an MCP-tool bug — it is the SDK writing the column. Detect it:
+**Do NOT rewrite these columns to local time.** (A row stamped `GETUTCDATE()` shows the right local time
+in Team Dev; a row stamped `GETDATE()` shows the UTC→local offset *too early* — e.g. 3h behind in UTC−3.)
+An earlier theory held that GeneXus reads the column as local and that future-stamped rows should be
+"normalized" to `GETDATE()`. **That theory is wrong** and makes every touched object display the offset
+behind in Team Development. The worker no longer normalizes (the method is a no-op).
+
+If you must write a timestamp via direct SQL, use **`GETUTCDATE()`, not `GETDATE()`**. To repair rows
+that were wrongly written in local time:
 
 ```sql
-SELECT COUNT(*) FROM EntityVersion WHERE EntityVersionTimestamp > GETDATE()
+UPDATE EntityVersion
+SET EntityVersionTimestamp = DATEADD(hour, DATEDIFF(hour, GETDATE(), GETUTCDATE()), EntityVersionTimestamp)
+WHERE EntityVersionTimestamp < DATEADD(hour, -2, GETUTCDATE())   -- i.e. still in local, not UTC
+  AND EntityVersionTimestamp >= CONVERT(date, GETDATE());        -- scope to recent rows you touched
+-- same shape for ModelEntityHistory.HistoryTimestamp
 ```
 
-If `> 0`, normalize the future stamps (then `gx_reload`):
+A genuine *"Knowledge Base was last modified at HH:MM > current system time"* build warning is a real
+OS clock / NTP skew (not a UTC-vs-local artifact) — fix it at the clock level (`w32tm /resync`), then
+restart the resident worker so it does not carry cached time state. Do not rewrite the columns for it.
+
+### Step 4b — Making an SQL-edited object show as MODIFIED in the IDE / regenerate on build
+
+A direct SQL write to a part blob does **not** create a new `EntityVersion` of the object nor a
+`ModelEntityHistory` entry. The IDE therefore does not see the object as modified, and the **incremental
+build skips regenerating it** (the generated render.js / Java stays stale even though the KB blob is new).
+
+Do **not** hand-insert `ModelEntityHistory` / `EntityVersion` rows — that is fragile and corrupts easily.
+Instead, let the SDK record the change: run a `gx_modify` **on an SDK-path section of the same object,
+with a real (non-identical) content difference**. The SDK reloads the object — including the blob you
+patched — re-serializes it and `Save()`s, which atomically creates a new `EntityVersion` + a
+`ModelEntityHistory` (Op=2) entry + timestamp, **preserving the patched content**. Then `gx_reload`.
+
+Two traps that make this fail silently — confirmed on UserControls (type=147), 2026:
+
+1. **`section="script:*"` does NOT bump the version.** `gx_modify type=147 section="script:AfterShow"`
+   (or any `script:<Name>`) returns `op: "modify-uc-script-sql"` and writes the script blob **in-place
+   via SQL on the active EntityVersion** — it does **not** go through the SDK `Save()`, so **no new
+   EntityVersion and no `ModelEntityHistory` entry** are created. The object stays invisible to Team
+   Development and the incremental build. So `script:*` is **not** a valid "idempotent re-save" for this
+   purpose — it is the very write that needs a follow-up save.
+2. **An identical re-save is a no-op.** Re-writing a section with byte-identical content (e.g.
+   `gx_modify section=template` with the exact current template) returns `op: "modify"` but the SDK
+   detects no change and does **not** save — `MAX(EntityVersionId)` does not advance.
+
+**Reliable recipe:** after the `script:*` (or SQL blob) write, re-save a real SDK-path section with a
+**minimal benign difference**. For a UserControl, regenerate the version by writing `section=template`
+with one extra comment line added (e.g. a `/* ... */` inside the `<style>`). That returns `op: "modify"`,
+creates a new `EntityVersion` + `ModelEntityHistory` (Op=2) with the correct UserId, and **preserves the
+already-patched script blob** (verified by re-export). Confirm it worked:
 
 ```sql
-UPDATE EntityVersion SET EntityVersionTimestamp = GETDATE() WHERE EntityVersionTimestamp > GETDATE()
+SELECT MAX(EntityVersionId) FROM EntityVersion WHERE EntityTypeId = <type> AND EntityId = <id>
 ```
 
-The worker normalizes new SDK saves automatically (1-minute margin preserves legitimate concurrent
-saves), so this manual cleanup is only needed for stamps written before that fix. After changing the
-Windows clock (`w32tm /resync`), restart the resident worker so it does not carry cached time state.
+The max must have advanced. Then `gx_reload`, refresh the Team Development pending list, and Build in the IDE.
+For WebPanel/WebComponent (type=43) where `events`/`rules` are SDK-path sections, the same idea applies —
+just ensure the re-saved content actually differs from what is stored.
+
+### Step 4c — `EntityType.EntityTypeLastObjectId` drift → "Record already exists" on create
+
+If `gx_create` (or creating an object in the IDE) throws
+`EntityDuplicateKeyException: Record already exists` even though the target ids look free, the per-type
+id counter is stale. GeneXus allocates the next `EntityId` **per type** from
+`EntityType.EntityTypeLastObjectId`, not from `MAX(EntityId)`. Direct SQL inserts of objects/parts do
+**not** advance this counter, so `Counter+1` collides with an existing row. This breaks creating *any*
+type (an object's parts — Rules 69, Variables 72, etc. — collide too), and fails identically in the IDE
+and via MCP. It is **not** a stale in-memory adapter, a duplicate `UdmModel` row, or ghost `Entity`
+rows — do not delete those chasing it.
+
+Diagnose and fix (then `gx_reload`):
+
+```sql
+-- diagnose: any row with Counter < MAX will collide
+SELECT et.EntityTypeId, et.EntityTypeLastObjectId AS Counter,
+       (SELECT MAX(e.EntityId) FROM Entity e WHERE e.EntityTypeId = et.EntityTypeId) AS MaxId
+FROM EntityType et;
+
+-- fix: resync each per-type counter to the real MAX
+UPDATE et SET et.EntityTypeLastObjectId = m.MaxId
+FROM EntityType et
+JOIN (SELECT EntityTypeId, MAX(EntityId) AS MaxId FROM Entity GROUP BY EntityTypeId) m
+  ON m.EntityTypeId = et.EntityTypeId
+WHERE et.EntityTypeLastObjectId < m.MaxId;
+```
+
+Run this fix routinely after any direct SQL insert of objects/parts into a KB.
+
+### Step 5 — Kill the worker if you made any SQL changes in this session
 
 ### Step 5 — Kill the worker if you made any SQL changes in this session
 
@@ -301,8 +375,9 @@ endif
 &WebSession.Set(&CacheKey, &CacheVal)
 ```
 
-This avoids editing any caller (including tokenized type=43 Events, which cannot be safely re-tokenized
-via `gx_modify events` — see `feedback_wbp_events_gx_modify_blocked`).
+This avoids rewriting the whole Events of a type=43 caller. `gx_modify events` itself works (the SDK
+tokenizes headless), but rewriting the *entire* Events block is fragile — see the Events editing note
+below for the safe ways to make a small change.
 
 ---
 
@@ -316,6 +391,44 @@ the blob (skip the 11-byte header), then rebuild by concatenating the `<Word>` t
 grep -o '<Word>[^<]*</Word>' token.xml | sed 's|<Word>||g; s|</Word>||g' | tr -d '\n'
 ```
 
-The reconstruction is faithful (indentation, subs preserved) and is good for **reading/auditing**. But the
-`\r\n` come through as literals that resist normalization — re-tokenizing and writing back via
-`gx_modify events` is NOT reliable. To EDIT type=43 Events, use the IDE.
+The reconstruction is faithful (indentation, subs preserved) and is good for **reading/auditing**.
+
+### Editing type=43 Events — `gx_modify` is the path, even for a full-section rewrite
+
+`gx_modify section=events` **works** — the SDK tokenizes the source headless and rejects invalid source
+with a `ValidationException` (KB untouched), exactly like a Procedure. This includes **rewriting the
+entire Events section** (proven: a ~250-line full-section reorder saved on the first try with
+well-formed source). The old claim that "rewriting the whole Events block is fragile, prefer a token
+patch" was **wrong** and led to needless SQL blob surgery. One real caution:
+
+- **Never retype Events from the DISPLAYED text.** `gx_read events` returns correct source in its `text`
+  field, but the MCP terminal display *collapses whitespace* (`For Each Trn` shows as `For EachTrn`).
+  Hand-build the source with real spaces/newlines, or use the raw `text` value. Collapsed text →
+  fused tokens (`EndIfIf`, `SimAnd`) → `ValidationException` (see the section above on src0057).
+
+To change even one thing (e.g. swap a called procedure's name), rewrite the section via `gx_modify` —
+do **not** reach for token-blob SQL surgery on the part (ComponentEntityTypeId=64). A successful
+`gx_modify` creates the `EntityVersion` + `ModelEntityHistory` entry automatically, so incremental
+build (F5) sees the change; an SQL blob patch does not.
+
+### `gx_modify` ValidationException ≠ "object is pre-broken" — it's almost always YOUR source
+
+When `gx_modify section=events` fails with `ValidationException`, the overwhelmingly likely cause is
+**malformed source you supplied**, NOT a pre-existing fault in the object. Two traps that produced this
+in practice:
+
+1. **Tokens run together with no separator.** If you build the source from a token-blob dump or from the
+   collapsed-whitespace MCP display, adjacent keywords fuse: `EndIf` + `If` → `EndIfIf`, `Sim` + `And` →
+   `SimAnd`, `.SetEmpty()` + `If` → `.SetEmpty()If`. The GX parser reads `EndIfIf` as one identifier and
+   reports `error src0057: Expecting 'EndIf' command to close the 'If' block`. Always feed `gx_modify`
+   real source with spaces/newlines between statements — never the collapsed display text.
+2. **Unbalanced If/EndIf** from a hand-reordered block. Count them.
+
+**Do NOT conclude the object is "pre-broken" and fall back to SQL blob surgery.** `gx_validate` is a
+stub (it only confirms the object exists — see its own `note`), so a green `gx_validate` says nothing
+about syntax; do not trust it to clear your source. The authoritative syntax check is the actual
+`gx_modify` save (or the IDE Build All output, e.g. `src0057 … Line/Char`). Fix the source until
+`gx_modify` returns `op: modify` — it will, and that path creates the `EntityVersion` +
+`ModelEntityHistory` entry automatically, so incremental build (F5) sees the change. Reserve token-blob
+SQL surgery for the genuinely rare case where the SDK save path is proven unavailable — and even then,
+prefer fixing whatever blocks the save so the SDK path works.

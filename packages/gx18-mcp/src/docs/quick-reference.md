@@ -34,7 +34,7 @@ with the correct Windows UserId (no Team Development corruption). **47 tools tot
 | Verify Windows identity before writing | `gx_whoami` | Assuming UserId is correct |
 | Create a new object in the KB | `gx_create confirm:true` | Generating to `output/` when the intent is a KB write |
 | Edit source / events of existing object | `gx_modify confirm:true` | `gx_import` — does NOT overwrite existing objects without fullOverwrite |
-| Edit UC AfterShow / Methods scripts | `gx_export` → `gx_read_xpz` → `gx_patch_xpz` → `gx_import` | `gx_modify` |
+| Edit UC AfterShow / Methods scripts | `gx_modify type=147 section="script:AfterShow" confirm:true` (direct) — or the `gx_export`→`gx_read_xpz`→`gx_patch_xpz`→`gx_import` round-trip | retyping from displayed text |
 | Edit DSO styles | `gx_modify type=161 section=styles content="@import DsoBase;..."` | GUID form `@import @<guid>@` (causes ValidationException) |
 | Set a property (Title, IsPrivate, etc.) | `gx_set_property confirm:true` | SQL UPDATE (bypasses SDK validation) |
 | Rename an object | `gx_rename confirm:true` | SQL UPDATE (won't update callers) |
@@ -163,6 +163,17 @@ gx_export name=PrcFoccoMyProc type=34     → validate + backup .xpz
 gx_sql query="UPDATE EntityVersion ..." readOnly:false confirm:true
 gx_reload                                 → restart worker so SDK re-reads KB from database
 ```
+
+After INSERTing objects/parts via SQL, also resync the per-type id counter (else the next
+`gx_create`/IDE-create throws `Record already exists`) — see write-safety Step 4c:
+```
+gx_sql readOnly:false confirm:true query="
+  UPDATE et SET et.EntityTypeLastObjectId = m.MaxId
+  FROM EntityType et JOIN (SELECT EntityTypeId, MAX(EntityId) MaxId FROM Entity GROUP BY EntityTypeId) m
+    ON m.EntityTypeId=et.EntityTypeId WHERE et.EntityTypeLastObjectId < m.MaxId"
+```
+And to make an SQL-patched object show as modified (so the build regenerates it), run an idempotent
+`gx_modify` on it afterward (write-safety Step 4b).
 
 ---
 

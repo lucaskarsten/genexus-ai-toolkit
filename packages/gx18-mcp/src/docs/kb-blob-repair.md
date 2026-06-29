@@ -170,6 +170,36 @@ WHERE target.EntityTypeId = <partTypeId>
 
 ---
 
+## Corruption error 3 — "Invalid User Control Definition" / nested CDATA in UC Properties (type 149)
+
+**Symptom in the IDE:** `Object reference not set to an instance of an object. (Artech.Architecture.Common)`
+plus `error: Invalid User Control Definition for: <UC>`, and `gx_read type=147 section=properties`
+returns **empty**. Often cascades into `src0216: '<prop>' invalid property` in every WBC/WBP that uses
+the UC.
+
+**Cause:** the UC Properties part (type 149) holds the whole `<Definition>`. In the IDE's XPZ form that
+definition lives inside ONE outer CDATA. If a `<Script>` inside it has **its own** `<![CDATA[ … ]]>`,
+the inner `]]>` closes the outer CDATA early → truncated definition. The **raw KB blob stores scripts
+WITHOUT a CDATA wrapper** — only `gx_export` adds CDATA (around the whole part). So writing an inner
+CDATA into the raw blob is the corruption. A buggy `PatchUCScriptBlob` (since fixed) and manual SQL
+patches are the usual sources.
+
+**Detect:**
+
+```sql
+SELECT CAST(DECOMPRESS(SUBSTRING(EntityVersionData,12,DATALENGTH(EntityVersionData)-11)) AS varchar(MAX))
+FROM EntityVersion WHERE EntityTypeId=149 AND EntityId=<ucPartId> AND EntityVersionId=<vid>
+-- bad if the <Script> body is wrapped in <![CDATA[ ... ]]> (look for ]]> inside <Script>)
+```
+
+**Repair:** decompress the part-149 blob, **remove the inner `<![CDATA[` after `When="...">` and the
+`]]>` before `</Script>`** (the GX parser tolerates raw `<`, `>`, `&` inside `<Script>` — only a literal
+`]]>` is forbidden), set `auto="false"`, recompress with a recomputed little-endian uncompressed-size
+header, `UPDATE EntityVersion SET EntityVersionData=@blob`, then `gx_reload`. Reference UC that is
+correct: any UC whose `<Script>` body is raw JS without its own CDATA.
+
+---
+
 ## Integrity scan for code parts
 
 Run this to detect any code-part blob that does not start with `<TokenDataList`. Returns 0 rows
