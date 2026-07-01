@@ -1,5 +1,6 @@
 .env
 *.local.*
+foccolojas-*.md
 
 # OMC orchestration state (session-specific, not for users)
 .omc/
