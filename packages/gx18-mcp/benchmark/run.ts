@@ -59,6 +59,21 @@ export async function runBenchmark(opts: RunOptions): Promise<void> {
   const client = new GxMcpClient();
   await client.connect();
 
+  // If any export cell is in scope, warm up the SDK first — same logic as capture.ts.
+  // Without warm-up, gx_export cold-starts on the first UC and times out at 30s (MCP default),
+  // leaving the worker with the KB open in exclusive mode and blocking all subsequent SQL reads.
+  const hasExport = cells.some((c) => c.tool === 'gx_export');
+  if (hasExport) {
+    process.stdout.write('  🔥 warming up SDK (gx_export cold-start can take ~30s)...');
+    let warm = false;
+    for (let i = 0; i < 12 && !warm; i++) {
+      const r = await client.call('gx_export', { name: 'UCTooltip', type: 'usercontrol' }, 180_000);
+      if (!r.isError) { warm = true; break; }
+      await new Promise((res) => setTimeout(res, 5000));
+    }
+    process.stdout.write(warm ? ' ✅\n\n' : ' ⚠️  (still cold — exports may fail)\n\n');
+  }
+
   const startMs = Date.now();
   const cellReports: CellReport[] = [];
 

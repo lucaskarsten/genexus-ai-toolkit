@@ -1,6 +1,7 @@
 import fs from 'fs';
+import vm from 'vm';
 import { bridge } from '../sdk-bridge/bridge';
-import { CreateResult, ModifyResult, SetPropertyResult, RenameResult, WriteResult, ImportResult } from '../sdk-bridge/protocol';
+import { CreateResult, ModifyResult, SetPropertyResult, RenameResult, WriteResult, ImportResult, BatchModifyResult } from '../sdk-bridge/protocol';
 import { SUPPORTED_WRITE_TYPES, SECTION_FIELDS, ENTITY_TYPE_TO_KEY, OBJECT_TYPES, KEY_TO_ENTITY_TYPE, resolveTypeKey } from '../domain/entity-types';
 
 // Re-exported for backward compatibility and the contract tests; defined in domain/entity-types.
@@ -19,11 +20,24 @@ function requireConfirm(confirm: unknown, toolName: string): void {
 function assertWriteOk(result: WriteResult): void {
   if (!result.userIdOk) {
     throw new Error(
-      `UserId verification FAILED after ${result.op}!\n` +
-      `Object '${result.name}' (entityId ${result.entityId}) was saved with UserId ${result.userId}, ` +
-      `but the expected author is ${result.expectedUserId} (${result.kbUserName}).\n` +
-      `This would corrupt Team Development history. Review the KB before continuing.`
+      `Write completed but UserId mismatch — saved as "${result.userId}" instead of "${result.expectedUserId}" (${result.kbUserName}). ` +
+      `Object may show wrong authorship in Team Development. Run gx_whoami before retrying.`
     );
+  }
+}
+
+function validateJsSyntax(content: string, scriptName: string): void {
+  try {
+    new vm.Script(content, { filename: `<script:${scriptName}>` });
+  } catch (e) {
+    if (e instanceof SyntaxError) {
+      const line = (e as any).lineNumber ?? '?';
+      const col  = (e as any).column ?? '?';
+      throw new Error(
+        `gx_modify: JS syntax error in "${scriptName}" at line ${line}, col ${col}: ${e.message}`
+      );
+    }
+    throw e;
   }
 }
 
@@ -71,15 +85,16 @@ export async function gxCreate(args: {
 export async function gxModify(args: {
   name: string;
   type: number | string;
-  section: string;
-  content: string;
+  section?: string;
+  content?: string;
+  patches?: Array<{ name: string; content: string }>;
   confirm?: boolean;
 }): Promise<string> {
   requireConfirm(args.confirm, 'gx_modify');
 
   if (!args.name) throw new Error('gx_modify: name is required.');
-  if (!args.section) throw new Error('gx_modify: section is required.');
-  if (args.content == null) throw new Error('gx_modify: content is required (pass empty string to clear a section).');
+  if (!args.patches?.length && !args.section) throw new Error('gx_modify: section is required.');
+  if (!args.patches?.length && args.content == null) throw new Error('gx_modify: content is required (or provide patches for batch UC script updates).');
 
   const typeKey = resolveTypeKey(args.type);
   if (!SUPPORTED_WRITE_TYPES.includes(typeKey)) {
@@ -90,8 +105,9 @@ export async function gxModify(args: {
 
   const typeSpec = OBJECT_TYPES.find(t => t.key === typeKey);
   const validSections = typeSpec?.sections.map(s => s.key) ?? [];
-  const isUcScriptSection = typeKey === 'usercontrol' && args.section.toLowerCase().startsWith('script:');
-  if (validSections.length > 0 && !validSections.includes(args.section.toLowerCase()) && !isUcScriptSection) {
+  const sectionLower = args.section?.toLowerCase() ?? '';
+  const isUcScriptSection = typeKey === 'usercontrol' && sectionLower.startsWith('script:');
+  if (args.section && validSections.length > 0 && !validSections.includes(sectionLower) && !isUcScriptSection) {
     const ucHint = typeKey === 'usercontrol'
       ? ' To patch AfterShow/Methods scripts, use section="script:<ScriptName>" (e.g. script:AfterShow).'
       : '';
@@ -101,7 +117,7 @@ export async function gxModify(args: {
     );
   }
 
-  if (args.section.toLowerCase() === 'layout') {
+  if (sectionLower === 'layout') {
     const trimmed = (args.content ?? '').trimStart();
     if (!trimmed.startsWith('<GxMultiForm')) {
       throw new Error(
@@ -109,6 +125,32 @@ export async function gxModify(args: {
         'Decode the layout blob first via gx_read (section=layout) and send it back modified.'
       );
     }
+  }
+
+  if (isUcScriptSection) {
+    const scriptName = args.section!.substring('script:'.length).trim();
+    if ((args.content ?? '').includes(']]>')) {
+      throw new Error(`gx_modify: script "${scriptName}" contains "]]>" which would corrupt the Properties XML.`);
+    }
+    validateJsSyntax(args.content ?? '', scriptName);
+  }
+
+  // Batch UC script patch
+  const isUcBatchPatch = typeKey === 'usercontrol' && Array.isArray(args.patches) && args.patches.length > 0;
+  if (isUcBatchPatch) {
+    for (const p of args.patches!) {
+      if (!p.name) throw new Error('gx_modify patches: each patch must have a non-empty name');
+      if (p.content == null) throw new Error(`gx_modify patches["${p.name}"]: content is required`);
+      if (p.content.includes(']]>')) throw new Error(`gx_modify patches["${p.name}"]: content contains "]]>" which corrupts XPZ`);
+      validateJsSyntax(p.content, p.name);
+    }
+    const result = await bridge.send<BatchModifyResult>('modify_uc_scripts_batch', {
+      name: args.name,
+      type: typeKey,
+      patches: args.patches,
+    }, 180000);
+    assertWriteOk(result);
+    return JSON.stringify(result, null, 2);
   }
 
   const result = await bridge.send<ModifyResult>('modify', {

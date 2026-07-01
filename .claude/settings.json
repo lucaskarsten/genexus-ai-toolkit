@@ -16,7 +16,11 @@
       "mcp__gx18__gx_whoami",
       "mcp__gx18__gx_read_xpz",
       "Bash(mkdir -p \"/c/Repos/genexus-ai-toolkit/output/WBP\")",
-      "Bash(cp \"/c/Users/LUCAS~1.KAR/AppData/Local/Temp/claude/c--Repos-genexus-ai-toolkit/6f79cb1f-2316-4645-b27a-f30ecdc0be0b/scratchpad/hdr_events_new_faithful.txt\" \"/c/Repos/genexus-ai-toolkit/output/WBP/WbcNucHeader_reorder-botaonovo.events.gx\")"
+      "Bash(cp \"/c/Users/LUCAS~1.KAR/AppData/Local/Temp/claude/c--Repos-genexus-ai-toolkit/6f79cb1f-2316-4645-b27a-f30ecdc0be0b/scratchpad/hdr_events_new_faithful.txt\" \"/c/Repos/genexus-ai-toolkit/output/WBP/WbcNucHeader_reorder-botaonovo.events.gx\")",
+      "mcp__gx18__gx_attribute",
+      "Bash(cat > *)",
+      "mcp__gx18__gx_save_config",
+      "mcp__gx18__gx_set_property"
     ]
   }
 }

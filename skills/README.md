@@ -6,11 +6,24 @@ These skill files load expert GeneXus knowledge into your AI assistant. Each fil
 
 ## Available Skills
 
+### Local skill files (in `skills/`)
+
 | Skill file | What it covers |
 |-----------|---------------|
 | `genexus-uc.md` | User Control specialist — Properties, Screen Template, AfterShow, data passing, MutationObserver, jQuery, Control Type, CSS, debugging |
 | `genexus-expert.md` | Senior GeneXus expert — all object types (UC, DSO, WBP/WBC), ES5 JS, runtime APIs, BEM CSS, KB SQL, build/sync cycle |
 | `genexus-kb-sql.md` | Knowledge Base SQL — EntityType mapping, GZip blob format, PowerShell scripts for direct source read/write |
+
+### Submodule skills (in `skills/nexa/` — from [genexuslabs/genexus-skills](https://github.com/genexuslabs/genexus-skills))
+
+| Skill path | What it covers | When to activate |
+|---|---|---|
+| `skills/nexa/nexa/` | **nexa** — authoritative GeneXus language reference: 24+ object types, all rules/events/properties, full language spec | Any task involving Transaction structure, Procedure rules, SDT design, domain types, or KB model decisions |
+| `skills/nexa/frontend/chameleon-controls-library/` | **Chameleon Controls Library** — 60+ web components (ch-accordion, ch-chat, ch-grid, ch-code-editor, etc.), Angular/React/Stencil/vanilla JS integration | Building or debugging GX18 Web Panel UI with Chameleon components |
+| `skills/nexa/frontend/design-system-builder/` | **Design System Builder** — enterprise CSS design systems atop Chameleon: ITCSS layers, tokens, multi-brand, light/dark themes, auto-validation | Creating or extending a custom design system from scratch |
+| `skills/nexa/frontend/mercury-design-system/` | **Mercury Design System** — pre-configured Mercury (blue) and Globant (green) themes: 39 CSS bundles, design tokens, 500+ icons, WCAG AA | Styling Chameleon-based UIs with the official GeneXus design system |
+| `skills/nexa/gx-erp-connector/` | **GX ERP Connector** — SAP RFC/BAPI metadata mapping, ABAP→GeneXus type mapping, ExternalObject/SDT generation | SAP or ERP integration workflows |
+| `skills/nexa/frontend/ui-creator/` | **UI Creator** — converts design screenshots + OpenAPI specs into Angular/React apps | Design-to-code workflows (requires Figma MCP) |
 
 ---
 
@@ -30,6 +43,29 @@ cp skills/genexus-kb-sql.md ~/.claude/skills/
 Copy-Item skills\genexus-uc.md      $env:USERPROFILE\.claude\skills\
 Copy-Item skills\genexus-expert.md  $env:USERPROFILE\.claude\skills\
 Copy-Item skills\genexus-kb-sql.md  $env:USERPROFILE\.claude\skills\
+```
+
+**Submodule skills** — register with `--add-dir` per session or project:
+
+```bash
+# GeneXus language authority (nexa) — always load for KB modeling tasks
+claude --add-dir skills/nexa/nexa
+
+# Chameleon web components — load when building Web Panel UIs
+claude --add-dir skills/nexa/frontend/chameleon-controls-library
+
+# Design system CSS — load for DSO/token design work
+claude --add-dir skills/nexa/frontend/design-system-builder
+claude --add-dir skills/nexa/frontend/mercury-design-system
+
+# SAP/ERP integration — load only when needed
+claude --add-dir skills/nexa/gx-erp-connector
+```
+
+To update the submodule to the latest skills from GeneXus Labs:
+
+```bash
+git submodule update --remote skills/nexa
 ```
 
 **Agents** (project-level — already in `.claude/agents/`):

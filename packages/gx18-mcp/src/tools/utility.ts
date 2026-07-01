@@ -103,7 +103,11 @@ export async function gxSql(args: {
     readOnly,
     maxRows,
   });
-  return JSON.stringify(result, null, 2);
+  const out = result as Record<string, unknown>;
+  if (!readOnly) {
+    out._warning = 'SQL write executed. Worker in-memory model is now stale — call gx_reload before any SDK operation (gx_modify, gx_create, gx_import, gx_export), otherwise they will not see the SQL changes.';
+  }
+  return JSON.stringify(out, null, 2);
 }
 
 export async function gxReload(): Promise<string> {

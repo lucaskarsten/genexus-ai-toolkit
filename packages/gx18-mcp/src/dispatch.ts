@@ -49,7 +49,9 @@ const TOOLS: Tool[] = [
     name: 'gx_list',
     description:
       'List all GeneXus KB objects of a given type, optionally filtered by module. ' +
-      'EntityTypeId values: Procedure=34, SDT=36, Transaction=39, WebPanel/WebComponent=43, UserControl=147.',
+      'Returns name, entityId, and lastModified for each object, paginated via limit/offset. ' +
+      'EntityTypeId values: Procedure=34, SDT=36, Transaction=39, WebPanel/WebComponent=43, UserControl=147. ' +
+      'Anti-pattern: for name-based lookup, use gx_find instead — gx_list returns ALL objects of the type and is slower when you only need one.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -65,13 +67,16 @@ const TOOLS: Tool[] = [
   {
     name: 'gx_get',
     description:
-      'Get details of a specific GeneXus KB object including its sub-components. ' +
-      'Returns EntityDetail with components list (Events=64, Rules/Source=69, Variables=72, WebForm=74).',
+      'Get metadata and sub-component list for a specific GeneXus KB object. ' +
+      'Returns EntityDetail: entityId, entityTypeId, name, module, lastModified, and a components array ' +
+      '(componentTypeId → Events=64, Rules/Source=69, Variables=72, WebForm=74). ' +
+      'Use this to confirm an object exists and discover which sections it has before calling gx_read. ' +
+      'For source code, use gx_read after this. For property values (Title, Theme, etc.), use gx_properties.',
     inputSchema: {
       type: 'object',
       properties: {
         name: { type: 'string', description: 'Exact object name' },
-        type: { type: 'number', description: 'EntityTypeId. E.g. 34=Procedure, 43=WebPanel.' },
+        type: { type: 'number', description: 'EntityTypeId as number — 34=procedure, 43=webpanel/webcomponent, 147=usercontrol, 161=dso, 36=sdt, 39=transaction. Always pass as a number, never as a string.' },
       },
       required: ['name', 'type'],
     },
@@ -86,18 +91,21 @@ const TOOLS: Tool[] = [
       'properties (property definitions XML, section=properties). ' +
       'Returns the reconstructed plain-text source. ' +
       'NEVER read the generated Java in javaoracle/ or render.js in static/ — use this tool instead. ' +
-      'IMPORTANT: UserControl AfterShow and Methods scripts are NOT readable via any gx_read section — ' +
-      'to READ them: gx_export → gx_read_xpz. To WRITE them: gx_modify with section="script:AfterShow" (or "script:<MethodName>").',
+      'UserControl scripts: section=\'scripts\' lists all scripts [{name,charCount}]; add scriptName=\'AfterShow\' to read a specific one — no XPZ round-trip needed.',
     inputSchema: {
       type: 'object',
       properties: {
         name: { type: 'string', description: 'Exact object name' },
-        type: { type: 'number', description: 'EntityTypeId' },
+        type: { type: 'number', description: 'EntityTypeId as number — 34=procedure, 43=webpanel/webcomponent, 147=usercontrol, 161=dso, 36=sdt, 39=transaction. Always pass as a number, never as a string.' },
         section: {
           type: 'string',
           description:
             'Section to read (defaults by object type). Common: source, events, rules, layout, variables. ' +
-            'UserControl (type=147): template (HTML/CSS), properties (property definitions).',
+            'UserControl (type=147): template (HTML/CSS), properties (property definitions), scripts (UC AfterShow/Methods scripts list or content).',
+        },
+        scriptName: {
+          type: 'string',
+          description: "UC scripts only (section='scripts'): name of a specific script to read (e.g. 'AfterShow'). Omit to list all scripts.",
         },
       },
       required: ['name', 'type'],
@@ -112,7 +120,7 @@ const TOOLS: Tool[] = [
       type: 'object',
       properties: {
         name: { type: 'string', description: 'Exact object name' },
-        type: { type: 'number', description: 'EntityTypeId' },
+        type: { type: 'number', description: 'EntityTypeId as number — 34=procedure, 43=webpanel/webcomponent, 147=usercontrol, 161=dso, 36=sdt, 39=transaction. Always pass as a number, never as a string.' },
       },
       required: ['name', 'type'],
     },
@@ -204,17 +212,42 @@ const TOOLS: Tool[] = [
       'Sections: source, events, rules, layout, variables. ' +
       'Use this for existing objects — NOT gx_import (import does not overwrite existing objects). ' +
       'For UserControl AfterShow/Methods scripts, use section="script:AfterShow" (or "script:<MethodName>") — no XPZ round-trip needed. ' +
-      'For DSO styles, pass the friendly @import name (e.g. "@import DsoBase;"), NOT the GUID form.',
+      'For multiple UC scripts in one atomic call, use patches=[{name,content},...] instead of section+content. ' +
+      'For DSO styles, pass the friendly @import name (e.g. "@import DsoBase;"), NOT the GUID form. ' +
+      'For SDT (type=36), use section="structure" and pass content as a JSON array string: \'[{"name":"Field","type":"varchar","length":60}]\'. ' +
+      'Replaces the full structure (existing members are removed first). ' +
+      'IMPORTANT: for scripts longer than 200 lines use gx_patch_xpz instead — large content fields risk JSON truncation in tool call generation.',
     inputSchema: {
       type: 'object',
       properties: {
         name: { type: 'string', description: 'Exact object name' },
-        type: { type: 'number', description: 'EntityTypeId' },
-        section: { type: 'string', description: 'Section to modify: source, events, rules, layout, variables. For UserControl scripts: "script:AfterShow" or "script:<MethodName>".' },
-        content: { type: 'string', description: 'New content for the section' },
+        type: {
+          oneOf: [
+            { type: 'number' },
+            {
+              type: 'string',
+              enum: ['procedure', 'webpanel', 'webcomponent', 'api', 'usercontrol', 'dso', 'sdt', 'dataselector', 'transaction'],
+            },
+          ],
+          description: 'EntityTypeId as number (34=procedure, 43=webpanel/webcomponent, 147=usercontrol, 161=dso, 36=sdt) OR type name string ("procedure", "usercontrol", "webpanel", etc.).',
+        },
+        section: { type: 'string', description: 'Section to modify: source, events, rules, layout, variables. For UserControl scripts: "script:AfterShow" or "script:<MethodName>". For SDT: "structure". Not required when using patches.' },
+        content: { type: 'string', description: 'New content for the section. For SDT structure: JSON array string, e.g. \'[{"name":"Id","type":"numeric","length":9,"decimals":0}]\'. Types: Character, VarChar, Numeric, Int, Date, DateTime, Boolean, GUID, LongVarChar. Not required when using patches.' },
+        patches: {
+          type: 'array',
+          description: 'Batch UC script patches (type=147 only) — [{name, content}] applied in one atomic SDK Save. Use instead of section+content for multiple scripts.',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string', description: 'Script name, e.g. AfterShow' },
+              content: { type: 'string', description: "New JS content. Must not contain ']]>'." },
+            },
+            required: ['name', 'content'],
+          },
+        },
         confirm: { type: 'boolean', description: 'Must be true to execute the write' },
       },
-      required: ['name', 'type', 'section', 'content', 'confirm'],
+      required: ['name', 'type', 'confirm'],
     },
   },
   {
@@ -228,7 +261,16 @@ const TOOLS: Tool[] = [
       type: 'object',
       properties: {
         name: { type: 'string', description: 'Exact object name' },
-        type: { type: 'number', description: 'EntityTypeId' },
+        type: {
+          oneOf: [
+            { type: 'number' },
+            {
+              type: 'string',
+              enum: ['procedure', 'webpanel', 'webcomponent', 'api', 'usercontrol', 'dso', 'sdt', 'dataselector', 'transaction'],
+            },
+          ],
+          description: 'EntityTypeId as number (34=procedure, 43=webpanel/webcomponent, 147=usercontrol, 161=dso, 36=sdt) OR type name string ("procedure", "usercontrol", "webpanel", etc.).',
+        },
         property: { type: 'string', description: 'Property name, e.g. "Title", "IsPrivate"' },
         value: { type: 'string', description: 'Property value' },
         confirm: { type: 'boolean', description: 'Must be true to execute the write' },
@@ -247,7 +289,16 @@ const TOOLS: Tool[] = [
       type: 'object',
       properties: {
         name: { type: 'string', description: 'Current object name' },
-        type: { type: 'number', description: 'EntityTypeId' },
+        type: {
+          oneOf: [
+            { type: 'number' },
+            {
+              type: 'string',
+              enum: ['procedure', 'webpanel', 'webcomponent', 'api', 'usercontrol', 'dso', 'sdt', 'dataselector', 'transaction'],
+            },
+          ],
+          description: 'EntityTypeId as number (34=procedure, 43=webpanel/webcomponent, 147=usercontrol, 161=dso, 36=sdt) OR type name string ("procedure", "usercontrol", "webpanel", etc.).',
+        },
         newName: { type: 'string', description: 'New object name' },
         confirm: { type: 'boolean', description: 'Must be true to execute the rename' },
       },
@@ -256,12 +307,26 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'gx_validate',
-    description: 'Validate a GeneXus KB object for syntax errors and warnings without building.',
+    description:
+      'Run a pre-save validation check on a GeneXus KB object. ' +
+      'NOTE: This tool is a stub — it does not perform real syntax validation. ' +
+      'The actual validation happens when gx_modify saves the object (the SDK rejects malformed source with ValidationException) ' +
+      'or when running Build All in the GX18 IDE. ' +
+      'Use gx_modify to test if source is accepted by the SDK.',
     inputSchema: {
       type: 'object',
       properties: {
         name: { type: 'string', description: 'Exact object name' },
-        type: { type: 'number', description: 'EntityTypeId' },
+        type: {
+          oneOf: [
+            { type: 'number' },
+            {
+              type: 'string',
+              enum: ['procedure', 'webpanel', 'webcomponent', 'api', 'usercontrol', 'dso', 'sdt', 'dataselector', 'transaction'],
+            },
+          ],
+          description: 'EntityTypeId as number (34=procedure, 43=webpanel/webcomponent, 147=usercontrol, 161=dso, 36=sdt) OR type name string ("procedure", "usercontrol", "webpanel", etc.).',
+        },
       },
       required: ['name', 'type'],
     },
@@ -276,7 +341,16 @@ const TOOLS: Tool[] = [
       type: 'object',
       properties: {
         name: { type: 'string', description: 'Exact object name' },
-        type: { type: 'number', description: 'EntityTypeId' },
+        type: {
+          oneOf: [
+            { type: 'number' },
+            {
+              type: 'string',
+              enum: ['procedure', 'webpanel', 'webcomponent', 'api', 'usercontrol', 'dso', 'sdt', 'dataselector', 'transaction'],
+            },
+          ],
+          description: 'EntityTypeId as number (34=procedure, 43=webpanel/webcomponent, 147=usercontrol, 161=dso, 36=sdt) OR type name string ("procedure", "usercontrol", "webpanel", etc.).',
+        },
         confirm: { type: 'boolean', description: 'Must be true to execute the build' },
       },
       required: ['name', 'type', 'confirm'],
@@ -416,6 +490,7 @@ const TOOLS: Tool[] = [
       'Update the gx18-mcp server configuration (KB path, database, SQL Server instance, GX18 install dir). ' +
       'Changes are saved immediately and the worker restarts to pick up the new KB connection. ' +
       'Only provide the fields you want to change — omitted fields keep their current values. ' +
+      'After saving, the worker restarts automatically (~30s) — you do not need to call gx_reload separately. ' +
       'Use this when the user asks to switch KB, change database, or reconfigure the server.',
     inputSchema: {
       type: 'object',
@@ -431,10 +506,11 @@ const TOOLS: Tool[] = [
     name: 'gx_db_connections',
     description:
       'List all configured database connections available for gx_db_query, with live ping status. ' +
+      'Always call this first if unsure which connection name to use. ' +
+      'Returns: name, type (sqlserver/oracle), host, database, and ping:true/false. ' +
       'Always includes "kb" (GeneXus KB SQL Server, Integrated Security). ' +
       'Also lists "oracle" when ORACLE_* env vars are set. ' +
-      'Credentials are never shown — only host/database/type info. ' +
-      'Each entry includes ping:true/false showing whether the connection is reachable right now.',
+      'Credentials are never shown.',
     inputSchema: {
       type: 'object',
       properties: {},
@@ -520,9 +596,11 @@ const TOOLS: Tool[] = [
   {
     name: 'gx_search',
     description:
-      'Search for a text pattern across GeneXus KB object sources (procedures, events, rules). ' +
+      'Search for a literal text pattern across all GeneXus KB object sources, events, and rules. ' +
       'Returns matching objects with line-level context. ' +
-      'Use this to find where a procedure, attribute, or constant is referenced.',
+      'Anti-pattern: for name-based object lookup, use gx_find — it is faster. ' +
+      'gx_search scans source blobs and is slower but finds any textual reference ' +
+      '(e.g. a string constant, attribute name, or procedure call inside source code).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -542,12 +620,14 @@ const TOOLS: Tool[] = [
       'Analyze cross-object impact and dependencies. ' +
       'action=usedby: find objects that reference this object by name. ' +
       'action=uses: find objects referenced from this object\'s source. ' +
-      'action=dependencies: alias for uses.',
+      'action=dependencies: alias for uses. ' +
+      'Anti-pattern: for a simpler one-direction lookup, use gx_where_used (usedby) directly. ' +
+      'Use gx_analyze when you need both directions or want to switch between usedby and uses in the same call.',
     inputSchema: {
       type: 'object',
       properties: {
         name: { type: 'string', description: 'Exact object name' },
-        type: { type: 'number', description: 'EntityTypeId of the object' },
+        type: { type: 'number', description: 'EntityTypeId as number — 34=procedure, 43=webpanel/webcomponent, 147=usercontrol, 161=dso, 36=sdt, 39=transaction. Always pass as a number, never as a string.' },
         action: { type: 'string', enum: ['usedby', 'uses', 'dependencies'], description: 'Analysis direction (default usedby)' },
         limit: { type: 'number', description: 'Max results (default 50)' },
         exclude: { type: 'string', description: 'Exclude results whose name matches this SQL LIKE pattern' },
@@ -559,12 +639,13 @@ const TOOLS: Tool[] = [
     name: 'gx_history',
     description:
       'Get the revision history of a GeneXus KB object — all EntityVersion rows with author, timestamp, and description. ' +
+      'Returns EntityVersionId values usable in gx_diff to compare specific revisions. ' +
       'Useful for auditing who changed what and when.',
     inputSchema: {
       type: 'object',
       properties: {
         name: { type: 'string', description: 'Exact object name' },
-        type: { type: 'number', description: 'EntityTypeId' },
+        type: { type: 'number', description: 'EntityTypeId as number — 34=procedure, 43=webpanel/webcomponent, 147=usercontrol, 161=dso, 36=sdt, 39=transaction. Always pass as a number, never as a string.' },
         limit: { type: 'number', description: 'Max revisions to return (default 10)' },
       },
       required: ['name', 'type'],
@@ -575,12 +656,13 @@ const TOOLS: Tool[] = [
     description:
       'Move a GeneXus KB object to a different module. Requires confirm:true. ' +
       'Updates ModelEntityVersion — the change is reflected in GX18 IDE after reload. ' +
-      'To list available modules: gx_sql with "SELECT ev.EntityVersionName FROM EntityVersion ev WHERE ev.EntityTypeId=100 ORDER BY ev.EntityVersionName".',
+      'Use gx_modules to list valid module names before calling this tool. ' +
+      'To list available modules via SQL: gx_sql with "SELECT ev.EntityVersionName FROM EntityVersion ev WHERE ev.EntityTypeId=100 ORDER BY ev.EntityVersionName".',
     inputSchema: {
       type: 'object',
       properties: {
         name: { type: 'string', description: 'Exact object name' },
-        type: { type: 'number', description: 'EntityTypeId (e.g. 34=Procedure, 147=UserControl, 43=WebPanel)' },
+        type: { type: 'number', description: 'EntityTypeId as number — 34=procedure, 43=webpanel/webcomponent, 147=usercontrol, 161=dso, 36=sdt, 39=transaction. Always pass as a number, never as a string.' },
         targetModule: { type: 'string', description: 'Target module name (e.g. "Nuc", "VEN", "UserControls")' },
         confirm: { type: 'boolean', description: 'Must be true to execute the move' },
       },
@@ -590,8 +672,10 @@ const TOOLS: Tool[] = [
   {
     name: 'gx_doctor',
     description:
-      'Health check for the gx18-mcp server: verifies worker exe, GX18 install dir, KB path, worker ping, and SQL connectivity. ' +
-      'Run this when the server is not responding or when diagnosing connection issues.',
+      'Run a health check on the gx18-mcp server: verifies worker executable path, GeneXus 18 install directory, ' +
+      'KB path accessibility, worker process ping, and SQL Server connectivity. ' +
+      'Returns pass/fail per check with error details. ' +
+      'Run this first when gx_whoami or any read tool fails with a connection error.',
     inputSchema: {
       type: 'object',
       properties: {},
@@ -600,15 +684,20 @@ const TOOLS: Tool[] = [
   {
     name: 'gx_reload',
     description:
-      'Restart the SDK worker, forcing the KB to be reopened fresh. ' +
-      'Use this after any direct SQL write (gx_sql readOnly:false) that modifies KB schema or metadata ' +
-      '(e.g. INSERTing properties, updating EntityVersion). ' +
-      'The worker restarts in ~30s (cold-start). No arguments required.',
+      'Restart the gx18-mcp SDK worker, forcing the GeneXus KB to be reopened fresh. ' +
+      'Required after any direct SQL write (gx_sql readOnly:false) that modifies KB metadata tables ' +
+      '(EntityVersion, ModelEntityVersion, properties) — without a reload, subsequent SDK operations use a stale in-memory model ' +
+      'and will not see the SQL changes. ' +
+      'The worker takes ~30 seconds to restart (cold KB load). ' +
+      'Also use this if the worker becomes unresponsive. No arguments required.',
     inputSchema: { type: 'object' as const, properties: {} },
   },
   {
     name: 'gx_stats',
-    description: 'KB statistics: object counts by type and module, recently modified objects.',
+    description:
+      'Get Knowledge Base statistics: object counts grouped by EntityTypeId and module, plus the N most recently modified objects. ' +
+      'Useful for understanding KB size and activity before a bulk operation. ' +
+      'Does not require any parameters — omit module to get stats across the entire KB.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -619,7 +708,10 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'gx_modules',
-    description: 'List all modules in the KB with their hierarchy (id, name, parentId).',
+    description:
+      'List all modules defined in the GeneXus KB with their hierarchy: id, name, and parentId. ' +
+      'Use this to find valid module names before calling gx_move or gx_create with a module parameter. ' +
+      'To move an object to a module, pass the exact name string returned here to gx_move.',
     inputSchema: {
       type: 'object' as const,
       properties: {},
@@ -628,12 +720,16 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'gx_diff',
-    description: 'Diff between two EntityVersion revisions of an object. Omit versionA/versionB to diff the two most recent versions.',
+    description:
+      'Compare two EntityVersion revisions of a GeneXus KB object and return a unified diff of the specified section. ' +
+      'Omit versionA/versionB to automatically diff the two most recent revisions. ' +
+      'Use gx_history first to list available EntityVersionIds. ' +
+      'Useful for reviewing what changed between saves without opening the GX18 IDE.',
     inputSchema: {
       type: 'object' as const,
       properties: {
         name: { type: 'string', description: 'Object name.' },
-        type: { type: 'number', description: 'EntityTypeId (34=Proc, 43=WBP, 147=UC, 161=DSO…).' },
+        type: { type: 'number', description: 'EntityTypeId as number — 34=procedure, 43=webpanel/webcomponent, 147=usercontrol, 161=dso, 36=sdt, 39=transaction. Always pass as a number, never as a string.' },
         section: { type: 'string', description: 'Section name (default: source).' },
         versionA: { type: 'number', description: 'EntityVersionId A (older). Omit for auto.' },
         versionB: { type: 'number', description: 'EntityVersionId B (newer). Omit for auto.' },
@@ -643,7 +739,12 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'gx_dead_code',
-    description: 'Find objects of a given type that have no inbound references in the KB source blobs.',
+    description:
+      'Identify GeneXus KB objects of a given type that have no inbound references in source blobs — potential dead code candidates for cleanup. ' +
+      'Returns a list of unreferenced objects. ' +
+      'CAUTION: entry-point objects (Main Programs, WebPanels called by URL, APIs) are legitimate roots with no KB callers — ' +
+      'use exclude to skip them (e.g. exclude=\'%Submit\' or \'Prc%Seed%\'). ' +
+      'Always verify before deleting — run gx_where_used on each result for a second opinion.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -660,12 +761,15 @@ const TOOLS: Tool[] = [
     description:
       'Find all objects that reference a given object by name in their source, events, or rules. ' +
       'Simpler alias for gx_analyze with action=usedby. ' +
-      'Use exclude to filter out known false positives.',
+      'Use exclude to filter out known false positives. ' +
+      'KNOWN LIMITATION: does not index calls made through UC sub-routines or dynamic dispatch — ' +
+      'a caller using UC event wiring may not appear. ' +
+      'Never rely solely on this to confirm an object is unused before renaming or deleting.',
     inputSchema: {
       type: 'object' as const,
       properties: {
         name: { type: 'string', description: 'Object name to find references to' },
-        type: { type: 'number', description: 'EntityTypeId of the object (34=Procedure, 147=UserControl, 43=WebPanel, etc.)' },
+        type: { type: 'number', description: 'EntityTypeId as number — 34=procedure, 43=webpanel/webcomponent, 147=usercontrol, 161=dso, 36=sdt, 39=transaction. Always pass as a number, never as a string.' },
         limit: { type: 'number', description: 'Max results (default 50)' },
         exclude: { type: 'string', description: 'Exclude results whose name matches this SQL LIKE pattern' },
       },
@@ -674,7 +778,13 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'gx_impact',
-    description: 'Transitive impact analysis: which objects would be affected if the given object changes. Traverses the usedby graph up to `depth` levels.',
+    description:
+      'Perform transitive impact analysis — find all objects that would be affected if the given object changes, ' +
+      'by traversing the usedby reference graph up to depth levels. ' +
+      'Returns a tree of callers grouped by level. ' +
+      'Use before renaming, deleting, or refactoring a shared procedure or SDT. ' +
+      'depth=1 is a direct-callers-only check; depth=3+ gives a full blast radius estimate. ' +
+      'Inherits the same blind spots as gx_where_used (UC sub-routines not indexed).',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -687,7 +797,11 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'gx_attribute',
-    description: 'List KB attributes (EntityTypeId=24) with their type, length, decimals, domain, and description.',
+    description:
+      'List GeneXus KB attributes (data model fields, EntityTypeId=24) filtered by name pattern. ' +
+      'Returns type, length, decimals, domain, and description for each match. ' +
+      'Use this to inspect the data model before writing Transaction structures or SDT members. ' +
+      'For Transaction structure with level hierarchy, use gx_structure instead.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -699,12 +813,17 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'gx_compare',
-    description: 'Compare an object\'s source between the current KB and another KB on the same SQL Server instance.',
+    description:
+      'Compare a GeneXus object\'s section source between the current KB and another KB on the same SQL Server instance. ' +
+      'Returns a unified diff. ' +
+      'Useful for checking what diverged between a development KB and a production KB, or between two parallel KB versions. ' +
+      'Both KBs must be on the same SQL Server (same GX_KB_SERVER). ' +
+      'Use gx_db_connections to confirm the target database is reachable.',
     inputSchema: {
       type: 'object' as const,
       properties: {
         name: { type: 'string', description: 'Object name.' },
-        type: { type: 'number', description: 'EntityTypeId.' },
+        type: { type: 'number', description: 'EntityTypeId as number — 34=procedure, 43=webpanel/webcomponent, 147=usercontrol, 161=dso, 36=sdt, 39=transaction. Always pass as a number, never as a string.' },
         targetDb: { type: 'string', description: 'Target SQL Server database name (e.g. "GX_KB_MyKnowledgeBase").' },
         section: { type: 'string', description: 'Section to compare (default: source).' },
       },
@@ -713,7 +832,12 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'gx_lint',
-    description: 'Scan GeneXus object sources for known bad patterns (jQuery reflow, missing guards, hard-coded user IDs, etc.).',
+    description:
+      'Scan GeneXus KB object sources for known anti-patterns and quality issues: ' +
+      'jQuery-triggered reflow, missing AfterShow init guards, hard-coded user IDs, unbounded loops, deprecated API calls, etc. ' +
+      'Returns findings grouped by severity (error/warn/info) with object name and line context. ' +
+      'Run on type=147 (UserControl) before deploying UC changes. ' +
+      'Filter by severity to focus on blockers first.',
     inputSchema: {
       type: 'object' as const,
       properties: {

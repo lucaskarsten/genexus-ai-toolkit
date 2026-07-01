@@ -1,5 +1,5 @@
 import { bridge } from '../sdk-bridge/bridge';
-import { EntityDetail, ReadSourceResult, ReadStructureResult } from '../sdk-bridge/protocol';
+import { EntityDetail, ReadSourceResult, ReadStructureResult, ReadUcScriptsResult } from '../sdk-bridge/protocol';
 import { SECTION_TYPE, sectionType, ALL_SECTION_NAMES, defaultSection } from '../domain/entity-types';
 
 // Re-exported for backward compatibility and the contract tests; defined in domain/entity-types.
@@ -9,7 +9,16 @@ export async function gxRead(args: {
   name: string;
   type: number;
   section?: string;
+  scriptName?: string;
 }): Promise<string> {
+  if (args.type === 147 && args.section?.toLowerCase() === 'scripts') {
+    const result = await bridge.send<ReadUcScriptsResult>('read_uc_scripts', {
+      name: args.name,
+      scriptName: args.scriptName ?? null,
+    });
+    return JSON.stringify(result, null, 2);
+  }
+
   const detail = await bridge.send<EntityDetail>('get', {
     name: args.name,
     type: args.type,
@@ -36,7 +45,7 @@ export async function gxRead(args: {
     entityId: component.entityId,
   });
 
-  return result.text || '(empty)';
+  return result.text || '';
 }
 
 export async function gxProperties(args: {

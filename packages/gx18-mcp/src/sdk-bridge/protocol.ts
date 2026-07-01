@@ -382,3 +382,11 @@ export interface PatchXpzResult {
   newLength: number;
   patched: boolean;
 }
+
+// read_uc_scripts
+export interface UcScriptInfo { name: string; charCount: number; content?: string; }
+export interface ReadUcScriptsResult { ok: boolean; name: string; scripts: UcScriptInfo[]; scriptCount: number; }
+
+// modify_uc_scripts_batch
+export interface ScriptPatch { name: string; content: string; }
+export interface BatchModifyResult extends WriteResult { patchCount: number; patchedScripts: string[]; }

@@ -174,6 +174,7 @@
     "componentTypeBySection": {
       "source": 69,
       "rules": 69,
+      "conditions": 57,
       "events": 64,
       "layout": 74,
       "variables": 72
@@ -183,6 +184,12 @@
         "source": 148,
         "template": 148,
         "properties": 149
+      },
+      "161": {
+        "tokens": 157,
+        "styles": 158,
+        "elements": 159,
+        "source": 158
       }
     },
     "defaultSectionByType": {
@@ -191,7 +198,8 @@
       "38": "source",
       "43": "events",
       "44": "events",
-      "147": "source"
+      "147": "source",
+      "161": "styles"
     },
     "fallbackSection": "source"
   }

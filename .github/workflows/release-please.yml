@@ -4,13 +4,27 @@ on:
   push:
     branches:
       - master
+  # Manual fallback: release-please@v4 sometimes creates the tag + release but
+  # reports release_created != 'true' in the same run, so build-windows is
+  # skipped and no .zip is attached. Re-run this workflow with the tag to build
+  # and attach the artifact without touching release-please. Example tag:
+  # gx18-mcp-v2.1.3
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing release tag to build & attach the Windows .zip to (e.g. gx18-mcp-v2.1.3)'
+        required: true
+        type: string
 
 permissions:
   contents: write
   pull-requests: write
 
 jobs:
+  # On push, run release-please. On manual dispatch this job is skipped and
+  # build-windows uses the tag from the dispatch input instead.
   release-please:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
@@ -29,10 +43,22 @@ jobs:
   # reliable way to publish the artifact without re-pushing the tag.
   build-windows:
     needs: release-please
-    if: needs.release-please.outputs.release_created == 'true'
+    # Run when release-please just created a release (push), OR when manually
+    # dispatched with a tag (fallback for the skipped-build bug). always() lets
+    # this evaluate even though release-please is skipped on manual dispatch.
+    if: |
+      always() &&
+      (needs.release-please.outputs.release_created == 'true' ||
+       github.event_name == 'workflow_dispatch')
     runs-on: windows-latest
+    env:
+      # On push: tag from release-please. On dispatch: tag from the input.
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || needs.release-please.outputs.tag_name }}
     steps:
+      # On manual dispatch, check out the tag so the build matches the release.
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && env.RELEASE_TAG || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '18'
@@ -40,7 +66,7 @@ jobs:
       - name: Sync package version to tag
         working-directory: packages/gx18-mcp
         run: |
-          $tag = "${{ needs.release-please.outputs.tag_name }}"
+          $tag = "${{ env.RELEASE_TAG }}"
           $version = $tag -replace '^gx18-mcp-v', ''
           npm version $version --no-git-tag-version --allow-same-version
           Write-Host "Version set to $version"
@@ -55,5 +81,5 @@ jobs:
       - name: Upload release zip
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.release-please.outputs.tag_name }}
+          tag_name: ${{ env.RELEASE_TAG }}
           files: packages/gx18-mcp/release/GeneXusAIToolkit-*-windows.zip
