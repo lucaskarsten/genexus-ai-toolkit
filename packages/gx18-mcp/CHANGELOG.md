@@ -1,5 +1,27 @@
 # Changelog
 
+## [2.2.0](https://github.com/lucaskarsten/genexus-ai-toolkit/compare/gx18-mcp-v2.1.3...gx18-mcp-v2.2.0) (2026-07-01)
+
+
+### Features
+
+* **gx18-mcp:** gx_modify script:* auto-bumpa EntityVersion em UC ([01c8f58](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/01c8f58af9b2ed3c4e3fe2972dbe1992a4ffe934))
+* **gx18-mcp:** read_uc_scripts + modify_uc_scripts_batch ([129334e](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/129334e3021a763ec97705ed0d720c2209652db7))
+* **gx18-mcp:** SDT structure via gx_modify/gx_create (SDK) ([35743d8](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/35743d8427a82703e7d5a937c7c3aeeadb21ebd4))
+* **gx18-mcp:** UC script tools, SDT structure, SDK warm-up + CI fallback ([15653c5](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/15653c55deaea18816a8370d3ce937cac64966df))
+* **gx18-mcp:** warm-up de SDK no gx_whoami + _sdkHint ([aee30fa](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/aee30fa1bb811b29678866ec424c14e627eec4b7))
+
+
+### Bug Fixes
+
+* **gx18-mcp:** benchmark faz warm-up de SDK antes de celulas gx_export ([a3f7279](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/a3f72790288601d78dd441aa7403ac6625ca1a2f))
+* **gx18-mcp:** reduzir __unparsedToolInput — schemas, assertWriteOk, stale warning ([0fc9ccf](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/0fc9ccfeb8d014233feaf35121882e640b8ef764))
+
+
+### Documentation
+
+* pitfall IIFE minifier, skills do genexus-skills, script fallback ([698ae29](https://github.com/lucaskarsten/genexus-ai-toolkit/commit/698ae295b4aad8f66b5ee4acefbd12abf95b4ab2))
+
 ## [2.1.3](https://github.com/lucaskarsten/genexus-ai-toolkit/compare/gx18-mcp-v2.1.2...gx18-mcp-v2.1.3) (2026-06-29)
 
 
