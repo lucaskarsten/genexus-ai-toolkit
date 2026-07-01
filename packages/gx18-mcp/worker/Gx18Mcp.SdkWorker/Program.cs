@@ -108,7 +108,17 @@ namespace Gx18Mcp.SdkWorker
             switch (method)
             {
                 case "ping":    return Ping();
-                case "whoami":  return _identity.GetInfo(_sdkReady, Environment.GetEnvironmentVariable("GX_KB_PATH"), Environment.GetEnvironmentVariable("GX18_INSTALL_DIR") ?? @"C:\Program Files (x86)\GeneXus\GeneXus18U6");
+                case "whoami":
+                {
+                    // Proactively warm up the SDK so subsequent gx_whoami calls return kbOpen=true.
+                    // Cold-start requires 2 Open() calls on the same session instance; first throws — ignore it.
+                    // SQL read tools work regardless of sdkReady state.
+                    if (!_sdkReady)
+                    {
+                        try { EnsureSdk(); } catch { /* cold-start first attempt — retry on next call */ }
+                    }
+                    return _identity.GetInfo(_sdkReady, Environment.GetEnvironmentVariable("GX_KB_PATH"), Environment.GetEnvironmentVariable("GX18_INSTALL_DIR") ?? @"C:\Program Files (x86)\GeneXus\GeneXus18U6");
+                }
                 case "find":
                 {
                     // "type" may be a single number OR an array of EntityTypeIds.
@@ -258,6 +268,28 @@ namespace Gx18Mcp.SdkWorker
                         S(p, "targetName"),
                         S(p, "module")
                     );
+
+                case "read_uc_scripts":
+                    return _sql.ReadUcScripts(S(p, "name"), p.ContainsKey("scriptName") ? S(p, "scriptName") : null);
+
+                case "modify_uc_scripts_batch":
+                {
+                    if (!p.ContainsKey("patches") || !(p["patches"] is object[] pArr) || pArr.Length == 0)
+                        throw new Exception("modify_uc_scripts_batch requires a non-empty patches array");
+                    var patches = new List<KeyValuePair<string, string>>();
+                    foreach (var item in pArr)
+                    {
+                        if (item is Dictionary<string, object> pd)
+                        {
+                            string pname = pd.ContainsKey("name") ? pd["name"]?.ToString() ?? "" : "";
+                            string pcontent = pd.ContainsKey("content") ? pd["content"]?.ToString() ?? "" : "";
+                            if (string.IsNullOrEmpty(pname)) throw new Exception("Each patch must have a non-empty name");
+                            patches.Add(new KeyValuePair<string, string>(pname, pcontent));
+                        }
+                        else throw new Exception("Each patch must be an object with name and content");
+                    }
+                    return EnsureSdk().ModifyUcScriptsBatch(S(p, "name"), patches);
+                }
 
                 case "shutdown":
                     _exitPending = true;
