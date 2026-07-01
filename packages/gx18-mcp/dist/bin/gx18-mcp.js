@@ -19920,6 +19920,7 @@ var init_entity_types = __esm({
         componentTypeBySection: {
           source: 69,
           rules: 69,
+          conditions: 57,
           events: 64,
           layout: 74,
           variables: 72
@@ -19929,6 +19930,12 @@ var init_entity_types = __esm({
             source: 148,
             template: 148,
             properties: 149
+          },
+          "161": {
+            tokens: 157,
+            styles: 158,
+            elements: 159,
+            source: 158
           }
         },
         defaultSectionByType: {
@@ -19937,7 +19944,8 @@ var init_entity_types = __esm({
           "38": "source",
           "43": "events",
           "44": "events",
-          "147": "source"
+          "147": "source",
+          "161": "styles"
         },
         fallbackSection: "source"
       }
@@ -20028,6 +20036,13 @@ var init_entity_types2 = __esm({
 
 // src/tools/reader.ts
 async function gxRead(args) {
+  if (args.type === 147 && args.section?.toLowerCase() === "scripts") {
+    const result2 = await bridge.send("read_uc_scripts", {
+      name: args.name,
+      scriptName: args.scriptName ?? null
+    });
+    return JSON.stringify(result2, null, 2);
+  }
   const detail = await bridge.send("get", {
     name: args.name,
     type: args.type
@@ -20049,7 +20064,7 @@ async function gxRead(args) {
     entityTypeId: component.entityTypeId,
     entityId: component.entityId
   });
-  return result.text || "(empty)";
+  return result.text || "";
 }
 async function gxProperties(args) {
   const result = await bridge.send("read_properties", {
@@ -20079,7 +20094,11 @@ var init_reader = __esm({
 // src/tools/identity.ts
 async function gxWhoami() {
   const info = await bridge.send("whoami", {});
-  return JSON.stringify(info, null, 2);
+  const out = { ...info };
+  if (!info.sdkReady) {
+    out._sdkHint = "SDK not yet open \u2014 this is normal on cold-start. SQL read tools (gx_find, gx_read, gx_sql, gx_list, etc.) work normally without SDK. Write tools (gx_modify, gx_create, etc.) open the SDK automatically on first call \u2014 no manual step needed. Call gx_whoami again to complete SDK warm-up and confirm kbOpen=true before writing.";
+  }
+  return JSON.stringify(out, null, 2);
 }
 var init_identity = __esm({
   "src/tools/identity.ts"() {
@@ -20099,10 +20118,22 @@ function requireConfirm(confirm, toolName) {
 function assertWriteOk(result) {
   if (!result.userIdOk) {
     throw new Error(
-      `UserId verification FAILED after ${result.op}!
-Object '${result.name}' (entityId ${result.entityId}) was saved with UserId ${result.userId}, but the expected author is ${result.expectedUserId} (${result.kbUserName}).
-This would corrupt Team Development history. Review the KB before continuing.`
+      `Write completed but UserId mismatch \u2014 saved as "${result.userId}" instead of "${result.expectedUserId}" (${result.kbUserName}). Object may show wrong authorship in Team Development. Run gx_whoami before retrying.`
     );
+  }
+}
+function validateJsSyntax(content, scriptName) {
+  try {
+    new import_vm.default.Script(content, { filename: `<script:${scriptName}>` });
+  } catch (e) {
+    if (e instanceof SyntaxError) {
+      const line = e.lineNumber ?? "?";
+      const col = e.column ?? "?";
+      throw new Error(
+        `gx_modify: JS syntax error in "${scriptName}" at line ${line}, col ${col}: ${e.message}`
+      );
+    }
+    throw e;
   }
 }
 async function gxCreate(args) {
@@ -20126,10 +20157,10 @@ async function gxModify(args) {
   requireConfirm(args.confirm, "gx_modify");
   if (!args.name)
     throw new Error("gx_modify: name is required.");
-  if (!args.section)
+  if (!args.patches?.length && !args.section)
     throw new Error("gx_modify: section is required.");
-  if (args.content == null)
-    throw new Error("gx_modify: content is required (pass empty string to clear a section).");
+  if (!args.patches?.length && args.content == null)
+    throw new Error("gx_modify: content is required (or provide patches for batch UC script updates).");
   const typeKey = resolveTypeKey(args.type);
   if (!SUPPORTED_WRITE_TYPES.includes(typeKey)) {
     throw new Error(
@@ -20138,20 +20169,47 @@ async function gxModify(args) {
   }
   const typeSpec = OBJECT_TYPES.find((t) => t.key === typeKey);
   const validSections = typeSpec?.sections.map((s) => s.key) ?? [];
-  const isUcScriptSection = typeKey === "usercontrol" && args.section.toLowerCase().startsWith("script:");
-  if (validSections.length > 0 && !validSections.includes(args.section.toLowerCase()) && !isUcScriptSection) {
+  const sectionLower = args.section?.toLowerCase() ?? "";
+  const isUcScriptSection = typeKey === "usercontrol" && sectionLower.startsWith("script:");
+  if (args.section && validSections.length > 0 && !validSections.includes(sectionLower) && !isUcScriptSection) {
     const ucHint = typeKey === "usercontrol" ? ' To patch AfterShow/Methods scripts, use section="script:<ScriptName>" (e.g. script:AfterShow).' : "";
     throw new Error(
       `gx_modify: section '${args.section}' is not valid for type '${typeKey}'. Valid sections: ${validSections.join(", ")}.${ucHint}`
     );
   }
-  if (args.section.toLowerCase() === "layout") {
+  if (sectionLower === "layout") {
     const trimmed = (args.content ?? "").trimStart();
     if (!trimmed.startsWith("<GxMultiForm")) {
       throw new Error(
         "gx_modify layout: content must be a <GxMultiForm> XML document. Decode the layout blob first via gx_read (section=layout) and send it back modified."
       );
     }
+  }
+  if (isUcScriptSection) {
+    const scriptName = args.section.substring("script:".length).trim();
+    if ((args.content ?? "").includes("]]>")) {
+      throw new Error(`gx_modify: script "${scriptName}" contains "]]>" which would corrupt the Properties XML.`);
+    }
+    validateJsSyntax(args.content ?? "", scriptName);
+  }
+  const isUcBatchPatch = typeKey === "usercontrol" && Array.isArray(args.patches) && args.patches.length > 0;
+  if (isUcBatchPatch) {
+    for (const p of args.patches) {
+      if (!p.name)
+        throw new Error("gx_modify patches: each patch must have a non-empty name");
+      if (p.content == null)
+        throw new Error(`gx_modify patches["${p.name}"]: content is required`);
+      if (p.content.includes("]]>"))
+        throw new Error(`gx_modify patches["${p.name}"]: content contains "]]>" which corrupts XPZ`);
+      validateJsSyntax(p.content, p.name);
+    }
+    const result2 = await bridge.send("modify_uc_scripts_batch", {
+      name: args.name,
+      type: typeKey,
+      patches: args.patches
+    }, 18e4);
+    assertWriteOk(result2);
+    return JSON.stringify(result2, null, 2);
   }
   const result = await bridge.send("modify", {
     name: args.name,
@@ -20342,11 +20400,12 @@ async function gxBulkModify(args) {
   }
   return JSON.stringify({ succeeded, failed, total: args.names.length }, null, 2);
 }
-var import_fs3;
+var import_fs3, import_vm;
 var init_writer = __esm({
   "src/tools/writer.ts"() {
     "use strict";
     import_fs3 = __toESM(require("fs"));
+    import_vm = __toESM(require("vm"));
     init_bridge();
     init_entity_types2();
   }
@@ -20504,7 +20563,11 @@ async function gxSql(args) {
     readOnly,
     maxRows
   });
-  return JSON.stringify(result, null, 2);
+  const out = result;
+  if (!readOnly) {
+    out._warning = "SQL write executed. Worker in-memory model is now stale \u2014 call gx_reload before any SDK operation (gx_modify, gx_create, gx_import, gx_export), otherwise they will not see the SQL changes.";
+  }
+  return JSON.stringify(out, null, 2);
 }
 async function gxReload() {
   try {
@@ -20963,7 +21026,7 @@ var init_dispatch = __esm({
       },
       {
         name: "gx_list",
-        description: "List all GeneXus KB objects of a given type, optionally filtered by module. EntityTypeId values: Procedure=34, SDT=36, Transaction=39, WebPanel/WebComponent=43, UserControl=147.",
+        description: "List all GeneXus KB objects of a given type, optionally filtered by module. Returns name, entityId, and lastModified for each object, paginated via limit/offset. EntityTypeId values: Procedure=34, SDT=36, Transaction=39, WebPanel/WebComponent=43, UserControl=147. Anti-pattern: for name-based lookup, use gx_find instead \u2014 gx_list returns ALL objects of the type and is slower when you only need one.",
         inputSchema: {
           type: "object",
           properties: {
@@ -20978,27 +21041,31 @@ var init_dispatch = __esm({
       },
       {
         name: "gx_get",
-        description: "Get details of a specific GeneXus KB object including its sub-components. Returns EntityDetail with components list (Events=64, Rules/Source=69, Variables=72, WebForm=74).",
+        description: "Get metadata and sub-component list for a specific GeneXus KB object. Returns EntityDetail: entityId, entityTypeId, name, module, lastModified, and a components array (componentTypeId \u2192 Events=64, Rules/Source=69, Variables=72, WebForm=74). Use this to confirm an object exists and discover which sections it has before calling gx_read. For source code, use gx_read after this. For property values (Title, Theme, etc.), use gx_properties.",
         inputSchema: {
           type: "object",
           properties: {
             name: { type: "string", description: "Exact object name" },
-            type: { type: "number", description: "EntityTypeId. E.g. 34=Procedure, 43=WebPanel." }
+            type: { type: "number", description: "EntityTypeId as number \u2014 34=procedure, 43=webpanel/webcomponent, 147=usercontrol, 161=dso, 36=sdt, 39=transaction. Always pass as a number, never as a string." }
           },
           required: ["name", "type"]
         }
       },
       {
         name: "gx_read",
-        description: 'Read the source code of a GeneXus KB object section. Sections vary by type \u2014 common ones: source (Procedure code), events (WebPanel/WBC events), rules (Transaction/Procedure rules), layout (WebForm), variables. UserControl-specific: template (HTML/CSS screen template, section=template), properties (property definitions XML, section=properties). Returns the reconstructed plain-text source. NEVER read the generated Java in javaoracle/ or render.js in static/ \u2014 use this tool instead. IMPORTANT: UserControl AfterShow and Methods scripts are NOT readable via any gx_read section \u2014 to READ them: gx_export \u2192 gx_read_xpz. To WRITE them: gx_modify with section="script:AfterShow" (or "script:<MethodName>").',
+        description: "Read the source code of a GeneXus KB object section. Sections vary by type \u2014 common ones: source (Procedure code), events (WebPanel/WBC events), rules (Transaction/Procedure rules), layout (WebForm), variables. UserControl-specific: template (HTML/CSS screen template, section=template), properties (property definitions XML, section=properties). Returns the reconstructed plain-text source. NEVER read the generated Java in javaoracle/ or render.js in static/ \u2014 use this tool instead. UserControl scripts: section='scripts' lists all scripts [{name,charCount}]; add scriptName='AfterShow' to read a specific one \u2014 no XPZ round-trip needed.",
         inputSchema: {
           type: "object",
           properties: {
             name: { type: "string", description: "Exact object name" },
-            type: { type: "number", description: "EntityTypeId" },
+            type: { type: "number", description: "EntityTypeId as number \u2014 34=procedure, 43=webpanel/webcomponent, 147=usercontrol, 161=dso, 36=sdt, 39=transaction. Always pass as a number, never as a string." },
             section: {
               type: "string",
-              description: "Section to read (defaults by object type). Common: source, events, rules, layout, variables. UserControl (type=147): template (HTML/CSS), properties (property definitions)."
+              description: "Section to read (defaults by object type). Common: source, events, rules, layout, variables. UserControl (type=147): template (HTML/CSS), properties (property definitions), scripts (UC AfterShow/Methods scripts list or content)."
+            },
+            scriptName: {
+              type: "string",
+              description: "UC scripts only (section='scripts'): name of a specific script to read (e.g. 'AfterShow'). Omit to list all scripts."
             }
           },
           required: ["name", "type"]
@@ -21011,7 +21078,7 @@ var init_dispatch = __esm({
           type: "object",
           properties: {
             name: { type: "string", description: "Exact object name" },
-            type: { type: "number", description: "EntityTypeId" }
+            type: { type: "number", description: "EntityTypeId as number \u2014 34=procedure, 43=webpanel/webcomponent, 147=usercontrol, 161=dso, 36=sdt, 39=transaction. Always pass as a number, never as a string." }
           },
           required: ["name", "type"]
         }
@@ -21080,17 +21147,38 @@ var init_dispatch = __esm({
       },
       {
         name: "gx_modify",
-        description: 'Modify a section of an existing GeneXus KB object. Requires confirm:true. Sections: source, events, rules, layout, variables. Use this for existing objects \u2014 NOT gx_import (import does not overwrite existing objects). For UserControl AfterShow/Methods scripts, use section="script:AfterShow" (or "script:<MethodName>") \u2014 no XPZ round-trip needed. For DSO styles, pass the friendly @import name (e.g. "@import DsoBase;"), NOT the GUID form.',
+        description: `Modify a section of an existing GeneXus KB object. Requires confirm:true. Sections: source, events, rules, layout, variables. Use this for existing objects \u2014 NOT gx_import (import does not overwrite existing objects). For UserControl AfterShow/Methods scripts, use section="script:AfterShow" (or "script:<MethodName>") \u2014 no XPZ round-trip needed. For multiple UC scripts in one atomic call, use patches=[{name,content},...] instead of section+content. For DSO styles, pass the friendly @import name (e.g. "@import DsoBase;"), NOT the GUID form. For SDT (type=36), use section="structure" and pass content as a JSON array string: '[{"name":"Field","type":"varchar","length":60}]'. Replaces the full structure (existing members are removed first). IMPORTANT: for scripts longer than 200 lines use gx_patch_xpz instead \u2014 large content fields risk JSON truncation in tool call generation.`,
         inputSchema: {
           type: "object",
           properties: {
             name: { type: "string", description: "Exact object name" },
-            type: { type: "number", description: "EntityTypeId" },
-            section: { type: "string", description: 'Section to modify: source, events, rules, layout, variables. For UserControl scripts: "script:AfterShow" or "script:<MethodName>".' },
-            content: { type: "string", description: "New content for the section" },
+            type: {
+              oneOf: [
+                { type: "number" },
+                {
+                  type: "string",
+                  enum: ["procedure", "webpanel", "webcomponent", "api", "usercontrol", "dso", "sdt", "dataselector", "transaction"]
+                }
+              ],
+              description: 'EntityTypeId as number (34=procedure, 43=webpanel/webcomponent, 147=usercontrol, 161=dso, 36=sdt) OR type name string ("procedure", "usercontrol", "webpanel", etc.).'
+            },
+            section: { type: "string", description: 'Section to modify: source, events, rules, layout, variables. For UserControl scripts: "script:AfterShow" or "script:<MethodName>". For SDT: "structure". Not required when using patches.' },
+            content: { type: "string", description: `New content for the section. For SDT structure: JSON array string, e.g. '[{"name":"Id","type":"numeric","length":9,"decimals":0}]'. Types: Character, VarChar, Numeric, Int, Date, DateTime, Boolean, GUID, LongVarChar. Not required when using patches.` },
+            patches: {
+              type: "array",
+              description: "Batch UC script patches (type=147 only) \u2014 [{name, content}] applied in one atomic SDK Save. Use instead of section+content for multiple scripts.",
+              items: {
+                type: "object",
+                properties: {
+                  name: { type: "string", description: "Script name, e.g. AfterShow" },
+                  content: { type: "string", description: "New JS content. Must not contain ']]>'." }
+                },
+                required: ["name", "content"]
+              }
+            },
             confirm: { type: "boolean", description: "Must be true to execute the write" }
           },
-          required: ["name", "type", "section", "content", "confirm"]
+          required: ["name", "type", "confirm"]
         }
       },
       {
@@ -21100,7 +21188,16 @@ var init_dispatch = __esm({
           type: "object",
           properties: {
             name: { type: "string", description: "Exact object name" },
-            type: { type: "number", description: "EntityTypeId" },
+            type: {
+              oneOf: [
+                { type: "number" },
+                {
+                  type: "string",
+                  enum: ["procedure", "webpanel", "webcomponent", "api", "usercontrol", "dso", "sdt", "dataselector", "transaction"]
+                }
+              ],
+              description: 'EntityTypeId as number (34=procedure, 43=webpanel/webcomponent, 147=usercontrol, 161=dso, 36=sdt) OR type name string ("procedure", "usercontrol", "webpanel", etc.).'
+            },
             property: { type: "string", description: 'Property name, e.g. "Title", "IsPrivate"' },
             value: { type: "string", description: "Property value" },
             confirm: { type: "boolean", description: "Must be true to execute the write" }
@@ -21115,7 +21212,16 @@ var init_dispatch = __esm({
           type: "object",
           properties: {
             name: { type: "string", description: "Current object name" },
-            type: { type: "number", description: "EntityTypeId" },
+            type: {
+              oneOf: [
+                { type: "number" },
+                {
+                  type: "string",
+                  enum: ["procedure", "webpanel", "webcomponent", "api", "usercontrol", "dso", "sdt", "dataselector", "transaction"]
+                }
+              ],
+              description: 'EntityTypeId as number (34=procedure, 43=webpanel/webcomponent, 147=usercontrol, 161=dso, 36=sdt) OR type name string ("procedure", "usercontrol", "webpanel", etc.).'
+            },
             newName: { type: "string", description: "New object name" },
             confirm: { type: "boolean", description: "Must be true to execute the rename" }
           },
@@ -21124,12 +21230,21 @@ var init_dispatch = __esm({
       },
       {
         name: "gx_validate",
-        description: "Validate a GeneXus KB object for syntax errors and warnings without building.",
+        description: "Run a pre-save validation check on a GeneXus KB object. NOTE: This tool is a stub \u2014 it does not perform real syntax validation. The actual validation happens when gx_modify saves the object (the SDK rejects malformed source with ValidationException) or when running Build All in the GX18 IDE. Use gx_modify to test if source is accepted by the SDK.",
         inputSchema: {
           type: "object",
           properties: {
             name: { type: "string", description: "Exact object name" },
-            type: { type: "number", description: "EntityTypeId" }
+            type: {
+              oneOf: [
+                { type: "number" },
+                {
+                  type: "string",
+                  enum: ["procedure", "webpanel", "webcomponent", "api", "usercontrol", "dso", "sdt", "dataselector", "transaction"]
+                }
+              ],
+              description: 'EntityTypeId as number (34=procedure, 43=webpanel/webcomponent, 147=usercontrol, 161=dso, 36=sdt) OR type name string ("procedure", "usercontrol", "webpanel", etc.).'
+            }
           },
           required: ["name", "type"]
         }
@@ -21141,7 +21256,16 @@ var init_dispatch = __esm({
           type: "object",
           properties: {
             name: { type: "string", description: "Exact object name" },
-            type: { type: "number", description: "EntityTypeId" },
+            type: {
+              oneOf: [
+                { type: "number" },
+                {
+                  type: "string",
+                  enum: ["procedure", "webpanel", "webcomponent", "api", "usercontrol", "dso", "sdt", "dataselector", "transaction"]
+                }
+              ],
+              description: 'EntityTypeId as number (34=procedure, 43=webpanel/webcomponent, 147=usercontrol, 161=dso, 36=sdt) OR type name string ("procedure", "usercontrol", "webpanel", etc.).'
+            },
             confirm: { type: "boolean", description: "Must be true to execute the build" }
           },
           required: ["name", "type", "confirm"]
@@ -21244,7 +21368,7 @@ var init_dispatch = __esm({
       },
       {
         name: "gx_save_config",
-        description: "Update the gx18-mcp server configuration (KB path, database, SQL Server instance, GX18 install dir). Changes are saved immediately and the worker restarts to pick up the new KB connection. Only provide the fields you want to change \u2014 omitted fields keep their current values. Use this when the user asks to switch KB, change database, or reconfigure the server.",
+        description: "Update the gx18-mcp server configuration (KB path, database, SQL Server instance, GX18 install dir). Changes are saved immediately and the worker restarts to pick up the new KB connection. Only provide the fields you want to change \u2014 omitted fields keep their current values. After saving, the worker restarts automatically (~30s) \u2014 you do not need to call gx_reload separately. Use this when the user asks to switch KB, change database, or reconfigure the server.",
         inputSchema: {
           type: "object",
           properties: {
@@ -21257,7 +21381,7 @@ var init_dispatch = __esm({
       },
       {
         name: "gx_db_connections",
-        description: 'List all configured database connections available for gx_db_query, with live ping status. Always includes "kb" (GeneXus KB SQL Server, Integrated Security). Also lists "oracle" when ORACLE_* env vars are set. Credentials are never shown \u2014 only host/database/type info. Each entry includes ping:true/false showing whether the connection is reachable right now.',
+        description: 'List all configured database connections available for gx_db_query, with live ping status. Always call this first if unsure which connection name to use. Returns: name, type (sqlserver/oracle), host, database, and ping:true/false. Always includes "kb" (GeneXus KB SQL Server, Integrated Security). Also lists "oracle" when ORACLE_* env vars are set. Credentials are never shown.',
         inputSchema: {
           type: "object",
           properties: {}
@@ -21330,7 +21454,7 @@ var init_dispatch = __esm({
       },
       {
         name: "gx_search",
-        description: "Search for a text pattern across GeneXus KB object sources (procedures, events, rules). Returns matching objects with line-level context. Use this to find where a procedure, attribute, or constant is referenced.",
+        description: "Search for a literal text pattern across all GeneXus KB object sources, events, and rules. Returns matching objects with line-level context. Anti-pattern: for name-based object lookup, use gx_find \u2014 it is faster. gx_search scans source blobs and is slower but finds any textual reference (e.g. a string constant, attribute name, or procedure call inside source code).",
         inputSchema: {
           type: "object",
           properties: {
@@ -21346,12 +21470,12 @@ var init_dispatch = __esm({
       },
       {
         name: "gx_analyze",
-        description: "Analyze cross-object impact and dependencies. action=usedby: find objects that reference this object by name. action=uses: find objects referenced from this object's source. action=dependencies: alias for uses.",
+        description: "Analyze cross-object impact and dependencies. action=usedby: find objects that reference this object by name. action=uses: find objects referenced from this object's source. action=dependencies: alias for uses. Anti-pattern: for a simpler one-direction lookup, use gx_where_used (usedby) directly. Use gx_analyze when you need both directions or want to switch between usedby and uses in the same call.",
         inputSchema: {
           type: "object",
           properties: {
             name: { type: "string", description: "Exact object name" },
-            type: { type: "number", description: "EntityTypeId of the object" },
+            type: { type: "number", description: "EntityTypeId as number \u2014 34=procedure, 43=webpanel/webcomponent, 147=usercontrol, 161=dso, 36=sdt, 39=transaction. Always pass as a number, never as a string." },
             action: { type: "string", enum: ["usedby", "uses", "dependencies"], description: "Analysis direction (default usedby)" },
             limit: { type: "number", description: "Max results (default 50)" },
             exclude: { type: "string", description: "Exclude results whose name matches this SQL LIKE pattern" }
@@ -21361,12 +21485,12 @@ var init_dispatch = __esm({
       },
       {
         name: "gx_history",
-        description: "Get the revision history of a GeneXus KB object \u2014 all EntityVersion rows with author, timestamp, and description. Useful for auditing who changed what and when.",
+        description: "Get the revision history of a GeneXus KB object \u2014 all EntityVersion rows with author, timestamp, and description. Returns EntityVersionId values usable in gx_diff to compare specific revisions. Useful for auditing who changed what and when.",
         inputSchema: {
           type: "object",
           properties: {
             name: { type: "string", description: "Exact object name" },
-            type: { type: "number", description: "EntityTypeId" },
+            type: { type: "number", description: "EntityTypeId as number \u2014 34=procedure, 43=webpanel/webcomponent, 147=usercontrol, 161=dso, 36=sdt, 39=transaction. Always pass as a number, never as a string." },
             limit: { type: "number", description: "Max revisions to return (default 10)" }
           },
           required: ["name", "type"]
@@ -21374,12 +21498,12 @@ var init_dispatch = __esm({
       },
       {
         name: "gx_move",
-        description: 'Move a GeneXus KB object to a different module. Requires confirm:true. Updates ModelEntityVersion \u2014 the change is reflected in GX18 IDE after reload. To list available modules: gx_sql with "SELECT ev.EntityVersionName FROM EntityVersion ev WHERE ev.EntityTypeId=100 ORDER BY ev.EntityVersionName".',
+        description: 'Move a GeneXus KB object to a different module. Requires confirm:true. Updates ModelEntityVersion \u2014 the change is reflected in GX18 IDE after reload. Use gx_modules to list valid module names before calling this tool. To list available modules via SQL: gx_sql with "SELECT ev.EntityVersionName FROM EntityVersion ev WHERE ev.EntityTypeId=100 ORDER BY ev.EntityVersionName".',
         inputSchema: {
           type: "object",
           properties: {
             name: { type: "string", description: "Exact object name" },
-            type: { type: "number", description: "EntityTypeId (e.g. 34=Procedure, 147=UserControl, 43=WebPanel)" },
+            type: { type: "number", description: "EntityTypeId as number \u2014 34=procedure, 43=webpanel/webcomponent, 147=usercontrol, 161=dso, 36=sdt, 39=transaction. Always pass as a number, never as a string." },
             targetModule: { type: "string", description: 'Target module name (e.g. "Nuc", "VEN", "UserControls")' },
             confirm: { type: "boolean", description: "Must be true to execute the move" }
           },
@@ -21388,7 +21512,7 @@ var init_dispatch = __esm({
       },
       {
         name: "gx_doctor",
-        description: "Health check for the gx18-mcp server: verifies worker exe, GX18 install dir, KB path, worker ping, and SQL connectivity. Run this when the server is not responding or when diagnosing connection issues.",
+        description: "Run a health check on the gx18-mcp server: verifies worker executable path, GeneXus 18 install directory, KB path accessibility, worker process ping, and SQL Server connectivity. Returns pass/fail per check with error details. Run this first when gx_whoami or any read tool fails with a connection error.",
         inputSchema: {
           type: "object",
           properties: {}
@@ -21396,12 +21520,12 @@ var init_dispatch = __esm({
       },
       {
         name: "gx_reload",
-        description: "Restart the SDK worker, forcing the KB to be reopened fresh. Use this after any direct SQL write (gx_sql readOnly:false) that modifies KB schema or metadata (e.g. INSERTing properties, updating EntityVersion). The worker restarts in ~30s (cold-start). No arguments required.",
+        description: "Restart the gx18-mcp SDK worker, forcing the GeneXus KB to be reopened fresh. Required after any direct SQL write (gx_sql readOnly:false) that modifies KB metadata tables (EntityVersion, ModelEntityVersion, properties) \u2014 without a reload, subsequent SDK operations use a stale in-memory model and will not see the SQL changes. The worker takes ~30 seconds to restart (cold KB load). Also use this if the worker becomes unresponsive. No arguments required.",
         inputSchema: { type: "object", properties: {} }
       },
       {
         name: "gx_stats",
-        description: "KB statistics: object counts by type and module, recently modified objects.",
+        description: "Get Knowledge Base statistics: object counts grouped by EntityTypeId and module, plus the N most recently modified objects. Useful for understanding KB size and activity before a bulk operation. Does not require any parameters \u2014 omit module to get stats across the entire KB.",
         inputSchema: {
           type: "object",
           properties: {
@@ -21412,7 +21536,7 @@ var init_dispatch = __esm({
       },
       {
         name: "gx_modules",
-        description: "List all modules in the KB with their hierarchy (id, name, parentId).",
+        description: "List all modules defined in the GeneXus KB with their hierarchy: id, name, and parentId. Use this to find valid module names before calling gx_move or gx_create with a module parameter. To move an object to a module, pass the exact name string returned here to gx_move.",
         inputSchema: {
           type: "object",
           properties: {},
@@ -21421,12 +21545,12 @@ var init_dispatch = __esm({
       },
       {
         name: "gx_diff",
-        description: "Diff between two EntityVersion revisions of an object. Omit versionA/versionB to diff the two most recent versions.",
+        description: "Compare two EntityVersion revisions of a GeneXus KB object and return a unified diff of the specified section. Omit versionA/versionB to automatically diff the two most recent revisions. Use gx_history first to list available EntityVersionIds. Useful for reviewing what changed between saves without opening the GX18 IDE.",
         inputSchema: {
           type: "object",
           properties: {
             name: { type: "string", description: "Object name." },
-            type: { type: "number", description: "EntityTypeId (34=Proc, 43=WBP, 147=UC, 161=DSO\u2026)." },
+            type: { type: "number", description: "EntityTypeId as number \u2014 34=procedure, 43=webpanel/webcomponent, 147=usercontrol, 161=dso, 36=sdt, 39=transaction. Always pass as a number, never as a string." },
             section: { type: "string", description: "Section name (default: source)." },
             versionA: { type: "number", description: "EntityVersionId A (older). Omit for auto." },
             versionB: { type: "number", description: "EntityVersionId B (newer). Omit for auto." }
@@ -21436,7 +21560,7 @@ var init_dispatch = __esm({
       },
       {
         name: "gx_dead_code",
-        description: "Find objects of a given type that have no inbound references in the KB source blobs.",
+        description: "Identify GeneXus KB objects of a given type that have no inbound references in source blobs \u2014 potential dead code candidates for cleanup. Returns a list of unreferenced objects. CAUTION: entry-point objects (Main Programs, WebPanels called by URL, APIs) are legitimate roots with no KB callers \u2014 use exclude to skip them (e.g. exclude='%Submit' or 'Prc%Seed%'). Always verify before deleting \u2014 run gx_where_used on each result for a second opinion.",
         inputSchema: {
           type: "object",
           properties: {
@@ -21450,12 +21574,12 @@ var init_dispatch = __esm({
       },
       {
         name: "gx_where_used",
-        description: "Find all objects that reference a given object by name in their source, events, or rules. Simpler alias for gx_analyze with action=usedby. Use exclude to filter out known false positives.",
+        description: "Find all objects that reference a given object by name in their source, events, or rules. Simpler alias for gx_analyze with action=usedby. Use exclude to filter out known false positives. KNOWN LIMITATION: does not index calls made through UC sub-routines or dynamic dispatch \u2014 a caller using UC event wiring may not appear. Never rely solely on this to confirm an object is unused before renaming or deleting.",
         inputSchema: {
           type: "object",
           properties: {
             name: { type: "string", description: "Object name to find references to" },
-            type: { type: "number", description: "EntityTypeId of the object (34=Procedure, 147=UserControl, 43=WebPanel, etc.)" },
+            type: { type: "number", description: "EntityTypeId as number \u2014 34=procedure, 43=webpanel/webcomponent, 147=usercontrol, 161=dso, 36=sdt, 39=transaction. Always pass as a number, never as a string." },
             limit: { type: "number", description: "Max results (default 50)" },
             exclude: { type: "string", description: "Exclude results whose name matches this SQL LIKE pattern" }
           },
@@ -21464,7 +21588,7 @@ var init_dispatch = __esm({
       },
       {
         name: "gx_impact",
-        description: "Transitive impact analysis: which objects would be affected if the given object changes. Traverses the usedby graph up to `depth` levels.",
+        description: "Perform transitive impact analysis \u2014 find all objects that would be affected if the given object changes, by traversing the usedby reference graph up to depth levels. Returns a tree of callers grouped by level. Use before renaming, deleting, or refactoring a shared procedure or SDT. depth=1 is a direct-callers-only check; depth=3+ gives a full blast radius estimate. Inherits the same blind spots as gx_where_used (UC sub-routines not indexed).",
         inputSchema: {
           type: "object",
           properties: {
@@ -21477,7 +21601,7 @@ var init_dispatch = __esm({
       },
       {
         name: "gx_attribute",
-        description: "List KB attributes (EntityTypeId=24) with their type, length, decimals, domain, and description.",
+        description: "List GeneXus KB attributes (data model fields, EntityTypeId=24) filtered by name pattern. Returns type, length, decimals, domain, and description for each match. Use this to inspect the data model before writing Transaction structures or SDT members. For Transaction structure with level hierarchy, use gx_structure instead.",
         inputSchema: {
           type: "object",
           properties: {
@@ -21489,12 +21613,12 @@ var init_dispatch = __esm({
       },
       {
         name: "gx_compare",
-        description: "Compare an object's source between the current KB and another KB on the same SQL Server instance.",
+        description: "Compare a GeneXus object's section source between the current KB and another KB on the same SQL Server instance. Returns a unified diff. Useful for checking what diverged between a development KB and a production KB, or between two parallel KB versions. Both KBs must be on the same SQL Server (same GX_KB_SERVER). Use gx_db_connections to confirm the target database is reachable.",
         inputSchema: {
           type: "object",
           properties: {
             name: { type: "string", description: "Object name." },
-            type: { type: "number", description: "EntityTypeId." },
+            type: { type: "number", description: "EntityTypeId as number \u2014 34=procedure, 43=webpanel/webcomponent, 147=usercontrol, 161=dso, 36=sdt, 39=transaction. Always pass as a number, never as a string." },
             targetDb: { type: "string", description: 'Target SQL Server database name (e.g. "GX_KB_MyKnowledgeBase").' },
             section: { type: "string", description: "Section to compare (default: source)." }
           },
@@ -21503,7 +21627,7 @@ var init_dispatch = __esm({
       },
       {
         name: "gx_lint",
-        description: "Scan GeneXus object sources for known bad patterns (jQuery reflow, missing guards, hard-coded user IDs, etc.).",
+        description: "Scan GeneXus KB object sources for known anti-patterns and quality issues: jQuery-triggered reflow, missing AfterShow init guards, hard-coded user IDs, unbounded loops, deprecated API calls, etc. Returns findings grouped by severity (error/warn/info) with object name and line context. Run on type=147 (UserControl) before deploying UC changes. Filter by severity to focus on blockers first.",
         inputSchema: {
           type: "object",
           properties: {
@@ -21576,7 +21700,7 @@ var init_quick_reference = __esm({
 var usage_guide_default;
 var init_usage_guide = __esm({
   "src/docs/usage-guide.md"() {
-    usage_guide_default = '# gx18-mcp \u2014 Usage Guide\n\nGeneXus 18 MCP server. Reads the KB via direct SQL (zero revisions created); writes via the\nnative GX18 SDK using the current Windows identity (no Team Development UserId corruption).\n\n> For setup, configuration, build instructions, and architecture details see the README and\n> the project docs at https://github.com/lucaskarsten/genexus-ai-toolkit\n\n---\n\n## Tool Overview (47 tools)\n\n### Read tools \u2014 SQL, zero revisions\n\n| Tool | Args | Returns |\n|------|------|---------|\n| `gx_find` | `pattern`, `type?`, `limit?` | Objects matching name pattern (SQL LIKE) |\n| `gx_list` | `type`, `module?`, `limit?`, `offset?` | All objects of a type, paginated |\n| `gx_get` | `name`, `type` | Object header + sub-component list |\n| `gx_read` | `name`, `type`, `section?` | Reconstructed plain-text source (GZip blob decoded) |\n| `gx_properties` | `name`, `type` | Key\u2192value property bag |\n| `gx_structure` | `name` | Transaction attribute list (name, type, length, decimals, key) |\n| `gx_attribute` | `pattern?`, `limit?` | KB attributes with type, length, decimals, domain |\n| `gx_whoami` | \u2014 | Windows user, KB UserId, kbPath, sdkReady |\n\n### Analysis tools \u2014 SQL, zero revisions\n\n| Tool | Args | Returns |\n|------|------|---------|\n| `gx_analyze` | `name`, `type`, `action` | usedby / uses / dependencies |\n| `gx_where_used` | `name`, `type`, `limit?`, `exclude?` | Objects that reference this object |\n| `gx_impact` | `name`, `type?`, `depth?` | Transitive impact graph up to N levels |\n| `gx_dead_code` | `type?`, `module?`, `limit?`, `exclude?` | Objects with no inbound references |\n| `gx_search` | `pattern`, `type?`, `section?`, `limit?`, `module?` | Text matches across KB sources |\n| `gx_lint` | `type?`, `module?`, `severity?` | Bad patterns (jQuery reflow, missing guards, etc.) |\n| `gx_diff` | `name`, `type`, `section?`, `versionA?`, `versionB?` | Source diff between revisions |\n| `gx_compare` | `name`, `type`, `targetDb`, `section?` | Source diff between two KBs |\n| `gx_stats` | `module?` | Object counts by type and module; recently modified |\n| `gx_history` | `name`, `type`, `limit?` | Revision history (author, timestamp, description) |\n\n### Write tools \u2014 GX18 SDK, author verified after every save\n\nAll write tools require `confirm: true`. Result always includes `userIdOk`, `userId`,\n`expectedUserId` \u2014 fails loudly rather than silently writing the wrong author.\n\n| Tool | Args | What it does |\n|------|------|--------------|\n| `gx_create` | `type`, `name`, sections\u2026, `confirm` | Create new object |\n| `gx_modify` | `name`, `type`, `section`, `content`, `confirm` | Replace one section of existing object |\n| `gx_set_property` | `name`, `type`, `property`, `value`, `confirm` | Set a named property (Title, IsPrivate, etc.) |\n| `gx_rename` | `name`, `type`, `newName`, `confirm` | Rename an object |\n| `gx_delete` | `name`, `type`, `dryRun?`, `confirm` | Delete object (irreversible; use dryRun first) |\n| `gx_variable` | `action`, `name`, `type`, `varName?`, `dataType?`, `confirm?` | List/add/delete variables |\n| `gx_clone` | `type`, `name`, `newName`, `module?`, `confirm` | Copy to new name |\n| `gx_bulk_modify` | `type`, `names[]`, `section`, `content`, `confirm` | Apply same section to multiple objects (continues on failure, returns `succeeded[]`/`failed[]`) |\n| `gx_move` | `name`, `type`, `targetModule`, `confirm` | Move to different module |\n| `gx_export` | `name`, `type`, `outputDir?` | Export to `.xpz` via Knowledge Manager (also validates) |\n| `gx_import` | `xpzFile`, `type`, `name`, `fullOverwrite?`, `confirm` | Import `.xpz` via Knowledge Manager native |\n\n**gx_build** always returns an error \u2014 headless compilation is not supported. Use the GX18 IDE.\n\n### XPZ archive tools \u2014 file operations, no KB connection needed\n\n| Tool | Args | What it does |\n|------|------|--------------|\n| `gx_read_xpz` | `xpzFile`, `scriptName?` | List scripts in `.xpz` or read a specific script\'s CDATA |\n| `gx_patch_xpz` | `xpzFile`, `scriptName`, `content`, `outputFile?` | Patch a script CDATA \u2192 new `.xpz` file |\n\n### Database tools \u2014 named connections\n\n| Tool | Args | Returns |\n|------|------|---------|\n| `gx_sql` | `query`, `readOnly?`, `confirm?` | SQL on the KB SQL Server database |\n| `gx_db_connections` | \u2014 | Available connections (`kb`, `oracle` if configured) |\n| `gx_db_query` | `connection`, `query`, `readOnly?`, `limit?`, `confirm?` | SQL on named connection |\n\n### Configuration & server tools\n\n| Tool | Args | What it does |\n|------|------|--------------|\n| `gx_save_config` | `kbPath?`, `kbDatabase?`, `kbServer?`, `gx18Dir?` | Update server config and restart worker |\n| `gx_doctor` | \u2014 | Health check (worker, GX18 dir, KB path, SQL) |\n| `gx_reload` | \u2014 | Restart worker, reopen KB fresh |\n| `gx_validate` | `name`, `type` | Validate object for syntax errors |\n| `gx_modules` | \u2014 | List all KB modules with hierarchy |\n\n---\n\n## EntityTypeIds\n\nUsed as the `type` parameter throughout all tools. Write tools (`gx_modify`, `gx_export`,\n`gx_import`, `gx_validate`, `gx_rename`, `gx_delete`, etc.) accept either the numeric\nEntityTypeId **or** the string name (e.g. `"procedure"`) \u2014 both are normalised server-side.\nRead tools (`gx_read`, `gx_list`, `gx_get`, etc.) require the numeric form only.\n\n| Id | Type | Id | Type |\n|----|------|----|------|\n| 34 | Procedure | 147 | UserControl |\n| 36 | SDT | 161 | DSO |\n| 39 | Transaction | 86 | API |\n| 43 | WebPanel / WebComponent | 88 | DataSelector |\n\n> `43` is the SDK value for both WebPanel and WebComponent. Raw SQL on `EntityVersion` may\n> return different numeric values depending on the KB \u2014 always use `43` for tool calls.\n\n---\n\n## Sections\n\nUsed as the `section` parameter in `gx_read` and `gx_modify`.\n\n| Section | Object types | Content |\n|---------|-------------|---------|\n| `source` | Procedure, DSO | Procedure code; DSO styles (alias) |\n| `events` | WebPanel, WebComponent, Transaction | Events code |\n| `rules` | Procedure, WebPanel, WebComponent, Transaction | Rules |\n| `conditions` | Procedure, WebPanel, WebComponent | Conditions |\n| `layout` | WebPanel, WebComponent | WebForm layout (editable text) |\n| `variables` | Any | Object variables |\n| `template` | UserControl | Screen template HTML/CSS |\n| `properties` | UserControl | Property definitions XML |\n| `script:<Name>` | UserControl (`gx_modify` only) | AfterShow or a named Method: `script:AfterShow`, `script:Tooltip` |\n| `tokens` | DSO | Design tokens |\n| `styles` | DSO | Design styles |\n| `elements` | DSO | Design elements |\n\n---\n\n## Anti-patterns \u2014 Common Wrong Paths\n\n| \u274C Wrong path | \u2705 Correct tool | Why |\n|---|---|---|\n| Reading `javaoracle/web/src/main/java/<proc>.java` | `gx_read type=34 section=source` | Java is generated and may be stale; KB source is canonical |\n| Reading `static/UserControls/<uc>render.js` | `gx_read type=147 section=source` | render.js is regenerated on every build; edits are lost |\n| SQL `SELECT \u2026 FROM EntityVersion WHERE EntityVersionName LIKE \'%X%\'` | `gx_find pattern=X` | gx_find returns formatted results with real entityTypeId |\n| SQL on `EntityVersionComposition` for TRN structure | `gx_structure name=X` | gx_structure decodes the blob and returns structured output |\n| `gx_read type=147 section=events` for UC AfterShow/Methods | `gx_export` \u2192 `gx_read_xpz` | gx_read does NOT include UC script parts; XPZ is the only READ path |\n| Manual ZIP/regex on .xpz to read scripts | `gx_read_xpz` | Handles encoding, CDATA parsing, and script listing automatically |\n| Manual ZIP/regex on .xpz to patch scripts | `gx_patch_xpz` | Bumps lastUpdate, zeroes checksum, writes correct BOM/CRLF encoding |\n| `gx_import` to edit an existing object\'s source | `gx_modify section=source confirm:true` | gx_import skips existing objects without `fullOverwrite:true` |\n| XPZ round-trip to WRITE a UC script when you already know the content | `gx_modify type=147 section="script:AfterShow" content="..." confirm:true` | Simpler direct path when you don\'t need to read-then-patch |\n| `gx_read section=properties` for property values | `gx_properties` | gx_read returns the definition XML; gx_properties returns actual values |\n| `gx_db_query connection=kb` for KB SQL queries | `gx_sql` | Same database \u2014 gx_sql is the direct, preferred path |\n| Generating to `output/` when the intent is to write to the KB | `gx_create confirm:true` | output/ is a staging area for human review; gx_create writes directly |\n| Assuming UserId is correct and writing immediately | `gx_whoami` first | Wrong author permanently corrupts Team Development history |\n| Guessing impact of a change | `gx_impact name=X depth=2` | Traverses usedby graph transitively up to N levels |\n| Calling gxnext write tools on a GX18 KB | `gx18-mcp tools or GX18 IDE` | gxnext caused 76k spurious TD revisions \u2014 irreversible without SQL recovery |\n| `gx_export name=X type=procedure` (unquoted) | `gx_export name=X type=34` or `type="procedure"` | Unquoted identifier is invalid JSON \u2014 call fails before executing. Both number and string accepted by gx_export. |\n| `gx_import` to create a brand-new object (not yet in KB) | Create in GX18 IDE first, then `gx_import` to update | gx_import creates an `EntityVersion` shell without `EntityVersionComposition` parts \u2014 subsequent `gx_modify` throws NullReference |\n\n---\n\n## Complete Workflow Examples\n\n### Read the source of any object\n```\ngx_find pattern=PrcMyProcedure       \u2192 confirms entityTypeId (34 for procedure)\ngx_read name=PrcMyProcedure type=34 section=source\n```\n\n### Create a new procedure\n```\ngx_whoami                            \u2192 verify Windows identity\ngx_find pattern=PrcFoccoMyProc      \u2192 confirm it does not exist\ngx_create type=procedure name=PrcFoccoMyProc source="msg(\\"hello\\")" confirm:true\ngx_export name=PrcFoccoMyProc type=34   \u2192 validate + backup .xpz\n```\n\n### Edit source of an existing object\n```\ngx_whoami\ngx_read name=X type=34 section=source    \u2192 read current content\ngx_modify name=X type=34 section=source content="..." confirm:true\n```\n\n### Write a UC script directly (simplest path when content is already known)\n```\ngx_whoami\ngx_modify name=UCMyControl type=147 section="script:AfterShow" content="..." confirm:true\n# Works for any named method too: section="script:Tooltip", section="script:Show", etc.\n```\n\n### Read then patch a UC script (XPZ round-trip)\nUse this when you need to read the existing script before deciding what to write.\n```\ngx_whoami\ngx_export name=UCMyControl type=147      \u2192 generates output/UCMyControl.xpz\ngx_read_xpz xpzFile=output/UCMyControl.xpz                  \u2192 list all scripts\ngx_read_xpz xpzFile=output/UCMyControl.xpz scriptName=AfterShow  \u2192 read current script\ngx_patch_xpz xpzFile=output/UCMyControl.xpz scriptName=AfterShow content="..." outputFile=output/UCMyControl_patched.xpz\ngx_import xpzFile=output/UCMyControl_patched.xpz type=usercontrol name=UCMyControl fullOverwrite:true confirm:true\ngx_export name=UCMyControl type=147      \u2192 re-export to verify the edit landed\n```\n\n> See resource `gx18://docs/xpz-workflow` for the full annotated guide, including pitfalls.\n\n### Edit DSO styles\n```\ngx_whoami\ngx_read name=DsoMyTheme type=161 section=styles    \u2192 read current styles\ngx_modify name=DsoMyTheme type=161 section=styles content="@import DsoBase;\\n.my-class { \u2026 }" confirm:true\n# \u26A0 Use the friendly @import name (e.g. @import DsoBase;)\n#   NOT the GUID form (@import @<guid>@) that appears in raw blob decodes \u2014 it causes ValidationException\n```\n\n### Analysis & Inspection\n```\n# Who calls this procedure?\ngx_where_used name=PrcVenCalcDesconto type=34\n\n# What would break if I change this UC?\ngx_impact name=UCTooltip depth=2\n\n# Are there dead procedures in the VEN module?\ngx_dead_code type=34 module=VEN\n\n# What changed in the last 2 revisions?\ngx_diff name=PrcVenCalcDesconto type=34\n\n# Are there jQuery reflow patterns in UCs?\ngx_lint type=147\n```\n\n### Query Oracle\n```\ngx_db_connections                    \u2192 confirm "oracle" is listed\ngx_db_query connection=oracle query="SELECT COUNT(*) FROM USER_TABLES"\n```\n\n### After direct SQL write to KB metadata\n```\ngx_sql query="UPDATE EntityVersion SET EntityVersionDescription=... WHERE ..." readOnly:false confirm:true\ngx_reload    \u2192 restart worker so SDK cache is cleared; worker reopens KB fresh (~30s)\n```\n\n---\n\n## Sections per Type\n\n### `gx_create` \u2014 initial content\n\n| Type | Accepted sections |\n|------|------------------|\n| `procedure` | `source`, `rules`, `conditions` |\n| `webpanel`, `webcomponent` | `events`, `rules`, `conditions`, `layout` |\n| `api` | `source` (service group), `events` |\n| `usercontrol` | `template`, `properties` |\n| `dso` | `tokens`, `styles`, `elements` |\n| `sdt`, `transaction` | `structure` (array of `{ name, type, length?, decimals?, key? }`) |\n\n### `gx_modify` \u2014 writable sections per type\n\n| Type | Writable sections | Notes |\n|------|------------------|-------|\n| `procedure` | `source`, `rules`, `conditions`, `variables` | SDK path |\n| `webpanel`, `webcomponent` | `events`, `rules`, `conditions`, `layout`, `variables` | all via the SDK \u2014 events/rules/conditions are tokenized on Save (invalid source \u2192 ValidationException, no change). layout via SDK |\n| `usercontrol` | `template`, `properties`, `script:<Name>` | template/properties via SDK; scripts via SQL blob in-place |\n| `dso` | `tokens`, `styles`, `elements` | SDK path; use friendly `@import Name;` (not GUID form) |\n| `api` | `source`, `events` | SDK path |\n\n> `dataselector` and `transaction` are **not writable** via `gx_modify` \u2014 use the GX18 IDE.\n\n`structure` member `type` values: `Character`, `VarChar`, `LongVarChar`, `Numeric`, `Int`,\n`Date`, `DateTime`, `Boolean`, `GUID`.\n\n---\n\n## Safety Rules\n\n1. **Test writes in a KB clone, never in the live KB.**\n2. **gxnext MCP is forbidden for writes on GeneXus 18 KBs.** On 2026-06-17 it caused ~76k\n   spurious Team Development revisions, requiring 6 hours of SQL recovery.\n   Safe gxnext-only tools (no KB session opened): `export_kb_to_text`,\n   `validate_kb_text_files`, `get_kb_property`, `search_modules`.\n3. **All writes \u2192 gx18-mcp tools or the GX18 IDE. Never gxnext.**\n4. **`GX18_READONLY=1`** disables all write tools server-side (useful for read-only environments).\n5. **After direct SQL writes to KB metadata**, call `gx_reload` \u2014 the SDK worker caches the object model.\n';
+    usage_guide_default = '# gx18-mcp \u2014 Usage Guide\n\nGeneXus 18 MCP server. Reads the KB via direct SQL (zero revisions created); writes via the\nnative GX18 SDK using the current Windows identity (no Team Development UserId corruption).\n\n> For setup, configuration, build instructions, and architecture details see the README and\n> the project docs at https://github.com/lucaskarsten/genexus-ai-toolkit\n\n---\n\n## Tool Overview (47 tools)\n\n### Read tools \u2014 SQL, zero revisions\n\n| Tool | Args | Returns |\n|------|------|---------|\n| `gx_find` | `pattern`, `type?`, `limit?` | Objects matching name pattern (SQL LIKE) |\n| `gx_list` | `type`, `module?`, `limit?`, `offset?` | All objects of a type, paginated |\n| `gx_get` | `name`, `type` | Object header + sub-component list |\n| `gx_read` | `name`, `type`, `section?` | Reconstructed plain-text source (GZip blob decoded) |\n| `gx_properties` | `name`, `type` | Key\u2192value property bag |\n| `gx_structure` | `name` | Transaction attribute list (name, type, length, decimals, key) |\n| `gx_attribute` | `pattern?`, `limit?` | KB attributes with type, length, decimals, domain |\n| `gx_whoami` | \u2014 | Windows user, KB UserId, kbPath, sdkReady |\n\n### Analysis tools \u2014 SQL, zero revisions\n\n| Tool | Args | Returns |\n|------|------|---------|\n| `gx_analyze` | `name`, `type`, `action` | usedby / uses / dependencies |\n| `gx_where_used` | `name`, `type`, `limit?`, `exclude?` | Objects that reference this object |\n| `gx_impact` | `name`, `type?`, `depth?` | Transitive impact graph up to N levels |\n| `gx_dead_code` | `type?`, `module?`, `limit?`, `exclude?` | Objects with no inbound references |\n| `gx_search` | `pattern`, `type?`, `section?`, `limit?`, `module?` | Text matches across KB sources |\n| `gx_lint` | `type?`, `module?`, `severity?` | Bad patterns (jQuery reflow, missing guards, etc.) |\n| `gx_diff` | `name`, `type`, `section?`, `versionA?`, `versionB?` | Source diff between revisions |\n| `gx_compare` | `name`, `type`, `targetDb`, `section?` | Source diff between two KBs |\n| `gx_stats` | `module?` | Object counts by type and module; recently modified |\n| `gx_history` | `name`, `type`, `limit?` | Revision history (author, timestamp, description) |\n\n### Write tools \u2014 GX18 SDK, author verified after every save\n\nAll write tools require `confirm: true`. Result always includes `userIdOk`, `userId`,\n`expectedUserId` \u2014 fails loudly rather than silently writing the wrong author.\n\n| Tool | Args | What it does |\n|------|------|--------------|\n| `gx_create` | `type`, `name`, sections\u2026, `confirm` | Create new object |\n| `gx_modify` | `name`, `type`, `section`, `content`, `confirm` | Replace one section of existing object |\n| `gx_set_property` | `name`, `type`, `property`, `value`, `confirm` | Set a named property (Title, IsPrivate, etc.) |\n| `gx_rename` | `name`, `type`, `newName`, `confirm` | Rename an object |\n| `gx_delete` | `name`, `type`, `dryRun?`, `confirm` | Delete object (irreversible; use dryRun first) |\n| `gx_variable` | `action`, `name`, `type`, `varName?`, `dataType?`, `confirm?` | List/add/delete variables |\n| `gx_clone` | `type`, `name`, `newName`, `module?`, `confirm` | Copy to new name |\n| `gx_bulk_modify` | `type`, `names[]`, `section`, `content`, `confirm` | Apply same section to multiple objects (continues on failure, returns `succeeded[]`/`failed[]`) |\n| `gx_move` | `name`, `type`, `targetModule`, `confirm` | Move to different module |\n| `gx_export` | `name`, `type`, `outputDir?` | Export to `.xpz` via Knowledge Manager (also validates) |\n| `gx_import` | `xpzFile`, `type`, `name`, `fullOverwrite?`, `confirm` | Import `.xpz` via Knowledge Manager native |\n\n**gx_build** always returns an error \u2014 headless compilation is not supported. Use the GX18 IDE.\n\n### XPZ archive tools \u2014 file operations, no KB connection needed\n\n| Tool | Args | What it does |\n|------|------|--------------|\n| `gx_read_xpz` | `xpzFile`, `scriptName?` | List scripts in `.xpz` or read a specific script\'s CDATA |\n| `gx_patch_xpz` | `xpzFile`, `scriptName`, `content`, `outputFile?` | Patch a script CDATA \u2192 new `.xpz` file |\n\n### Database tools \u2014 named connections\n\n| Tool | Args | Returns |\n|------|------|---------|\n| `gx_sql` | `query`, `readOnly?`, `confirm?` | SQL on the KB SQL Server database |\n| `gx_db_connections` | \u2014 | Available connections (`kb`, `oracle` if configured) |\n| `gx_db_query` | `connection`, `query`, `readOnly?`, `limit?`, `confirm?` | SQL on named connection |\n\n### Configuration & server tools\n\n| Tool | Args | What it does |\n|------|------|--------------|\n| `gx_save_config` | `kbPath?`, `kbDatabase?`, `kbServer?`, `gx18Dir?` | Update server config and restart worker |\n| `gx_doctor` | \u2014 | Health check (worker, GX18 dir, KB path, SQL) |\n| `gx_reload` | \u2014 | Restart worker, reopen KB fresh |\n| `gx_validate` | `name`, `type` | Validate object for syntax errors |\n| `gx_modules` | \u2014 | List all KB modules with hierarchy |\n\n---\n\n## EntityTypeIds\n\nUsed as the `type` parameter throughout all tools. Write tools (`gx_modify`, `gx_export`,\n`gx_import`, `gx_validate`, `gx_rename`, `gx_delete`, etc.) accept either the numeric\nEntityTypeId **or** the string name (e.g. `"procedure"`) \u2014 both are normalised server-side.\nRead tools (`gx_read`, `gx_list`, `gx_get`, etc.) require the numeric form only.\n\n| Id | Type | Id | Type |\n|----|------|----|------|\n| 34 | Procedure | 147 | UserControl |\n| 36 | SDT | 161 | DSO |\n| 39 | Transaction | 86 | API |\n| 43 | WebPanel / WebComponent | 88 | DataSelector |\n\n> `43` is the SDK value for both WebPanel and WebComponent. Raw SQL on `EntityVersion` may\n> return different numeric values depending on the KB \u2014 always use `43` for tool calls.\n\n---\n\n## Sections\n\nUsed as the `section` parameter in `gx_read` and `gx_modify`.\n\n| Section | Object types | Content |\n|---------|-------------|---------|\n| `source` | Procedure, DSO | Procedure code; DSO styles (alias) |\n| `events` | WebPanel, WebComponent, Transaction | Events code |\n| `rules` | Procedure, WebPanel, WebComponent, Transaction | Rules |\n| `conditions` | Procedure, WebPanel, WebComponent | Conditions |\n| `layout` | WebPanel, WebComponent | WebForm layout (editable text) |\n| `variables` | Any | Object variables |\n| `template` | UserControl | Screen template HTML/CSS |\n| `properties` | UserControl | Property definitions XML |\n| `script:<Name>` | UserControl (`gx_modify` only) | AfterShow or a named Method: `script:AfterShow`, `script:Tooltip` |\n| `tokens` | DSO | Design tokens |\n| `styles` | DSO | Design styles |\n| `elements` | DSO | Design elements |\n\n---\n\n## Anti-patterns \u2014 Common Wrong Paths\n\n| \u274C Wrong path | \u2705 Correct tool | Why |\n|---|---|---|\n| Reading `javaoracle/web/src/main/java/<proc>.java` | `gx_read type=34 section=source` | Java is generated and may be stale; KB source is canonical |\n| Reading `static/UserControls/<uc>render.js` | `gx_read type=147 section=source` | render.js is regenerated on every build; edits are lost |\n| SQL `SELECT \u2026 FROM EntityVersion WHERE EntityVersionName LIKE \'%X%\'` | `gx_find pattern=X` | gx_find returns formatted results with real entityTypeId |\n| SQL on `EntityVersionComposition` for TRN structure | `gx_structure name=X` | gx_structure decodes the blob and returns structured output |\n| `gx_read type=147 section=events` for UC AfterShow/Methods | `gx_export` \u2192 `gx_read_xpz` | gx_read does NOT include UC script parts; XPZ is the only READ path |\n| Manual ZIP/regex on .xpz to read scripts | `gx_read_xpz` | Handles encoding, CDATA parsing, and script listing automatically |\n| Manual ZIP/regex on .xpz to patch scripts | `gx_patch_xpz` | Bumps lastUpdate, zeroes checksum, writes correct BOM/CRLF encoding |\n| `gx_import` to edit an existing object\'s source | `gx_modify section=source confirm:true` | gx_import skips existing objects without `fullOverwrite:true` |\n| XPZ round-trip to WRITE a UC script when you already know the content | `gx_modify type=147 section="script:AfterShow" content="..." confirm:true` | Simpler direct path when you don\'t need to read-then-patch |\n| `gx_read section=properties` for property values | `gx_properties` | gx_read returns the definition XML; gx_properties returns actual values |\n| `gx_db_query connection=kb` for KB SQL queries | `gx_sql` | Same database \u2014 gx_sql is the direct, preferred path |\n| Generating to `output/` when the intent is to write to the KB | `gx_create confirm:true` | output/ is a staging area for human review; gx_create writes directly |\n| Assuming UserId is correct and writing immediately | `gx_whoami` first | Wrong author permanently corrupts Team Development history |\n| Guessing impact of a change | `gx_impact name=X depth=2` | Traverses usedby graph transitively up to N levels |\n| Calling gxnext write tools on a GX18 KB | `gx18-mcp tools or GX18 IDE` | gxnext caused 76k spurious TD revisions \u2014 irreversible without SQL recovery |\n| `gx_export name=X type=procedure` (unquoted) | `gx_export name=X type=34` or `type="procedure"` | Unquoted identifier is invalid JSON \u2014 call fails before executing. Both number and string accepted by gx_export. |\n| `gx_import` to create a brand-new object (not yet in KB) | Create in GX18 IDE first, then `gx_import` to update | gx_import creates an `EntityVersion` shell without `EntityVersionComposition` parts \u2014 subsequent `gx_modify` throws NullReference |\n\n---\n\n## Complete Workflow Examples\n\n### Read the source of any object\n```\ngx_find pattern=PrcMyProcedure       \u2192 confirms entityTypeId (34 for procedure)\ngx_read name=PrcMyProcedure type=34 section=source\n```\n\n### Create a new procedure\n```\ngx_whoami                            \u2192 verify Windows identity\ngx_find pattern=PrcFoccoMyProc      \u2192 confirm it does not exist\ngx_create type=procedure name=PrcFoccoMyProc source="msg(\\"hello\\")" confirm:true\ngx_export name=PrcFoccoMyProc type=34   \u2192 validate + backup .xpz\n```\n\n### Edit source of an existing object\n```\ngx_whoami\ngx_read name=X type=34 section=source    \u2192 read current content\ngx_modify name=X type=34 section=source content="..." confirm:true\n```\n\n### Write a UC script directly (simplest path when content is already known)\n```\ngx_whoami\ngx_modify name=UCMyControl type=147 section="script:AfterShow" content="..." confirm:true\n# Works for any named method too: section="script:Tooltip", section="script:Show", etc.\n```\n\n### Read then patch a UC script (XPZ round-trip)\nUse this when you need to read the existing script before deciding what to write.\n```\ngx_whoami\ngx_export name=UCMyControl type=147      \u2192 generates output/UCMyControl.xpz\ngx_read_xpz xpzFile=output/UCMyControl.xpz                  \u2192 list all scripts\ngx_read_xpz xpzFile=output/UCMyControl.xpz scriptName=AfterShow  \u2192 read current script\ngx_patch_xpz xpzFile=output/UCMyControl.xpz scriptName=AfterShow content="..." outputFile=output/UCMyControl_patched.xpz\ngx_import xpzFile=output/UCMyControl_patched.xpz type=usercontrol name=UCMyControl fullOverwrite:true confirm:true\ngx_export name=UCMyControl type=147      \u2192 re-export to verify the edit landed\n```\n\n> See resource `gx18://docs/xpz-workflow` for the full annotated guide, including pitfalls.\n\n### Edit DSO styles\n```\ngx_whoami\ngx_read name=DsoMyTheme type=161 section=styles    \u2192 read current styles\ngx_modify name=DsoMyTheme type=161 section=styles content="@import DsoBase;\\n.my-class { \u2026 }" confirm:true\n# \u26A0 Use the friendly @import name (e.g. @import DsoBase;)\n#   NOT the GUID form (@import @<guid>@) that appears in raw blob decodes \u2014 it causes ValidationException\n```\n\n### Analysis & Inspection\n```\n# Who calls this procedure?\ngx_where_used name=PrcVenCalcDesconto type=34\n\n# What would break if I change this UC?\ngx_impact name=UCTooltip depth=2\n\n# Are there dead procedures in the VEN module?\ngx_dead_code type=34 module=VEN\n\n# What changed in the last 2 revisions?\ngx_diff name=PrcVenCalcDesconto type=34\n\n# Are there jQuery reflow patterns in UCs?\ngx_lint type=147\n```\n\n### Query Oracle\n```\ngx_db_connections                    \u2192 confirm "oracle" is listed\ngx_db_query connection=oracle query="SELECT COUNT(*) FROM USER_TABLES"\n```\n\n### After direct SQL write to KB metadata\n```\ngx_sql query="UPDATE EntityVersion SET EntityVersionDescription=... WHERE ..." readOnly:false confirm:true\ngx_reload    \u2192 restart worker so SDK cache is cleared; worker reopens KB fresh (~30s)\n```\n\n---\n\n## Sections per Type\n\n### `gx_create` \u2014 initial content\n\n| Type | Accepted sections |\n|------|------------------|\n| `procedure` | `source`, `rules`, `conditions` |\n| `webpanel`, `webcomponent` | `events`, `rules`, `conditions`, `layout` |\n| `api` | `source` (service group), `events` |\n| `usercontrol` | `template`, `properties` |\n| `dso` | `tokens`, `styles`, `elements` |\n| `sdt`, `transaction` | `structure` (array of `{ name, type, length?, decimals?, key? }`) |\n\n### `gx_modify` \u2014 writable sections per type\n\n| Type | Writable sections | Notes |\n|------|------------------|-------|\n| `procedure` | `source`, `rules`, `conditions`, `variables` | SDK path |\n| `webpanel`, `webcomponent` | `events`, `rules`, `conditions`, `layout`, `variables` | all via the SDK \u2014 events/rules/conditions are tokenized on Save (invalid source \u2192 ValidationException, no change). layout via SDK |\n| `usercontrol` | `template`, `properties`, `script:<Name>` | template/properties via SDK; scripts via SQL blob in-place |\n| `dso` | `tokens`, `styles`, `elements` | SDK path; use friendly `@import Name;` (not GUID form) |\n| `api` | `source`, `events` | SDK path |\n| `sdt` | `structure` | SDK path; content = JSON array string `\'[{"name":"F","type":"VarChar","length":60}]\'`. **Replaces the full structure** (existing members cleared first). |\n\n> `dataselector` and `transaction` are **not writable** via `gx_modify` \u2014 use the GX18 IDE.\n\n`structure` member `type` values: `Character`, `VarChar`, `LongVarChar`, `Numeric`, `Int`,\n`Date`, `DateTime`, `Boolean`, `GUID`.\n\n---\n\n## Safety Rules\n\n1. **Test writes in a KB clone, never in the live KB.**\n2. **gxnext MCP is forbidden for writes on GeneXus 18 KBs.** On 2026-06-17 it caused ~76k\n   spurious Team Development revisions, requiring 6 hours of SQL recovery.\n   Safe gxnext-only tools (no KB session opened): `export_kb_to_text`,\n   `validate_kb_text_files`, `get_kb_property`, `search_modules`.\n3. **All writes \u2192 gx18-mcp tools or the GX18 IDE. Never gxnext.**\n4. **`GX18_READONLY=1`** disables all write tools server-side (useful for read-only environments).\n5. **After direct SQL writes to KB metadata**, call `gx_reload` \u2014 the SDK worker caches the object model.\n';
   }
 });
 
@@ -21648,7 +21772,7 @@ var init_runtime_api_reference = __esm({
 var common_pitfalls_default;
 var init_common_pitfalls = __esm({
   "../../docs/common-pitfalls.md"() {
-    common_pitfalls_default = "# Common Pitfalls in GeneXus User Controls\n\nReal-world traps found in production GeneXus codebases. Ordered by recurrence frequency.\n\n---\n\n## 1. Re-init guard with `getAttribute` requires explicit comparison\n\nThe most common guard bug. Using a falsy check instead of a strict equality check inverts the logic.\n\n```javascript\n// \u274C WRONG \u2014 this guard NEVER blocks re-init\n// getAttribute returns null when attribute is absent, which is falsy\n// So the \"if (!getAttribute)\" fires on EVERY AfterShow call (null is falsy)\nvar el = document.getElementById('my-uc-' + ucid);\nif (!el.getAttribute('data-init')) return;  // backwards! allows re-run when null\nel.setAttribute('data-init', '1');\n\n// \u2705 CORRECT \u2014 strict string comparison\nvar el = document.querySelector('[data-ucid=\"' + ucid + '\"]');\nif (!el) return;\nif (el.getAttribute('data-init') === '1') return;  // blocks on second run\nel.setAttribute('data-init', '1');\n// only reaches here on first execution per instance\n```\n\n**Why it matters**: Without the guard, event listeners accumulate on every postback. A button ends up firing 2\xD7, 3\xD7, N\xD7 clicks.\n\n---\n\n## 2. XSS via `innerHTML` without escaping\n\nInjecting untrusted data directly into `innerHTML` is an XSS vector and also causes HTML parse errors when the data contains `<`, `>`, `\"`, or `&`.\n\n```javascript\n// \u274C WRONG \u2014 breaks with special characters, enables XSS\npanel.innerHTML = '<span>' + item.label + '</span>';\n\n// \u2705 CORRECT \u2014 always escape before innerHTML\nfunction esc(s) {\n    return String(s == null ? '' : s)\n        .replace(/&/g, '&amp;')\n        .replace(/</g, '&lt;')\n        .replace(/>/g, '&gt;')\n        .replace(/\"/g, '&quot;');\n}\n\npanel.innerHTML = '<span>' + esc(item.label) + '</span>';\n```\n\nApply `esc()` to every user-controlled value that goes into `innerHTML`. No exceptions.\n\n---\n\n## 3. `textContent` displays HTML entities literally\n\nWhen GeneXus injects HTML-encoded content into a div, reading `innerHTML` gives you `&amp;`, `&lt;`, etc. as literal strings. `textContent` does not decode them \u2014 you need to use a temporary DOM element.\n\n```javascript\n// Scenario: GeneXus injected \"&lt;script&gt;\" into a data div\nvar dataDiv = document.getElementById('uc-data-' + ucid);\n\n// \u274C WRONG \u2014 dataDiv.textContent returns \"&lt;script&gt;\" (literal entities)\nvar text = dataDiv.textContent;\n\n// \u2705 CORRECT \u2014 decode via temporary div\nfunction decodeHtml(s) {\n    var d = document.createElement('div');\n    d.innerHTML = s;\n    return d.textContent || d.innerText || '';\n}\n\nvar text = decodeHtml(dataDiv.innerHTML);\n```\n\nThis is the standard browser technique for decoding HTML entities.\n\n---\n\n## 4. Manual JSON construction in GeneXus always breaks\n\nManually concatenating JSON strings in GeneXus code fails as soon as a field contains quotes, accents, newlines, or any special character.\n\n```genexus\n// \u274C WRONG \u2014 breaks with any special character in &Nome or &Id\nUCMyControl.ItemsJson = !'[{\"id\":\"' + &Id + '\",\"label\":\"' + &Nome + '\"}]'\n\n// \u2705 CORRECT \u2014 use SDT.ToJson() which handles all escaping\n&SdtItem.Id    = &Id\n&SdtItem.Label = &Nome\n&SdtCollection.Add(&SdtItem)\nUCMyControl.ItemsJson = &SdtCollection.ToJson()\n```\n\n`SDT.ToJson()` is the only safe way to build JSON in GeneXus. Manual concatenation is a time bomb.\n\n---\n\n## 5. Typos in SDT field names propagate silently\n\nIf you mistype an SDT field name in JavaScript (e.g., `item.Lable` instead of `item.Label`), the access returns `undefined`. JavaScript does not throw an error \u2014 you just get empty values everywhere and no stack trace to help.\n\n```javascript\n// Suppose the JSON has: [{\"id\": \"1\", \"label\": \"My Item\"}]\nvar items = JSON.parse(raw);\n\n// \u274C WRONG \u2014 typo, returns undefined silently\nvar label = items[0].Lable;   // undefined\n\n// \u2705 CORRECT \u2014 match SDT field names exactly\nvar label = items[0].label;   // \"My Item\"\n```\n\n**Best practice**: log the raw JSON during development to verify exact field names before writing accessor code.\n\n```javascript\n// Temporary debug \u2014 remove before delivery\nconsole.log('UC data:', JSON.stringify(items[0]));\n```\n\n---\n\n## 6. For Each loops need explicit handling for empty collections\n\nIn GeneXus, the `&last` variable used for comma separation must be initialized to `-1`. If you initialize it to `0` and the collection is empty, the last-item logic silently produces wrong output.\n\n```genexus\n// \u274C WRONG \u2014 &last = 0 causes off-by-one when collection is empty\n&last = 0\nFor Each Item\n    ...\nEndFor\n\n// \u2705 CORRECT \u2014 initialize to -1, update inside the loop\n&last = -1\nFor Each Item\n    &last = Item.Position\nEndFor\n\n// Also add explicit empty-collection handling:\nIf &Collection.Count = 0\n    UCMyControl.ItemsJson = !'[]'\n    Return\nEndIf\n```\n\n---\n\n## 7. `Iif` branches are swapped\n\nA classic GeneXus mistake: swapping the \"true\" and \"false\" branches in `Iif`.\n\n```genexus\n// Signature: Iif(condition, valueIfTrue, valueIfFalse)\n\n// \u274C WRONG \u2014 &Nome is empty, so IsEmpty is true, but we're returning &Nome (empty)\nUCMyControl.Label = Iif(IsEmpty(&Nome), &Nome, !'Default')\n//                                       \u2191 true branch runs when &Nome IS empty \u2192 returns \"\"\n\n// \u2705 CORRECT \u2014 when &Nome is empty, return the fallback; otherwise return &Nome\nUCMyControl.Label = Iif(IsEmpty(&Nome), !'Default', &Nome)\n//                                        \u2191 true branch = \"it IS empty\" \u2192 use default\n```\n\n**Mnemonic**: `Iif(condition, THEN, ELSE)` \u2014 read it as: \"IF this is true, THEN use A, ELSE use B.\"\n\n---\n\n## 8. Pass only the modifier class, not the full class string\n\nWhen a UC property controls visual state (e.g., a color variant), pass only the modifier suffix. The UC should compose the full class name internally.\n\n```genexus\n// \u274C WRONG \u2014 passing the full class name couples the caller to UC internals\nUCMyControl.Variant = !'my-button my-button--primary'\n\n// \u2705 CORRECT \u2014 pass only the modifier value\nUCMyControl.Variant = !'primary'\n```\n\nIn the UC JavaScript, compose the class:\n\n```javascript\nvar variant = control.Variant || 'default';\nbtnEl.className = 'my-button my-button--' + variant;\n```\n\nThis way, renaming the CSS class only requires changing the UC \u2014 not all WebPanels that use it.\n\n---\n\n## 9. Old code left in `Event Start` after extracting to a Sub\n\nWhen you refactor initialization code from `Event Start` into a dedicated `Sub`, the original code must be removed from `Event Start`. Leaving it there means the logic runs twice: once in Start and once when the Sub is called.\n\n```genexus\n// \u274C WRONG after refactor \u2014 MontaControle runs twice\nEvent Start\n    // code you meant to move...\n    UCMyControl.ucid  = !'MyId'    // still here from before refactor\n    UCMyControl.Label = &Nome      // still here from before refactor\n    Do 'MontaControle'             // also runs it via Sub\nEndEvent\n\n// \u2705 CORRECT \u2014 remove from Start after extracting\nEvent Start\n    Do 'MontaControle'\nEndEvent\n\nSub 'MontaControle'\n    UCMyControl.ucid  = !'MyId'\n    UCMyControl.Label = &Nome\nEndSub\n```\n\n---\n\n## 10. VarChar fields for URLs need minimum 500 characters\n\nGeneXus default VarChar length is often 20 or 50. Modern URLs (with query parameters, OAuth tokens, redirect URLs) routinely exceed 200 characters. Always declare URL fields with sufficient length.\n\n```genexus\n// \u274C WRONG \u2014 truncates long URLs silently\n&Url     : VarChar(100)\n&RedirectUrl : VarChar(50)\n\n// \u2705 CORRECT \u2014 use at least 500 for any URL field\n&Url         : VarChar(500)\n&RedirectUrl : VarChar(1000)  // OAuth redirect URLs can be very long\n&ApiEndpoint : VarChar(500)\n```\n\nSilent truncation is one of the hardest bugs to diagnose because the GeneXus compiler does not warn you \u2014 it just cuts the string at the declared length.\n\n---\n\n## Quick Reference\n\n| # | Symptom | Root Cause | Fix |\n|---|---------|-----------|-----|\n| 1 | Event fires N times on one click | Guard uses `!getAttribute()` (inverted) | Use `=== '1'` explicit comparison |\n| 2 | HTML broken / XSS risk | `innerHTML` with unescaped user data | `esc()` every value before innerHTML |\n| 3 | `&amp;` appears as literal text | `textContent` on HTML-encoded content | `decodeHtml()` via temp div |\n| 4 | JSON errors with special chars | Manual string concatenation | `SDT.ToJson()` always |\n| 5 | Empty values, no error | SDT field name typo in JS | Log raw JSON; match names exactly |\n| 6 | Last-item logic wrong on empty list | `&last = 0` initialization | Initialize to `-1` |\n| 7 | Wrong value in Iif branch | Condition result inverted | Read as \"IF true THEN ... ELSE ...\" |\n| 8 | Style breaks when CSS renamed | Full class in property | Pass only modifier suffix |\n| 9 | Init runs twice, events double | Old code left in Start after refactor | Remove original after extracting Sub |\n| 10 | URL truncated silently | VarChar too short | VarChar(500) minimum for URLs |\n";
+    common_pitfalls_default = "# Common Pitfalls in GeneXus User Controls\n\nReal-world traps found in production GeneXus codebases. Ordered by recurrence frequency.\n\n---\n\n## 1. Re-init guard with `getAttribute` requires explicit comparison\n\nThe most common guard bug. Using a falsy check instead of a strict equality check inverts the logic.\n\n```javascript\n// \u274C WRONG \u2014 this guard NEVER blocks re-init\n// getAttribute returns null when attribute is absent, which is falsy\n// So the \"if (!getAttribute)\" fires on EVERY AfterShow call (null is falsy)\nvar el = document.getElementById('my-uc-' + ucid);\nif (!el.getAttribute('data-init')) return;  // backwards! allows re-run when null\nel.setAttribute('data-init', '1');\n\n// \u2705 CORRECT \u2014 strict string comparison\nvar el = document.querySelector('[data-ucid=\"' + ucid + '\"]');\nif (!el) return;\nif (el.getAttribute('data-init') === '1') return;  // blocks on second run\nel.setAttribute('data-init', '1');\n// only reaches here on first execution per instance\n```\n\n**Why it matters**: Without the guard, event listeners accumulate on every postback. A button ends up firing 2\xD7, 3\xD7, N\xD7 clicks.\n\n---\n\n## 2. XSS via `innerHTML` without escaping\n\nInjecting untrusted data directly into `innerHTML` is an XSS vector and also causes HTML parse errors when the data contains `<`, `>`, `\"`, or `&`.\n\n```javascript\n// \u274C WRONG \u2014 breaks with special characters, enables XSS\npanel.innerHTML = '<span>' + item.label + '</span>';\n\n// \u2705 CORRECT \u2014 always escape before innerHTML\nfunction esc(s) {\n    return String(s == null ? '' : s)\n        .replace(/&/g, '&amp;')\n        .replace(/</g, '&lt;')\n        .replace(/>/g, '&gt;')\n        .replace(/\"/g, '&quot;');\n}\n\npanel.innerHTML = '<span>' + esc(item.label) + '</span>';\n```\n\nApply `esc()` to every user-controlled value that goes into `innerHTML`. No exceptions.\n\n---\n\n## 3. `textContent` displays HTML entities literally\n\nWhen GeneXus injects HTML-encoded content into a div, reading `innerHTML` gives you `&amp;`, `&lt;`, etc. as literal strings. `textContent` does not decode them \u2014 you need to use a temporary DOM element.\n\n```javascript\n// Scenario: GeneXus injected \"&lt;script&gt;\" into a data div\nvar dataDiv = document.getElementById('uc-data-' + ucid);\n\n// \u274C WRONG \u2014 dataDiv.textContent returns \"&lt;script&gt;\" (literal entities)\nvar text = dataDiv.textContent;\n\n// \u2705 CORRECT \u2014 decode via temporary div\nfunction decodeHtml(s) {\n    var d = document.createElement('div');\n    d.innerHTML = s;\n    return d.textContent || d.innerText || '';\n}\n\nvar text = decodeHtml(dataDiv.innerHTML);\n```\n\nThis is the standard browser technique for decoding HTML entities.\n\n---\n\n## 4. Manual JSON construction in GeneXus always breaks\n\nManually concatenating JSON strings in GeneXus code fails as soon as a field contains quotes, accents, newlines, or any special character.\n\n```genexus\n// \u274C WRONG \u2014 breaks with any special character in &Nome or &Id\nUCMyControl.ItemsJson = !'[{\"id\":\"' + &Id + '\",\"label\":\"' + &Nome + '\"}]'\n\n// \u2705 CORRECT \u2014 use SDT.ToJson() which handles all escaping\n&SdtItem.Id    = &Id\n&SdtItem.Label = &Nome\n&SdtCollection.Add(&SdtItem)\nUCMyControl.ItemsJson = &SdtCollection.ToJson()\n```\n\n`SDT.ToJson()` is the only safe way to build JSON in GeneXus. Manual concatenation is a time bomb.\n\n---\n\n## 5. Typos in SDT field names propagate silently\n\nIf you mistype an SDT field name in JavaScript (e.g., `item.Lable` instead of `item.Label`), the access returns `undefined`. JavaScript does not throw an error \u2014 you just get empty values everywhere and no stack trace to help.\n\n```javascript\n// Suppose the JSON has: [{\"id\": \"1\", \"label\": \"My Item\"}]\nvar items = JSON.parse(raw);\n\n// \u274C WRONG \u2014 typo, returns undefined silently\nvar label = items[0].Lable;   // undefined\n\n// \u2705 CORRECT \u2014 match SDT field names exactly\nvar label = items[0].label;   // \"My Item\"\n```\n\n**Best practice**: log the raw JSON during development to verify exact field names before writing accessor code.\n\n```javascript\n// Temporary debug \u2014 remove before delivery\nconsole.log('UC data:', JSON.stringify(items[0]));\n```\n\n---\n\n## 6. For Each loops need explicit handling for empty collections\n\nIn GeneXus, the `&last` variable used for comma separation must be initialized to `-1`. If you initialize it to `0` and the collection is empty, the last-item logic silently produces wrong output.\n\n```genexus\n// \u274C WRONG \u2014 &last = 0 causes off-by-one when collection is empty\n&last = 0\nFor Each Item\n    ...\nEndFor\n\n// \u2705 CORRECT \u2014 initialize to -1, update inside the loop\n&last = -1\nFor Each Item\n    &last = Item.Position\nEndFor\n\n// Also add explicit empty-collection handling:\nIf &Collection.Count = 0\n    UCMyControl.ItemsJson = !'[]'\n    Return\nEndIf\n```\n\n---\n\n## 7. `Iif` branches are swapped\n\nA classic GeneXus mistake: swapping the \"true\" and \"false\" branches in `Iif`.\n\n```genexus\n// Signature: Iif(condition, valueIfTrue, valueIfFalse)\n\n// \u274C WRONG \u2014 &Nome is empty, so IsEmpty is true, but we're returning &Nome (empty)\nUCMyControl.Label = Iif(IsEmpty(&Nome), &Nome, !'Default')\n//                                       \u2191 true branch runs when &Nome IS empty \u2192 returns \"\"\n\n// \u2705 CORRECT \u2014 when &Nome is empty, return the fallback; otherwise return &Nome\nUCMyControl.Label = Iif(IsEmpty(&Nome), !'Default', &Nome)\n//                                        \u2191 true branch = \"it IS empty\" \u2192 use default\n```\n\n**Mnemonic**: `Iif(condition, THEN, ELSE)` \u2014 read it as: \"IF this is true, THEN use A, ELSE use B.\"\n\n---\n\n## 8. Pass only the modifier class, not the full class string\n\nWhen a UC property controls visual state (e.g., a color variant), pass only the modifier suffix. The UC should compose the full class name internally.\n\n```genexus\n// \u274C WRONG \u2014 passing the full class name couples the caller to UC internals\nUCMyControl.Variant = !'my-button my-button--primary'\n\n// \u2705 CORRECT \u2014 pass only the modifier value\nUCMyControl.Variant = !'primary'\n```\n\nIn the UC JavaScript, compose the class:\n\n```javascript\nvar variant = control.Variant || 'default';\nbtnEl.className = 'my-button my-button--' + variant;\n```\n\nThis way, renaming the CSS class only requires changing the UC \u2014 not all WebPanels that use it.\n\n---\n\n## 9. Old code left in `Event Start` after extracting to a Sub\n\nWhen you refactor initialization code from `Event Start` into a dedicated `Sub`, the original code must be removed from `Event Start`. Leaving it there means the logic runs twice: once in Start and once when the Sub is called.\n\n```genexus\n// \u274C WRONG after refactor \u2014 MontaControle runs twice\nEvent Start\n    // code you meant to move...\n    UCMyControl.ucid  = !'MyId'    // still here from before refactor\n    UCMyControl.Label = &Nome      // still here from before refactor\n    Do 'MontaControle'             // also runs it via Sub\nEndEvent\n\n// \u2705 CORRECT \u2014 remove from Start after extracting\nEvent Start\n    Do 'MontaControle'\nEndEvent\n\nSub 'MontaControle'\n    UCMyControl.ucid  = !'MyId'\n    UCMyControl.Label = &Nome\nEndSub\n```\n\n---\n\n## 10. VarChar fields for URLs need minimum 500 characters\n\nGeneXus default VarChar length is often 20 or 50. Modern URLs (with query parameters, OAuth tokens, redirect URLs) routinely exceed 200 characters. Always declare URL fields with sufficient length.\n\n```genexus\n// \u274C WRONG \u2014 truncates long URLs silently\n&Url     : VarChar(100)\n&RedirectUrl : VarChar(50)\n\n// \u2705 CORRECT \u2014 use at least 500 for any URL field\n&Url         : VarChar(500)\n&RedirectUrl : VarChar(1000)  // OAuth redirect URLs can be very long\n&ApiEndpoint : VarChar(500)\n```\n\nSilent truncation is one of the hardest bugs to diagnose because the GeneXus compiler does not warn you \u2014 it just cuts the string at the declared length.\n\n---\n\n## 11. IIFE with `.call(this)` breaks the GeneXus JS minifier\n\nThe GeneXus build pipeline runs a JS minifier over UC `AfterShow` scripts. The minifier does not support the IIFE pattern `(function(){...}).call(this)` \u2014 it throws a syntax error and the build fails with warnings like `Expected ';'` and `Expected expression: )`.\n\n```javascript\n// \u274C WRONG \u2014 minifier chokes on }).call(this) at line N\n(function () {\n  var control = this;\n  var ucid    = control.ControlName;\n  // ...\n  window['ucInit_' + ucid] = function () { ... };\n  setTimeout(function () { window['ucInit_' + ucid](); }, 100);\n}).call(this);\n\n// \u2705 CORRECT \u2014 use prefixed variables directly, no wrapper\nvar _uc   = this;\nvar _ucid = _uc.ControlName;\n// ...\nwindow['ucInit_' + _ucid] = function () { ... };\nsetTimeout(function () { window['ucInit_' + _ucid](); }, 100);\n```\n\nUse a naming prefix (e.g. `_amb`, `_uc`) on all local variables to avoid collisions between UC instances on the same page. The `this` context is already the UC instance in AfterShow \u2014 no `.call(this)` needed.\n\n---\n\n## Quick Reference\n\n| # | Symptom | Root Cause | Fix |\n|---|---------|-----------|-----|\n| 1 | Event fires N times on one click | Guard uses `!getAttribute()` (inverted) | Use `=== '1'` explicit comparison |\n| 2 | HTML broken / XSS risk | `innerHTML` with unescaped user data | `esc()` every value before innerHTML |\n| 3 | `&amp;` appears as literal text | `textContent` on HTML-encoded content | `decodeHtml()` via temp div |\n| 4 | JSON errors with special chars | Manual string concatenation | `SDT.ToJson()` always |\n| 5 | Empty values, no error | SDT field name typo in JS | Log raw JSON; match names exactly |\n| 6 | Last-item logic wrong on empty list | `&last = 0` initialization | Initialize to `-1` |\n| 7 | Wrong value in Iif branch | Condition result inverted | Read as \"IF true THEN ... ELSE ...\" |\n| 8 | Style breaks when CSS renamed | Full class in property | Pass only modifier suffix |\n| 9 | Init runs twice, events double | Old code left in Start after refactor | Remove original after extracting Sub |\n| 10 | URL truncated silently | VarChar too short | VarChar(500) minimum for URLs |\n| 11 | Build warns `Expected ';'` in UC JS | IIFE `}).call(this)` in AfterShow | Remove IIFE wrapper; use prefixed vars directly |\n";
   }
 });
 
