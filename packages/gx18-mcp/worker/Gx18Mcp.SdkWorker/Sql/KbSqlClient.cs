@@ -509,6 +509,101 @@ namespace Gx18Mcp.SdkWorker.Sql
             return $"uc-script-patched:149/{partEntityId}@{partVersionId} script={scriptName} ({newBlob.Length} bytes, gzip)";
         }
 
+        // Reads all <Script Name="..."> elements from the UC Properties blob (EntityTypeId=149).
+        // List mode (scriptName null/empty): returns {ok, name, scripts:[{name,charCount}], scriptCount}.
+        // Single mode (scriptName provided): returns {ok, name, scripts:[{name,charCount,content}], scriptCount=1}.
+        public object ReadUcScripts(string name, string scriptName)
+        {
+            // Find UC EntityId (EntityTypeId=147).
+            int ucEntityId;
+            const string findUcSql = "SELECT TOP 1 ev.EntityId FROM EntityVersion ev " +
+                "WHERE ev.EntityTypeId=147 AND ev.EntityVersionName=@name " +
+                "AND ev.EntityVersionId=(SELECT MAX(ev2.EntityVersionId) FROM EntityVersion ev2 " +
+                "WHERE ev2.EntityTypeId=147 AND ev2.EntityId=ev.EntityId)";
+            using (var conn = Open())
+            using (var cmd = new SqlCommand(findUcSql, conn))
+            {
+                cmd.Parameters.AddWithValue("@name", name ?? "");
+                var val = cmd.ExecuteScalar();
+                if (val == null || val == DBNull.Value)
+                    throw new Exception($"UC '{name}' not found in KB (EntityTypeId=147)");
+                ucEntityId = Convert.ToInt32(val);
+            }
+
+            // Find the Properties part (EntityTypeId=149) via EntityVersionComposition.
+            int partEntityId = -1;
+            const string findSql = @"
+                SELECT evc.ComponentEntityId
+                FROM EntityVersionComposition evc
+                WHERE evc.CompoundEntityTypeId = 147 AND evc.CompoundEntityId = @cid
+                  AND evc.ComponentEntityTypeId = 149
+                  AND evc.CompoundEntityVersionId = (
+                      SELECT MAX(ev2.EntityVersionId) FROM EntityVersion ev2
+                      WHERE ev2.EntityTypeId = 147 AND ev2.EntityId = @cid
+                  )";
+            using (var conn = Open())
+            using (var cmd = new SqlCommand(findSql, conn))
+            {
+                cmd.Parameters.AddWithValue("@cid", ucEntityId);
+                using (var r = cmd.ExecuteReader())
+                {
+                    if (r.Read()) partEntityId = r.GetInt32(0);
+                }
+            }
+
+            if (partEntityId < 0)
+            {
+                // UC has no Properties part — return empty result, don't throw.
+                return new { ok = true, name, scripts = new object[0], scriptCount = 0 };
+            }
+
+            byte[] blob = ReadBlob(149, partEntityId);
+            if (blob == null || blob.Length < 11)
+                return new { ok = true, name, scripts = new object[0], scriptCount = 0 };
+
+            string xml = Decompress(blob);
+
+            // Extract all <Script Name="...">...</Script> blocks (with or without CDATA).
+            var rx = new Regex(
+                @"<Script\b[^>]*\bName=""([^""]+)""[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?</Script>",
+                RegexOptions.Singleline);
+
+            var scripts = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (Match m in rx.Matches(xml))
+                scripts[m.Groups[1].Value] = m.Groups[2].Value;
+
+            if (!string.IsNullOrEmpty(scriptName))
+            {
+                // Single mode.
+                if (!scripts.TryGetValue(scriptName, out var content))
+                {
+                    var available = string.Join(", ", scripts.Keys);
+                    throw new Exception(
+                        $"Script '{scriptName}' not found in UC '{name}'. " +
+                        $"Available scripts: {(string.IsNullOrEmpty(available) ? "(none)" : available)}");
+                }
+                return new
+                {
+                    ok = true,
+                    name,
+                    scripts = new[] { new { name = scriptName, charCount = content.Length, content } },
+                    scriptCount = 1
+                };
+            }
+
+            // List mode — no System.Linq in this file, build the list manually.
+            var scriptList = new List<object>();
+            foreach (var kv in scripts)
+                scriptList.Add(new { name = kv.Key, charCount = kv.Value.Length });
+            return new
+            {
+                ok = true,
+                name,
+                scripts = scriptList,
+                scriptCount = scripts.Count
+            };
+        }
+
         private string TokensToText(string xml)
         {
             if (string.IsNullOrEmpty(xml)) return "";

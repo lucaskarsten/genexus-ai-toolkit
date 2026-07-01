@@ -14,6 +14,7 @@ namespace Gx18Mcp.SdkWorker.Sdk
 
         public object KnowledgeBase => _kb;
         public Type KbType => _kbType;
+        public string KbPath => _kbPath;
 
         public void Open()
         {
