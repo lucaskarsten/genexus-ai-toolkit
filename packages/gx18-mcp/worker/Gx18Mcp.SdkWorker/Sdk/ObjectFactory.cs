@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Web.Script.Serialization;
 using Gx18Mcp.SdkWorker.Identity;
 using Gx18Mcp.SdkWorker.Sql;
@@ -197,50 +200,110 @@ namespace Gx18Mcp.SdkWorker.Sdk
 
             var spec = Spec(typeKey);
 
-            // UC scripts require SQL blob patch — IKnowledgeManagerService fails headless for type=147.
-            // Caller uses section="script:ScriptName" (prefix "script:" + script name).
-            // After the SQL blob patch, we re-save the template via SDK to create a new EntityVersion
-            // so the IDE/Team Development sees the object as modified and Build All picks it up.
+            // UC scripts (section="script:ScriptName") — patch the Properties XML via the SDK's
+            // UserControlPropertiesPart.EditableContent so the SDK detects a real content change,
+            // creates a new EntityVersionId, and the IDE sees the object as modified automatically.
             if (spec.EntityTypeId == 147 && section.StartsWith("script:", StringComparison.OrdinalIgnoreCase))
             {
                 string scriptName = section.Substring("script:".Length).Trim();
                 if (string.IsNullOrEmpty(scriptName))
                     throw new Exception("section 'script:' requires a script name, e.g. 'script:AfterShow'");
-                int ucEntityId = _sql.FindEntityId(spec.EntityTypeId, name);
-                string blobNote = _sql.PatchUCScriptBlob(ucEntityId, scriptName, content);
-                Console.Error.WriteLine($"[gx18-worker] UC '{name}' script '{scriptName}': {blobNote}");
+                if (content.IndexOf("]]>", StringComparison.Ordinal) >= 0)
+                    throw new Exception("UC script body contains ']]>', which would corrupt the Properties definition on export.");
 
-                // Re-save the template via SDK to bump EntityVersion so the IDE sees it as modified.
-                try
+                var propsSpec = spec.Sections["properties"];
+                var rx = new System.Text.RegularExpressions.Regex(
+                    @"(<Script\b[^>]*\bName=""" + System.Text.RegularExpressions.Regex.Escape(scriptName) + @"""[^>]*>)(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?(</Script>)",
+                    System.Text.RegularExpressions.RegexOptions.Compiled);
+
+                // Resolve the UC and read its Properties part's EditableContent. If the worker's
+                // in-memory DesignModel is stale (the UC was created/edited externally, or a prior SQL
+                // write left the model behind), EditableContent may not expose the <Script> block the
+                // regex expects. Rather than drop straight to the non-bumping SQL fallback, reopen the
+                // KB once to rebuild the model from current DB state and retry — a fresh model normally
+                // exposes the scripts, letting the SDK Save() path run and bump the EntityVersion like
+                // any other object. Only if the retry still misses do we fall back to SQL.
+                object ucObj = null, propsPart = null;
+                string currentXml = "";
+                bool matched = false;
+                for (int attempt = 0; attempt < 2; attempt++)
                 {
                     var ucConcrete = Resolve(spec);
                     var ucKb = _session.KnowledgeBase;
                     var ucModel = ucKb != null ? _session.KbType.GetProperty("DesignModel").GetValue(ucKb) : null;
-                    if (ucModel != null)
+                    if (ucModel == null) throw new Exception("DesignModel not available");
+
+                    ucObj = ResolveByName(ucConcrete, ucModel, name);
+                    if (ucObj == null) throw new Exception($"UC '{name}' not found in DesignModel");
+
+                    propsPart = GetProp(ucObj, propsSpec.PartProp);
+                    if (propsPart == null) throw new Exception($"UC '{name}': UserControlPropertiesPart not found");
+
+                    currentXml = GetProp(propsPart, "EditableContent")?.ToString() ?? "";
+                    if (rx.IsMatch(currentXml)) { matched = true; break; }
+
+                    if (attempt == 0)
                     {
-                        var ucObj = ResolveByName(ucConcrete, ucModel, name);
-                        if (ucObj != null)
-                        {
-                            // Read the current template and write it back unchanged — this alone triggers
-                            // EntityVersion creation via the SDK, making the IDE see the object as modified.
-                            var templateSpec = spec.Sections["template"];
-                            var ucPart = GetProp(ucObj, templateSpec.PartProp);
-                            if (ucPart != null)
-                            {
-                                var currentTemplate = GetProp(ucPart, "EditableContent")?.ToString() ?? "";
-                                SetProp(ucPart, "EditableContent", currentTemplate);
-                                InvokeSave(ucObj);
-                                Console.Error.WriteLine($"[gx18-worker] UC '{name}': template re-saved to bump EntityVersion");
-                            }
-                        }
+                        Console.Error.WriteLine($"[gx18-worker] UC '{name}': SDK EditableContent missing Script '{scriptName}' — reopening KB to refresh the DesignModel and retrying");
+                        _session.Reopen();
                     }
                 }
-                catch (Exception ex)
+
+                int ucEntityId2 = _sql.FindEntityId(spec.EntityTypeId, name);
+
+                if (!matched)
                 {
-                    // Non-fatal: script blob was already patched. Log and continue.
-                    Console.Error.WriteLine($"[gx18-worker] UC '{name}': template re-save failed (non-fatal): {ex.Message}");
+                    // Even a fresh model does not expose the <Script> (e.g. gx_import stored the UC blob
+                    // in a format the SDK's EditableContent does not surface). Fall back to patching the
+                    // blob directly via SQL, then sync the .uc.json on disk so the compiler picks up the
+                    // change. This does NOT create a new EntityVersion (the SQL patch is in-place on the
+                    // Properties part), so return a WriteResult-shaped object — with userId populated so
+                    // assertWriteOk does not misreport authorship — and an explicit method flag warning
+                    // the caller that the version was NOT bumped and a template re-save is needed to make
+                    // the IDE/Team Development see the object as modified.
+                    Console.Error.WriteLine($"[gx18-worker] UC '{name}': SDK EditableContent still missing Script '{scriptName}' after reopen, falling back to SQL blob patch");
+                    string sqlResult = _sql.PatchUCScriptBlob(ucEntityId2, scriptName, content);
+                    SyncUcJsonScript(name, scriptName, content);
+                    Console.Error.WriteLine($"[gx18-worker] UC '{name}' script '{scriptName}': patched via SQL blob fallback (EntityVersion NOT bumped). {sqlResult}");
+                    var fb = VerifyUserId(spec.EntityTypeId, ucEntityId2, name, "modify-uc-script-sql-fallback");
+                    return new
+                    {
+                        op = (object)GetProp(fb, "op"),
+                        name = (object)GetProp(fb, "name"),
+                        entityTypeId = (object)GetProp(fb, "entityTypeId"),
+                        entityId = (object)GetProp(fb, "entityId"),
+                        userId = (object)GetProp(fb, "userId"),
+                        expectedUserId = (object)GetProp(fb, "expectedUserId"),
+                        kbUserName = (object)GetProp(fb, "kbUserName"),
+                        userIdOk = (object)GetProp(fb, "userIdOk"),
+                        method = "sql-blob-fallback",
+                        versionBumped = false,
+                        sqlResult
+                    };
                 }
 
+                string patchedXml = rx.Replace(currentXml, m => m.Groups[1].Value + content + m.Groups[3].Value);
+                SetProp(propsPart, "EditableContent", patchedXml);
+
+                // Force the save to be stamped with the current Windows user's KB UserId,
+                // even if the object was originally created by a different user.
+                if (_identity != null)
+                {
+                    int currentUserId = _identity.GetKbUserId();
+                    if (currentUserId > 0)
+                    {
+                        try { SetProp(ucObj, "UserId", currentUserId); } catch { /* property may not exist on this SDK version */ }
+                    }
+                }
+
+                InvokeSave(ucObj);
+                Console.Error.WriteLine($"[gx18-worker] UC '{name}' script '{scriptName}': patched via SDK Properties part");
+
+                // Sync the .uc.json files on disk so the GX18 compiler picks up the new script
+                // on the next Build All without requiring a manual IDE save.
+                SyncUcJsonScript(name, scriptName, content);
+
+                int ucEntityId = _sql.FindEntityId(spec.EntityTypeId, name);
                 return VerifyUserId(spec.EntityTypeId, ucEntityId, name, "modify-uc-script");
             }
 
@@ -308,6 +371,111 @@ namespace Gx18Mcp.SdkWorker.Sdk
 
             int id = Convert.ToInt32(GetProp(obj, "Id"));
             return VerifyUserId(spec.EntityTypeId, id, name, "modify");
+        }
+
+        // Applies multiple script patches to a UC's Properties XML in a single SDK Save.
+        // Each patch is a (scriptName, newContent) pair. Pre-validates all script names before
+        // touching the UC, so the operation is atomic: either all patches apply or none do.
+        public object ModifyUcScriptsBatch(string name, List<KeyValuePair<string, string>> patches)
+        {
+            if (string.IsNullOrEmpty(name)) throw new Exception("name is required");
+            if (patches == null || patches.Count == 0) throw new Exception("patches list must not be empty");
+
+            var spec = Spec("uc");
+
+            var ucConcrete = Resolve(spec);
+            var ucKb = _session.KnowledgeBase;
+            var ucModel = ucKb != null ? _session.KbType.GetProperty("DesignModel").GetValue(ucKb) : null;
+            if (ucModel == null) throw new Exception("DesignModel not available");
+
+            var ucObj = ResolveByName(ucConcrete, ucModel, name);
+            if (ucObj == null) throw new Exception($"UC '{name}' not found in DesignModel");
+
+            var propsSpec = spec.Sections["properties"];
+            var propsPart = GetProp(ucObj, propsSpec.PartProp);
+            if (propsPart == null) throw new Exception($"UC '{name}': UserControlPropertiesPart not found");
+
+            var currentXml = GetProp(propsPart, "EditableContent")?.ToString() ?? "";
+
+            // PRE-VALIDATE: collect all missing script names before touching the UC.
+            // Build list of available names from the XML.
+            var availableRx = new Regex(
+                @"<Script\b[^>]*\bName=""([^""]+)""",
+                RegexOptions.Singleline);
+            var availableNames = new List<string>();
+            foreach (Match m in availableRx.Matches(currentXml))
+                availableNames.Add(m.Groups[1].Value);
+
+            var missing = new List<string>();
+            foreach (var patch in patches)
+            {
+                var rx = new Regex(
+                    @"(<Script\b[^>]*\bName=""" + Regex.Escape(patch.Key) + @"""[^>]*>)(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?(</Script>)",
+                    RegexOptions.Singleline);
+                if (!rx.IsMatch(currentXml)) missing.Add(patch.Key);
+            }
+            if (missing.Count > 0)
+            {
+                var available = availableNames.Count > 0
+                    ? string.Join(", ", availableNames)
+                    : "(none)";
+                throw new Exception(
+                    $"Script(s) not found in UC '{name}': {string.Join(", ", missing)}. " +
+                    $"Available scripts: {available}");
+            }
+
+            // Guard against ]]> in any patch content.
+            foreach (var patch in patches)
+                if (patch.Value != null && patch.Value.IndexOf("]]>", StringComparison.Ordinal) >= 0)
+                    throw new Exception(
+                        $"UC script '{patch.Key}' body contains ']]>', which would corrupt the Properties definition on export.");
+
+            // Apply all replacements in sequence on the XML string.
+            string patchedXml = currentXml;
+            foreach (var patch in patches)
+            {
+                var rx = new Regex(
+                    @"(<Script\b[^>]*\bName=""" + Regex.Escape(patch.Key) + @"""[^>]*>)(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?(</Script>)",
+                    RegexOptions.Singleline);
+                patchedXml = rx.Replace(patchedXml, m => m.Groups[1].Value + (patch.Value ?? "") + m.Groups[3].Value);
+            }
+
+            SetProp(propsPart, "EditableContent", patchedXml);
+
+            // Force UserId stamp so the SDK saves under the current Windows user.
+            if (_identity != null)
+            {
+                int currentUserId = _identity.GetKbUserId();
+                if (currentUserId > 0)
+                    try { SetProp(ucObj, "UserId", currentUserId); } catch { /* property may not exist on this SDK version */ }
+            }
+
+            InvokeSave(ucObj);
+            Console.Error.WriteLine($"[gx18-worker] UC '{name}': {patches.Count} script(s) patched via SDK Properties part (batch)");
+
+            // Sync .uc.json files — non-fatal if any fail.
+            foreach (var patch in patches)
+            {
+                try { SyncUcJsonScript(name, patch.Key, patch.Value ?? ""); }
+                catch (Exception ex) { Console.Error.WriteLine($"[gx18-worker] SyncUcJsonScript '{patch.Key}' skipped: {ex.Message}"); }
+            }
+
+            int ucEntityId = _sql.FindEntityId(spec.EntityTypeId, name);
+            var wr = VerifyUserId(spec.EntityTypeId, ucEntityId, name, "modify-uc-scripts-batch");
+            return new
+            {
+                op = (object)GetProp(wr, "op"),
+                name = (object)GetProp(wr, "name"),
+                entityTypeId = (object)GetProp(wr, "entityTypeId"),
+                entityId = (object)GetProp(wr, "entityId"),
+                userId = (object)GetProp(wr, "userId"),
+                expectedUserId = (object)GetProp(wr, "expectedUserId"),
+                kbUserName = (object)GetProp(wr, "kbUserName"),
+                userIdOk = (object)GetProp(wr, "userIdOk"),
+                recentVersions = (object)GetProp(wr, "recentVersions"),
+                patchCount = patches.Count,
+                patchedScripts = patches.Select(p => p.Key).ToList()
+            };
         }
 
         // ---- section application ----
@@ -403,6 +571,13 @@ namespace Gx18Mcp.SdkWorker.Sdk
             var root = GetProp(part, "Root"); // SDTLevel
             if (root == null) throw new Exception("SDTStructure.Root is null");
             var rootType = root.GetType();
+
+            // Clear existing items so modify replaces the structure instead of appending.
+            // SDTLevel.Reset() clears all child items and levels — confirmed via SDK reflection.
+            var resetMethod = rootType.GetMethod("Reset", Type.EmptyTypes);
+            if (resetMethod != null)
+                resetMethod.Invoke(root, null);
+
             // SDTItem AddItem(string itemName, eDBType type, int length, int decimals)
             var addItem4 = rootType.GetMethod("AddItem", new[] { typeof(string), Assembly.Load("Artech.Genexus.Common").GetType("Artech.Genexus.Common.eDBType"), typeof(int), typeof(int) });
             foreach (var it in items)
@@ -682,6 +857,177 @@ namespace Gx18Mcp.SdkWorker.Sdk
                 if ((e.Message ?? "").IndexOf("duplicate key", StringComparison.OrdinalIgnoreCase) >= 0) return true;
             }
             return false;
+        }
+
+        // Patch the script named <scriptName> inside every .uc.json file that the GX18 compiler
+        // reads for UC <ucName>. The compiler uses two locations:
+        //   1. <KbPath>\UserControls\data*\<ucname>\<ucname>.uc.json  (authoritative copy)
+        //   2. <KbPath>\javaoracle\web\gxmetadata\<ucname>.uc.json    (compiler input cache)
+        // Neither is updated by the SDK's Save() call — only the IDE hooks do that — so we sync
+        // them here after every successful script write.
+        private void SyncUcJsonScript(string ucName, string scriptName, string newSource)
+        {
+            var kbPath = _session.KbPath;
+            if (string.IsNullOrEmpty(kbPath)) return;
+
+            string ucNameLower = ucName.ToLowerInvariant();
+
+            // Collect candidate paths
+            var candidates = new List<string>();
+
+            // 1. UserControls\data*\<ucname>\<ucname>.uc.json
+            var ucRoot = Path.Combine(kbPath, "UserControls");
+            if (Directory.Exists(ucRoot))
+            {
+                foreach (var dataDir in Directory.GetDirectories(ucRoot, "data*"))
+                {
+                    var candidate = Path.Combine(dataDir, ucNameLower, ucNameLower + ".uc.json");
+                    if (File.Exists(candidate))
+                        candidates.Add(candidate);
+                }
+            }
+
+            // 2. javaoracle\web\gxmetadata\<ucname>.uc.json
+            var gxmeta = Path.Combine(kbPath, "javaoracle", "web", "gxmetadata", ucNameLower + ".uc.json");
+            if (File.Exists(gxmeta))
+                candidates.Add(gxmeta);
+
+            if (candidates.Count == 0)
+            {
+                Console.Error.WriteLine($"[gx18-worker] SyncUcJson: no .uc.json found for '{ucName}' — skipping disk sync");
+                return;
+            }
+
+            // The .uc.json stores scripts inline (single line, JSON-escaped).
+            // The "Source" field value contains the script wrapped in an IIFE call:
+            //   "Source": "            <script content here>        }).call(this);"
+            // We locate the script block by searching for the AfterShow/Methods JSON array
+            // and patching the matching Source value by index-based substring replacement.
+            // Strategy: find the Source string that contains the current scriptName neighbourhood,
+            // then replace the segment between the known IIFE wrapper boundaries.
+            foreach (var path in candidates)
+            {
+                try
+                {
+                    PatchUcJsonFile(path, ucName, scriptName, newSource);
+                    Console.Error.WriteLine($"[gx18-worker] SyncUcJson: patched '{path}'");
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine($"[gx18-worker] SyncUcJson: failed to patch '{path}': {ex.Message}");
+                }
+            }
+        }
+
+        // Patches the Source field of the script named <scriptName> inside a .uc.json file.
+        // The file is JSON with the Scripts array; each element has "Name" and "Source" fields.
+        // We use a regex to find the correct AfterShow/BeforeShow entry by Name and replace its Source.
+        private static void PatchUcJsonFile(string path, string ucName, string scriptName, string newSource)
+        {
+            string raw = File.ReadAllText(path, Encoding.UTF8);
+
+            // The JSON stores the script source as a JSON string value. We need to:
+            // 1. Find the entry with matching Name
+            // 2. Replace its Source value with the new source (JSON-escaped)
+
+            // Escape newSource as a JSON string value (no surrounding quotes)
+            string escapedSource = EscapeJsonString(newSource);
+
+            // Regex: find "Name":"<scriptName>" within an object, then find the "Source":"..." in that same object.
+            // The JSON is typically on a single line (compacted), so we use a targeted approach:
+            // find the index of "Name":"<scriptName>" then find "Source":" after it (within 50 chars)
+            // and replace up to the closing unescaped quote.
+            // Accept both compact and spaced JSON key forms
+            string nameToken        = "\"Name\":\"" + scriptName + "\"";
+            string nameTokenSpaced  = "\"Name\": \"" + scriptName + "\"";
+            int nameIdx = raw.IndexOf(nameToken, StringComparison.OrdinalIgnoreCase);
+            if (nameIdx < 0)
+                nameIdx = raw.IndexOf(nameTokenSpaced, StringComparison.OrdinalIgnoreCase);
+            if (nameIdx < 0)
+            {
+                Console.Error.WriteLine($"[gx18-worker] SyncUcJson: Name '{scriptName}' not found in {Path.GetFileName(path)}");
+                return;
+            }
+
+            // Find "Source":"..." starting after the Name token (within the same JSON object).
+            // Accept both compact ("Source":"...") and pretty-printed ("Source": "...") forms.
+            string sourceKey = "\"Source\":\"";
+            string sourceKeySpaced = "\"Source\": \"";
+            // Try compact form first, then spaced form
+            int sourceKeyIdx = raw.IndexOf(sourceKey, nameIdx);
+            int sourceKeyLen = sourceKey.Length;
+            if (sourceKeyIdx < 0 || sourceKeyIdx - nameIdx > 200)
+            {
+                sourceKeyIdx = raw.IndexOf(sourceKeySpaced, nameIdx);
+                sourceKeyLen = sourceKeySpaced.Length;
+            }
+            if (sourceKeyIdx < 0 || sourceKeyIdx - nameIdx > 200)
+            {
+                // Source may come before Name in the JSON object — search within the enclosing object
+                int entryStart = raw.LastIndexOf('{', nameIdx);
+                sourceKeyIdx = raw.IndexOf(sourceKey, entryStart);
+                sourceKeyLen = sourceKey.Length;
+                if (sourceKeyIdx < 0 || sourceKeyIdx > nameIdx + 200)
+                {
+                    sourceKeyIdx = raw.IndexOf(sourceKeySpaced, entryStart);
+                    sourceKeyLen = sourceKeySpaced.Length;
+                }
+                if (sourceKeyIdx < 0)
+                {
+                    Console.Error.WriteLine($"[gx18-worker] SyncUcJson: Source field not found near Name '{scriptName}' in {Path.GetFileName(path)}");
+                    return;
+                }
+            }
+
+            // Find the end of the Source value: scan for the closing unescaped double-quote
+            int valueStart = sourceKeyIdx + sourceKeyLen;
+            int valueEnd = FindJsonStringEnd(raw, valueStart);
+            if (valueEnd < 0)
+            {
+                Console.Error.WriteLine($"[gx18-worker] SyncUcJson: could not find end of Source value in {Path.GetFileName(path)}");
+                return;
+            }
+
+            string before = raw.Substring(0, valueStart);
+            string after  = raw.Substring(valueEnd);
+            string patched = before + escapedSource + after;
+
+            File.WriteAllText(path, patched, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        }
+
+        // Find the index of the character AFTER the closing unescaped '"' of a JSON string,
+        // starting at <start> (which points to the first character inside the string, after the opening '"').
+        private static int FindJsonStringEnd(string s, int start)
+        {
+            for (int i = start; i < s.Length; i++)
+            {
+                if (s[i] == '\\') { i++; continue; } // skip escaped char
+                if (s[i] == '"') return i;            // closing quote
+            }
+            return -1;
+        }
+
+        // Escape a string for embedding as a JSON string value (no surrounding quotes).
+        private static string EscapeJsonString(string s)
+        {
+            if (s == null) return "";
+            var sb = new StringBuilder(s.Length + 64);
+            foreach (char c in s)
+            {
+                switch (c)
+                {
+                    case '"':  sb.Append("\\\""); break;
+                    case '\\': sb.Append("\\\\"); break;
+                    case '\n': sb.Append("\\n");  break;
+                    case '\r': sb.Append("\\r");  break;
+                    case '\t': sb.Append("\\t");  break;
+                    default:
+                        if (c < 0x20) sb.Append("\\u").Append(((int)c).ToString("x4"));
+                        else sb.Append(c);
+                        break;
+                }
+            }
+            return sb.ToString();
         }
 
         private void InvokeSave(object obj)

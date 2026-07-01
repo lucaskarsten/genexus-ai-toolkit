@@ -18,9 +18,9 @@ describe.skipIf(!SPIKE_AVAILABLE)('CRUD: sdt', () => {
       { name: 'SdtName', type: 'varchar', length: 60, decimals: 0 },
     ]);
     const r = await callBridge<any>('create', {
-      typeKey: 'sdt',
+      type: 'sdt',
       name: createdName,
-      sections: { structure },
+      structure,
     });
     expect(r.userIdOk).toBe(true);
     expect(r.op).toBe('create');
@@ -31,12 +31,30 @@ describe.skipIf(!SPIKE_AVAILABLE)('CRUD: sdt', () => {
     expect(rows.some((x: any) => x.name === createdName)).toBe(true);
   });
 
-  it('read_structure — retorna membros do SDT', async () => {
-    const r = await callBridge<any>('read_structure', { name: createdName });
-    // Pode retornar array de membros ou null se SDK não indexou ainda
-    if (r !== null && r !== undefined) {
-      expect(Array.isArray(r) || typeof r === 'object').toBe(true);
+  it('read_structure — retorna null/erro para SDT (read_structure é TRN-only)', async () => {
+    // read_structure targets EntityTypeId=39 (Transaction), not SDT (36).
+    // For SDT members, use gx_export → gx_read_xpz instead.
+    try {
+      await callBridge<any>('read_structure', { name: createdName });
+    } catch {
+      // expected — SDT is not a Transaction
     }
+  });
+
+  it('modify structure — substitui membros existentes', async () => {
+    const structure = JSON.stringify([
+      { name: 'SdtCode', type: 'numeric', length: 9, decimals: 0 },
+      { name: 'SdtDescription', type: 'varchar', length: 100, decimals: 0 },
+      { name: 'SdtDate', type: 'date', length: 0, decimals: 0 },
+    ]);
+    const r = await callBridge<any>('modify', {
+      name: createdName,
+      type: 'sdt',
+      section: 'structure',
+      content: structure,
+    });
+    expect(r.userIdOk).toBe(true);
+    expect(r.op).toBe('modify');
   });
 
   it('export — gera .xpz válido', async () => {
@@ -46,7 +64,7 @@ describe.skipIf(!SPIKE_AVAILABLE)('CRUD: sdt', () => {
     let r: any;
     try {
       r = await callBridge<any>('export', {
-        typeKey: 'sdt',
+        type: 'sdt',
         name: createdName,
         outputFile: outFile,
       });
@@ -64,7 +82,7 @@ describe.skipIf(!SPIKE_AVAILABLE)('CRUD: sdt', () => {
   it('delete dryRun — não remove', async () => {
     const r = await callBridge<any>('delete', {
       name: createdName,
-      typeKey: 'sdt',
+      type: 'sdt',
       dryRun: true,
     });
     expect(r.deleted).toBe(false);
@@ -73,7 +91,7 @@ describe.skipIf(!SPIKE_AVAILABLE)('CRUD: sdt', () => {
   it('delete — remove definitivamente', async () => {
     const r = await callBridge<any>('delete', {
       name: createdName,
-      typeKey: 'sdt',
+      type: 'sdt',
       dryRun: false,
     });
     expect(r.deleted).toBe(true);

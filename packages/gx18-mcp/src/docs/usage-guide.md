@@ -257,6 +257,7 @@ gx_reload    → restart worker so SDK cache is cleared; worker reopens KB fresh
 | `usercontrol` | `template`, `properties`, `script:<Name>` | template/properties via SDK; scripts via SQL blob in-place |
 | `dso` | `tokens`, `styles`, `elements` | SDK path; use friendly `@import Name;` (not GUID form) |
 | `api` | `source`, `events` | SDK path |
+| `sdt` | `structure` | SDK path; content = JSON array string `'[{"name":"F","type":"VarChar","length":60}]'`. **Replaces the full structure** (existing members cleared first). |
 
 > `dataselector` and `transaction` are **not writable** via `gx_modify` — use the GX18 IDE.
 
