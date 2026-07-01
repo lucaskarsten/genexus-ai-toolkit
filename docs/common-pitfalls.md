@@ -234,6 +234,32 @@ Silent truncation is one of the hardest bugs to diagnose because the GeneXus com
 
 ---
 
+## 11. IIFE with `.call(this)` breaks the GeneXus JS minifier
+
+The GeneXus build pipeline runs a JS minifier over UC `AfterShow` scripts. The minifier does not support the IIFE pattern `(function(){...}).call(this)` — it throws a syntax error and the build fails with warnings like `Expected ';'` and `Expected expression: )`.
+
+```javascript
+// ❌ WRONG — minifier chokes on }).call(this) at line N
+(function () {
+  var control = this;
+  var ucid    = control.ControlName;
+  // ...
+  window['ucInit_' + ucid] = function () { ... };
+  setTimeout(function () { window['ucInit_' + ucid](); }, 100);
+}).call(this);
+
+// ✅ CORRECT — use prefixed variables directly, no wrapper
+var _uc   = this;
+var _ucid = _uc.ControlName;
+// ...
+window['ucInit_' + _ucid] = function () { ... };
+setTimeout(function () { window['ucInit_' + _ucid](); }, 100);
+```
+
+Use a naming prefix (e.g. `_amb`, `_uc`) on all local variables to avoid collisions between UC instances on the same page. The `this` context is already the UC instance in AfterShow — no `.call(this)` needed.
+
+---
+
 ## Quick Reference
 
 | # | Symptom | Root Cause | Fix |
@@ -248,3 +274,4 @@ Silent truncation is one of the hardest bugs to diagnose because the GeneXus com
 | 8 | Style breaks when CSS renamed | Full class in property | Pass only modifier suffix |
 | 9 | Init runs twice, events double | Old code left in Start after refactor | Remove original after extracting Sub |
 | 10 | URL truncated silently | VarChar too short | VarChar(500) minimum for URLs |
+| 11 | Build warns `Expected ';'` in UC JS | IIFE `}).call(this)` in AfterShow | Remove IIFE wrapper; use prefixed vars directly |

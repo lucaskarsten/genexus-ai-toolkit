@@ -131,21 +131,48 @@ node dist/bin/gx18-mcp.js doctor
 
 ---
 
-## 2. nexa — GeneXus language authority
+## 2. Skills from genexus-skills
 
-`skills/nexa/` is a git submodule from [genexuslabs/genexus-skills](https://github.com/genexuslabs/genexus-skills) — the authoritative GeneXus language reference maintained by GeneXus Labs. It covers 24+ object types, all rules/events/properties, and the full language spec.
+`skills/nexa/` is a git submodule from [genexuslabs/genexus-skills](https://github.com/genexuslabs/genexus-skills) — the official skills repo maintained by GeneXus Labs. It ships 6 skills; all are already on disk once the submodule is initialized.
 
-**When to load nexa:** any task involving Transaction structure, Procedure rules, SDT design, domain types, KB model decisions, or anything that requires the authoritative GeneXus language spec.
+### nexa — GeneXus language authority
+
+Covers 24+ object types, all rules/events/properties, and the full language spec.
+
+**When to load:** any task involving Transaction structure, Procedure rules, SDT design, domain types, KB model decisions, or anything that requires the authoritative GeneXus language spec.
 
 ```bash
-# Register with Claude Code (once per session or project)
 claude --add-dir skills/nexa/nexa
+```
 
-# Update submodule to latest
+### Chameleon Controls Library — Web Panel UI components
+
+60+ web components (`ch-accordion`, `ch-chat`, `ch-grid`, `ch-code-editor`, …) used in GeneXus 18 Web Panels. Covers Angular, React, Stencil, and vanilla JS/TS integration.
+
+**When to load:** building or debugging any Web Panel UI that uses Chameleon components.
+
+```bash
+claude --add-dir skills/nexa/frontend/chameleon-controls-library
+```
+
+### Design System Builder + Mercury
+
+Two complementary skills for enterprise CSS design systems atop Chameleon: `design-system-builder` covers ITCSS layers, tokens, multi-brand, light/dark from scratch; `mercury-design-system` is the pre-configured Mercury (blue) / Globant (green) theme with 39 CSS bundles, 500+ icons, and WCAG AA compliance.
+
+**When to load:** DSO token design, custom design system work, or using the Mercury theme.
+
+```bash
+claude --add-dir skills/nexa/frontend/design-system-builder
+claude --add-dir skills/nexa/frontend/mercury-design-system
+```
+
+### Update submodule
+
+```bash
 git submodule update --remote skills/nexa
 ```
 
-The skill activates automatically when GeneXus object or KB operations are mentioned. For quick GX18 patterns (JS ES5, AfterShow, DSO), `skills/genexus-expert.md` is sufficient.
+For quick GX18 patterns (JS ES5, AfterShow, DSO), `skills/genexus-expert.md` is sufficient without loading the submodule skills.
 
 ---
 

@@ -118,17 +118,40 @@ patched — re-serializes it and `Save()`s, which atomically creates a new `Enti
 
 Two traps that make this fail silently — confirmed on UserControls (type=147), 2026:
 
-1. **`section="script:*"` does NOT bump the version.** `gx_modify type=147 section="script:AfterShow"`
-   (or any `script:<Name>`) returns `op: "modify-uc-script-sql"` and writes the script blob **in-place
-   via SQL on the active EntityVersion** — it does **not** go through the SDK `Save()`, so **no new
-   EntityVersion and no `ModelEntityHistory` entry** are created. The object stays invisible to Team
-   Development and the incremental build. So `script:*` is **not** a valid "idempotent re-save" for this
-   purpose — it is the very write that needs a follow-up save.
+1. **`section="script:*"` bumps the version ONLY when the SDK path runs — some UCs never expose
+   their parts to the SDK headless and always take the non-bumping SQL fallback.** `gx_modify type=147
+   section="script:<Name>"` first tries the SDK path: patch `UserControlPropertiesPart.EditableContent`
+   and `Save()`, which creates a new `EntityVersion` + `ModelEntityHistory` (Op=2), returns
+   `op: "modify-uc-script"` with populated `userId`/`userIdOk`, and the object shows as modified. This
+   requires the SDK to **materialize** the part's `EditableContent`. If it doesn't — the regex for the
+   `<Script>` block finds nothing — the worker **reopens the KB once** (fresh `DesignModel`) and retries;
+   if it still finds nothing it **falls back** to patching the blob + `.uc.json` via SQL. The fallback
+   does **not** call `Save()`, so **no new `EntityVersion` / `ModelEntityHistory`** is created. It now
+   returns `op: "modify-uc-script-sql-fallback"`, `method: "sql-blob-fallback"`, `versionBumped: false`,
+   **with `userId`/`userIdOk` populated** (so `assertWriteOk` no longer misreports — the old
+   *"saved as undefined instead of undefined"* warning is gone).
+
+   Two distinct causes land in the fallback, and the fix (reopen-retry) only cures the first:
+   - **Transient stale model** — the UC was created/edited externally after the session opened, or a
+     prior SQL write left the in-memory model behind. The reopen rebuilds it and the SDK path succeeds
+     on retry → version bumps normally. Preventable up-front by killing the worker
+     (`Stop-Process -Name Gx18Mcp.SdkWorker -Force`) + `gx_reload` before editing.
+   - **Structurally blob-only UCs** — confirmed on certain production header UCs (2026): the SDK returns
+     **empty** `EditableContent` for *both* the properties part AND the template part, headless, even
+     with a fresh model. `gx_read section=template` / `section=properties` return content only because
+     they decode the SQL blob directly (`ReadProperties` → `Decompress`), NOT via the SDK. For these,
+     the SDK write path is simply unavailable headless — every `script:*` write takes the fallback and
+     **cannot** bump the version from the SDK. Do **not** try to force it with a hand-rolled
+     `EntityVersion` INSERT (fragile — see the warning above). Consequence is cosmetic only: the blob
+     and `.uc.json` are correct so **Build All regenerates fine**; only Team Development's "modified"
+     indicator and `gx_history` miss the revision. If you truly need the IDE to flag it, open + save the
+     UC once in the GX18 IDE.
 2. **An identical re-save is a no-op.** Re-writing a section with byte-identical content (e.g.
    `gx_modify section=template` with the exact current template) returns `op: "modify"` but the SDK
    detects no change and does **not** save — `MAX(EntityVersionId)` does not advance.
 
-**Reliable recipe:** after the `script:*` (or SQL blob) write, re-save a real SDK-path section with a
+**Reliable recipe:** after a `script:*` write that fell back to SQL (`method: "sql-blob-fallback"`,
+or any direct SQL blob write), re-save a real SDK-path section with a
 **minimal benign difference**. For a UserControl, regenerate the version by writing `section=template`
 with one extra comment line added (e.g. a `/* ... */` inside the `<style>`). That returns `op: "modify"`,
 creates a new `EntityVersion` + `ModelEntityHistory` (Op=2) with the correct UserId, and **preserves the
